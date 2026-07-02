@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Heart, Search, ShoppingBag, User } from "lucide-react";
+import { useCartStore } from "@/lib/cart-store";
 
 const navLinks = [
   { name: "Home", href: "/", active: true },
@@ -16,6 +17,7 @@ const navLinks = [
 export function Navbar() {
   const pathname = usePathname();
   const isHome = pathname === "/";
+  const itemCount = useCartStore((s) => s.getItemCount());
 
   return (
     <nav className={`sticky z-40 h-16 w-full border-b border-olive-leaf/15 bg-cornsilk ${isHome ? 'top-7' : 'top-0'}`}>
@@ -67,16 +69,18 @@ export function Navbar() {
           >
             <Heart className="size-5" aria-hidden="true" />
           </button>
-          <button
-            type="button"
+          <Link
+            href="/cart"
             className="relative flex size-9 items-center justify-center rounded-full text-black-forest transition-opacity hover:opacity-70"
             aria-label="Open shopping bag"
           >
             <ShoppingBag className="size-5" aria-hidden="true" />
-            <span className="absolute -right-1 top-0 flex size-4 items-center justify-center rounded-full bg-copperwood font-sans text-3xs font-medium text-cornsilk">
-              2
-            </span>
-          </button>
+            {itemCount > 0 && (
+              <span className="absolute -right-1 top-0 flex size-4 items-center justify-center rounded-full bg-copperwood font-sans text-3xs font-medium text-cornsilk">
+                {itemCount > 99 ? "99+" : itemCount}
+              </span>
+            )}
+          </Link>
           <button
             type="button"
             className="hidden size-9 items-center justify-center rounded-full text-black-forest transition-opacity hover:opacity-70 sm:flex"

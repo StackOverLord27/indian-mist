@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Check } from "lucide-react";
 import { Star, Minus, Plus, ShoppingBag, Heart, Truck, RefreshCw, Leaf, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useCartStore } from "@/lib/cart-store";
 import type { Product } from "@/lib/get-product";
 
 export function ProductInfo({ product }: { product: Product }) {
@@ -14,6 +16,16 @@ export function ProductInfo({ product }: { product: Product }) {
     product.colors?.[0]?.name || ""
   );
   const [quantity, setQuantity] = useState(1);
+  // Tracks the quantity that was last added to cart for this variant.
+  // Button is disabled when quantity <= addedQuantity (nothing new to add).
+  // -1 means nothing has been added yet.
+  const [addedQuantity, setAddedQuantity] = useState(-1);
+
+  const isAdded = addedQuantity >= 0 && quantity <= addedQuantity;
+
+  const resetAddedState = () => setAddedQuantity(-1);
+
+  const { addItem } = useCartStore();
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -25,6 +37,22 @@ export function ProductInfo({ product }: { product: Product }) {
 
   const handleDecrement = () => setQuantity((q) => Math.max(1, q - 1));
   const handleIncrement = () => setQuantity((q) => q + 1);
+
+  const handleAddToCart = () => {
+    addItem({
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      category: product.category,
+      price: product.price,
+      originalPrice: product.originalPrice,
+      image: product.images[0] ?? "",
+      size: selectedSize || undefined,
+      color: selectedColor || undefined,
+      quantity,
+    });
+    setAddedQuantity(quantity);
+  };
 
   return (
     <div className="flex flex-col">
@@ -98,7 +126,12 @@ export function ProductInfo({ product }: { product: Product }) {
                   <button
                     key={size}
                     type="button"
-                    onClick={() => isAvailable && setSelectedSize(size)}
+                    onClick={() => {
+                      if (isAvailable) {
+                        setSelectedSize(size);
+                        resetAddedState();
+                      }
+                    }}
                     disabled={!isAvailable}
                     className={cn(
                       "min-w-[44px] h-10 px-3 border rounded-sm font-montserrat text-sm transition-colors",
@@ -132,7 +165,10 @@ export function ProductInfo({ product }: { product: Product }) {
                   <button
                     key={color.name}
                     type="button"
-                    onClick={() => setSelectedColor(color.name)}
+                    onClick={() => {
+                        setSelectedColor(color.name);
+                        resetAddedState();
+                      }}
                     className={cn(
                       "w-8 h-8 rounded-full border-2 cursor-pointer transition-all",
                       isSelected
@@ -179,10 +215,26 @@ export function ProductInfo({ product }: { product: Product }) {
       {/* CTA buttons */}
       <div className="mt-6 flex flex-col sm:flex-row gap-3 fixed sm:static bottom-0 left-0 right-0 p-4 sm:p-0 bg-cornsilk sm:bg-transparent border-t border-olive/15 sm:border-0 z-50 sm:z-auto">
         <Button
-          className="w-full sm:flex-1 bg-forest text-cornsilk hover:bg-olive active:scale-[0.98] font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto"
+          onClick={handleAddToCart}
+          disabled={isAdded}
+          className={cn(
+            "w-full sm:flex-1 font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto transition-all duration-200",
+            isAdded
+              ? "bg-olive/80 text-cornsilk cursor-not-allowed"
+              : "bg-forest text-cornsilk hover:bg-olive active:scale-[0.98]"
+          )}
         >
-          <ShoppingBag className="mr-2 size-[14px]" />
-          Add to Cart
+          {isAdded ? (
+            <>
+              <Check className="mr-2 size-[14px]" />
+              Added to Cart
+            </>
+          ) : (
+            <>
+              <ShoppingBag className="mr-2 size-[14px]" />
+              Add to Cart
+            </>
+          )}
         </Button>
         <Button
           variant="outline"
