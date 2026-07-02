@@ -1,65 +1,63 @@
 import Link from "next/link";
-import { Leaf, Globe, Recycle, Heart } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Leaf, Globe2, RefreshCw, HeartHandshake } from "lucide-react";
 
 export default function AboutPage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-primary/5 py-24 md:py-32">
-        <div className="absolute inset-0 bg-grid-black/[0.02] bg-[size:20px_20px]" />
-        <div className="container relative mx-auto px-4 z-10 text-center">
-          <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full mb-6">
-            <Leaf className="h-6 w-6 text-primary" />
+      <section className="bg-cornsilk px-6 md:px-12 lg:px-16 py-20 md:py-28">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="w-12 h-12 rounded-full bg-warm border border-olive/20 flex items-center justify-center mx-auto mb-6">
+            <Leaf size={20} className="text-olive" />
           </div>
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-foreground mb-6">
-            Our <span className="text-primary">Mission</span>
+          <h1 className="font-merriweather text-4xl md:text-5xl font-normal text-forest mb-6">
+            Our Mission
           </h1>
-          <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            We believe that exploring nature shouldn't come at its expense. 
+          <p className="font-montserrat text-base font-light text-muted-text leading-relaxed max-w-lg mx-auto mt-4">
+            We believe that exploring nature shouldn&apos;t come at its expense. 
             Indian Mist is dedicated to providing premium, sustainably sourced gear for the mindful adventurer.
           </p>
         </div>
       </section>
 
       {/* Values Section */}
-      <section className="py-20 bg-background">
+      <section className="bg-warm px-6 md:px-12 lg:px-16 py-16 md:py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-4">What Drives Us</h2>
-            <div className="w-24 h-1 bg-primary mx-auto rounded-full" />
+            <h2 className="font-merriweather text-3xl font-normal text-forest text-center mb-2">What Drives Us</h2>
+            <div className="w-12 h-px bg-forest mx-auto mt-3 mb-12" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Value 1 */}
-            <div className="flex flex-col items-center text-center p-8 rounded-3xl bg-secondary/30 hover:bg-secondary/50 transition-colors border border-border/50">
-              <div className="h-16 w-16 bg-primary/20 rounded-2xl flex items-center justify-center mb-6 -rotate-6 hover:rotate-0 transition-transform">
-                <Globe className="h-8 w-8 text-primary" />
+            <div className="bg-card-surface border border-olive/10 rounded-md p-6 md:p-8 text-left hover:-translate-y-1 transition-transform">
+              <div className="w-10 h-10 flex items-center justify-center border border-olive/25 rounded-sm bg-warm mb-4">
+                <Globe2 size={20} className="text-olive" />
               </div>
-              <h3 className="text-2xl font-bold mb-4">Global Impact</h3>
-              <p className="text-muted-foreground leading-relaxed">
+              <h3 className="font-merriweather text-lg font-normal text-forest mb-3">Global Impact</h3>
+              <p className="font-montserrat text-sm font-light text-muted-text leading-relaxed">
                 We partner with communities worldwide to ensure fair trade practices and support local economies while sourcing the finest materials.
               </p>
             </div>
 
             {/* Value 2 */}
-            <div className="flex flex-col items-center text-center p-8 rounded-3xl bg-secondary/30 hover:bg-secondary/50 transition-colors border border-border/50 mt-0 md:mt-12">
-              <div className="h-16 w-16 bg-green-500/20 rounded-2xl flex items-center justify-center mb-6 rotate-6 hover:rotate-0 transition-transform">
-                <Recycle className="h-8 w-8 text-green-600 dark:text-green-400" />
+            <div className="bg-card-surface border border-olive/10 rounded-md p-6 md:p-8 text-left hover:-translate-y-1 transition-transform">
+              <div className="w-10 h-10 flex items-center justify-center border border-olive/25 rounded-sm bg-warm mb-4">
+                <RefreshCw size={20} className="text-olive" />
               </div>
-              <h3 className="text-2xl font-bold mb-4">Circular Economy</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                From recycled packaging to gear repair programs, we're committed to minimizing waste and extending the lifecycle of our products.
+              <h3 className="font-merriweather text-lg font-normal text-forest mb-3">Circular Economy</h3>
+              <p className="font-montserrat text-sm font-light text-muted-text leading-relaxed">
+                From recycled packaging to gear repair programs, we&apos;re committed to minimizing waste and extending the lifecycle of our products.
               </p>
             </div>
 
             {/* Value 3 */}
-            <div className="flex flex-col items-center text-center p-8 rounded-3xl bg-secondary/30 hover:bg-secondary/50 transition-colors border border-border/50">
-              <div className="h-16 w-16 bg-rose-500/20 rounded-2xl flex items-center justify-center mb-6 -rotate-6 hover:rotate-0 transition-transform">
-                <Heart className="h-8 w-8 text-rose-600 dark:text-rose-400" />
+            <div className="bg-card-surface border border-olive/10 rounded-md p-6 md:p-8 text-left hover:-translate-y-1 transition-transform">
+              <div className="w-10 h-10 flex items-center justify-center border border-olive/25 rounded-sm bg-warm mb-4">
+                <HeartHandshake size={20} className="text-olive" />
               </div>
-              <h3 className="text-2xl font-bold mb-4">Community First</h3>
-              <p className="text-muted-foreground leading-relaxed">
+              <h3 className="font-merriweather text-lg font-normal text-forest mb-3">Community First</h3>
+              <p className="font-montserrat text-sm font-light text-muted-text leading-relaxed">
                 We foster a community of outdoor enthusiasts who share our passion for adventure, conservation, and leaving no trace.
               </p>
             </div>
@@ -68,22 +66,20 @@ export default function AboutPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 bg-foreground text-background">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-8">Join the Movement</h2>
-          <p className="text-xl text-background/80 max-w-2xl mx-auto mb-10">
+      <section className="bg-forest px-6 md:px-12 py-16 md:py-20">
+        <div className="max-w-xl mx-auto text-center">
+          <h2 className="font-merriweather text-3xl md:text-4xl font-normal text-cornsilk">
+            Join the <span className="italic">Movement</span>
+          </h2>
+          <p className="font-montserrat text-sm font-light text-cornsilk/60 mt-4 leading-relaxed max-w-md mx-auto">
             Discover our collection of sustainable gear and start your next adventure with peace of mind.
           </p>
-          <div className="flex justify-center gap-4">
-            <Link href="/products">
-              <Button size="lg" className="rounded-full px-8 text-lg bg-primary text-primary-foreground hover:bg-primary/90">
-                Shop Now
-              </Button>
+          <div className="flex gap-3 justify-center mt-8 flex-wrap">
+            <Link href="/products" className="bg-clay text-cornsilk hover:bg-copper font-montserrat text-xs font-semibold uppercase tracking-wider px-6 py-3 rounded-sm transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
+              Shop Now
             </Link>
-            <Link href="/blogs">
-              <Button size="lg" variant="outline" className="rounded-full px-8 text-lg border-background/20 text-background hover:bg-background/10">
-                Read our Story
-              </Button>
+            <Link href="/blogs" className="bg-transparent text-cornsilk/80 border border-cornsilk/25 hover:border-cornsilk/60 font-montserrat text-xs font-semibold uppercase tracking-wider px-6 py-3 rounded-sm transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
+              Our Story
             </Link>
           </div>
         </div>

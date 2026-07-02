@@ -39,6 +39,34 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-olive-leaf: var(--olive-leaf);
+  --color-black-forest: var(--black-forest);
+  --color-cornsilk: var(--cornsilk);
+  --color-sunlit-clay: var(--sunlit-clay);
+  --color-copperwood: var(--copperwood);
+  --color-warm-mist: var(--warm-mist);
+  --color-card-bg: var(--card-bg);
+  /* Added tokens */
+  --color-olive: var(--olive-leaf);
+  --color-forest: var(--black-forest);
+  --color-clay: var(--sunlit-clay);
+  --color-copper: var(--copperwood);
+  --color-warm: var(--warm-mist);
+  --color-card-surface: var(--card-surface);
+  --color-muted-text: var(--muted-text);
+  --font-merriweather: var(--font-merriweather);
+  --font-montserrat: var(--font-montserrat);
+  --text-3xs: 0.5625rem;
+  --text-3xs--line-height: 0.75rem;
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 0.875rem;
+  --text-hero: 2.625rem;
+  --text-hero--line-height: 1.1;
+  --spacing-13: 3.25rem;
+  --spacing-90: 22.5rem;
+  --spacing-120: 30rem;
+  --scale-1015: 1.015;
+  --radius-home-card: 6px;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,6 +77,15 @@
 }
 
 :root {
+  --olive-leaf: #606c38;
+  --black-forest: #283618;
+  --cornsilk: #fefae0;
+  --sunlit-clay: #dda15e;
+  --copperwood: #bc6c25;
+  --warm-mist: #faedcd;
+  --card-bg: #fdf6e3;
+  --card-surface: #fdf6e3;
+  --muted-text: #7a7a5a;
   --background: #fefae0;
   --foreground: #283618;
   --card: #fefae0;
@@ -121,9 +158,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
   }

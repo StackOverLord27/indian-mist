@@ -2,6 +2,19 @@
   "name": "indian-mist",
   "version": "0.1.0",
   "private": true,
+  "description": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).",
+  "homepage": "https://github.com/StackOverLord27/indian-mist#readme",
+  "bugs": {
+    "url": "https://github.com/StackOverLord27/indian-mist/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/StackOverLord27/indian-mist.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

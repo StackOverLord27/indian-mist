@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Filter, ShoppingBag, ArrowUpDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Filter, ShoppingBag, ArrowUpDown, Heart, Plus } from "lucide-react";
 
 const mockProducts = [
   { id: 1, name: "Eco Explorer Tent", price: "$299.00", category: "Tents", color: "from-green-400 to-emerald-600" },
@@ -30,23 +29,25 @@ export default function ProductsPage() {
     return 0; // featured
   });
 
+  const placeholderColors = ["bg-[#d4e2c8]", "bg-[#e0dbc8]", "bg-[#cdd9c5]", "bg-[#d9cfc0]"];
+
   return (
-    <div className="container mx-auto px-4 py-12 md:py-20 min-h-screen">
+    <div className="bg-cornsilk px-6 md:px-12 lg:px-16 pt-12 pb-8 min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-        <div className="space-y-2">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">Our Products</h1>
-          <p className="text-lg text-muted-foreground max-w-2xl">
+        <div className="space-y-2 max-w-prose">
+          <h1 className="font-merriweather text-3xl md:text-4xl font-normal text-forest">All Products</h1>
+          <p className="font-montserrat text-sm font-light text-muted-text mt-2 max-w-prose">
             Discover our complete range of sustainable, high-performance gear.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto items-center">
-          <div className="relative flex items-center bg-background border border-input rounded-full h-10 px-3 shadow-sm w-full sm:w-auto focus-within:ring-1 focus-within:ring-primary transition-colors">
-            <ArrowUpDown className="h-4 w-4 text-muted-foreground mr-2 flex-shrink-0" />
+          <div className="relative flex items-center border border-olive/30 bg-card-surface rounded-sm h-10 px-3 w-full sm:w-auto transition-colors hover:bg-warm">
+            <ArrowUpDown className="h-4 w-4 text-forest mr-2 flex-shrink-0" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-transparent text-sm text-foreground focus-visible:outline-none cursor-pointer appearance-none pr-6 w-full sm:w-auto"
+              className="bg-transparent font-montserrat text-xs uppercase tracking-wide text-forest focus-visible:outline-none cursor-pointer appearance-none pr-6 w-full sm:w-auto"
             >
               <option value="featured">Sort by: Featured</option>
               <option value="price-low">Price: Low to High</option>
@@ -55,45 +56,49 @@ export default function ProductsPage() {
               <option value="name-desc">Name: Z to A</option>
             </select>
           </div>
-          <Button variant="outline" className="rounded-full gap-2 hidden sm:flex">
+          <button className="border border-olive/30 bg-card-surface rounded-sm font-montserrat text-xs uppercase tracking-wide text-forest px-4 py-2 hover:bg-warm transition-colors hidden sm:flex items-center gap-2 h-10">
             <Filter className="h-4 w-4" />
             Filters
-          </Button>
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        {sortedProducts.map((product) => (
-          <div key={product.id} className="group relative rounded-2xl border border-border bg-card overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            {/* Product Image Area (Gradient Placeholder) */}
-            <div className={`w-full h-64 bg-gradient-to-br ${product.color} opacity-80 group-hover:opacity-100 transition-opacity duration-300 relative overflow-hidden flex items-center justify-center`}>
-              <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300" />
-              <ShoppingBag className="h-16 w-16 text-white/50 group-hover:scale-110 transition-transform duration-500" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5 pb-16">
+        {sortedProducts.map((product, index) => (
+          <div key={product.id} className="bg-card-surface border border-olive/10 rounded-md overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all duration-200">
+            {/* Product Image Area */}
+            <div className={`aspect-square relative overflow-hidden ${placeholderColors[index % 4]} flex items-center justify-center`}>
+              <div className="absolute top-2 left-2 z-10">
+                <span className="bg-forest text-cornsilk text-[10px] font-montserrat font-semibold uppercase tracking-wider px-2 py-1 rounded-sm">
+                  {product.category}
+                </span>
+              </div>
+              <div className="absolute top-2 right-2 z-10">
+                <button className="bg-cornsilk/80 rounded-full w-8 h-8 flex items-center justify-center text-copper hover:bg-cornsilk transition">
+                  <Heart className="h-4 w-4" />
+                </button>
+              </div>
+              <ShoppingBag size={48} className="opacity-20 text-forest" />
             </div>
             
             {/* Product Info */}
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="text-sm text-primary font-medium mb-1">{product.category}</p>
-                  <h3 className="text-xl font-semibold text-card-foreground group-hover:text-primary transition-colors line-clamp-1">
-                    {product.name}
-                  </h3>
-                </div>
-                <p className="text-lg font-bold text-foreground bg-secondary/50 px-3 py-1 rounded-full">
-                  {product.price}
-                </p>
-              </div>
+            <div className="p-4 flex flex-col">
+              <p className="text-olive text-[10px] font-semibold uppercase tracking-wider font-montserrat mb-1">
+                {product.category}
+              </p>
+              <Link href={`/products/${product.id}`} className="block">
+                <h3 className="font-merriweather text-sm text-forest font-normal leading-snug mb-3 hover:underline">
+                  {product.name}
+                </h3>
+              </Link>
               
-              <div className="mt-6 flex items-center gap-3">
-                <Button className="w-full rounded-full group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                  Add to Cart
-                </Button>
-                <Link href={`/products/${product.id}`} className="w-full">
-                  <Button variant="outline" className="w-full rounded-full">
-                    Details
-                  </Button>
-                </Link>
+              <div className="flex items-center justify-between mt-auto">
+                <span className="font-merriweather text-lg font-bold text-forest">
+                  {product.price}
+                </span>
+                <button className="w-8 h-8 rounded-full bg-forest text-cornsilk flex items-center justify-center hover:bg-olive transition-colors">
+                  <Plus className="h-4 w-4" />
+                </button>
               </div>
             </div>
           </div>
