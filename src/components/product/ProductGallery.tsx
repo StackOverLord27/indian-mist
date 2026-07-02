@@ -1,8 +1,15 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from "@/components/ui/carousel";
+import React from "react";
 
 interface ProductGalleryProps {
   images: string[];
@@ -13,29 +20,19 @@ const placeholderColors = ["bg-[#d4e2c8]", "bg-[#e9edc9]", "bg-[#faedcd]", "bg-[
 
 export function ProductGallery({ images, badge }: ProductGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+
+  // Sync carousel api → activeIndex state for dot indicators
+  React.useEffect(() => {
+    if (!carouselApi) return;
+    const onSelect = () => setActiveIndex(carouselApi.selectedScrollSnap());
+    carouselApi.on("select", onSelect);
+    return () => { carouselApi.off("select", onSelect); };
+  }, [carouselApi]);
 
   const handleThumbnailClick = (index: number) => {
     setActiveIndex(index);
-    // If mobile carousel is visible, scroll to it
-    if (scrollContainerRef.current) {
-      const scrollWidth = scrollContainerRef.current.scrollWidth;
-      const itemWidth = scrollWidth / images.length;
-      scrollContainerRef.current.scrollTo({
-        left: itemWidth * index,
-        behavior: "smooth"
-      });
-    }
-  };
-
-  const handleScroll = () => {
-    if (!scrollContainerRef.current) return;
-    const scrollLeft = scrollContainerRef.current.scrollLeft;
-    const itemWidth = scrollContainerRef.current.scrollWidth / images.length;
-    const newIndex = Math.round(scrollLeft / itemWidth);
-    if (newIndex !== activeIndex && newIndex >= 0 && newIndex < images.length) {
-      setActiveIndex(newIndex);
-    }
+    carouselApi?.scrollTo(index);
   };
 
   const BadgeOverlay = () => {
@@ -70,29 +67,33 @@ export function ProductGallery({ images, badge }: ProductGalleryProps) {
         <BadgeOverlay />
       </div>
 
-      {/* Mobile Swipe Carousel */}
+      {/* Mobile Swipe Carousel — shadcn Carousel (Embla) */}
       <div className="lg:hidden relative">
         <BadgeOverlay />
-        <div 
-          ref={scrollContainerRef}
-          onScroll={handleScroll}
-          className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        <Carousel
+          setApi={setCarouselApi}
+          opts={{ loop: false, align: "start" }}
+          className="w-full"
         >
-          {images.map((img, idx) => (
-            <div key={idx} className="relative w-full aspect-square flex-shrink-0 snap-center">
-              <div className={cn("absolute inset-0", placeholderColors[idx % placeholderColors.length])} />
-              <Image
-                src={img}
-                alt={`Product image ${idx + 1}`}
-                fill
-                className="object-cover"
-                sizes="100vw"
-                priority={idx === 0}
-              />
-            </div>
-          ))}
-        </div>
+          <CarouselContent className="-ml-0">
+            {images.map((img, idx) => (
+              <CarouselItem key={idx} className="pl-0">
+                <div className="relative w-full aspect-square overflow-hidden">
+                  <div className={cn("absolute inset-0", placeholderColors[idx % placeholderColors.length])} />
+                  <Image
+                    src={img}
+                    alt={`Product image ${idx + 1}`}
+                    fill
+                    className="object-cover"
+                    sizes="100vw"
+                    priority={idx === 0}
+                  />
+                </div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          {/* No CarouselPrevious/Next arrows on mobile — dots are sufficient */}
+        </Carousel>
       </div>
 
       {/* Mobile Dot Indicators */}
@@ -115,7 +116,7 @@ export function ProductGallery({ images, badge }: ProductGalleryProps) {
 
       {/* Desktop Thumbnail Strip */}
       {images.length > 1 && (
-        <div className="hidden lg:flex gap-2 mt-3 overflow-x-auto pb-1 hide-scrollbar">
+        <div className="hidden lg:flex gap-2 mt-3 overflow-x-auto pb-1">
           {images.map((img, idx) => (
             <button
               key={idx}

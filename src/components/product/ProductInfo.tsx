@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Star, Minus, Plus, ShoppingBag, Heart, Truck, RefreshCw, Leaf, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import type { Product } from "@/lib/get-product";
 
 export function ProductInfo({ product }: { product: Product }) {
@@ -176,29 +177,29 @@ export function ProductInfo({ product }: { product: Product }) {
       </div>
 
       {/* CTA buttons */}
-      {/* On mobile, this block is rendered normally but handled via CSS in a wrapper for mobile fixed bar */}
       <div className="mt-6 flex flex-col sm:flex-row gap-3 fixed sm:static bottom-0 left-0 right-0 p-4 sm:p-0 bg-cornsilk sm:bg-transparent border-t border-olive/15 sm:border-0 z-50 sm:z-auto">
-        <button
-          type="button"
-          className="w-full sm:flex-1 bg-forest text-cornsilk hover:bg-olive active:scale-[0.98] font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm transition-all duration-150 flex items-center justify-center"
+        <Button
+          className="w-full sm:flex-1 bg-forest text-cornsilk hover:bg-olive active:scale-[0.98] font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto"
         >
           <ShoppingBag className="mr-2 size-[14px]" />
           Add to Cart
-        </button>
-        <button
-          type="button"
-          className="hidden sm:flex w-full sm:w-auto border border-olive/30 text-forest/80 hover:border-olive hover:text-forest hover:bg-warm font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm transition-all items-center justify-center"
+        </Button>
+        <Button
+          variant="outline"
+          className="hidden sm:flex w-full sm:w-auto border-olive/30 text-forest/80 hover:border-olive hover:text-forest hover:bg-warm font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto bg-transparent"
         >
           <Heart className="mr-2 size-[14px]" />
           Add to Wishlist
-        </button>
-        <button
-          type="button"
-          className="sm:hidden flex w-11 h-11 flex-shrink-0 items-center justify-center rounded-sm border border-olive/30 text-forest/80 hover:bg-warm transition-colors"
+        </Button>
+        {/* Mobile wishlist — icon-only */}
+        <Button
+          variant="outline"
+          size="icon"
+          className="sm:hidden w-11 h-11 rounded-sm border-olive/30 text-forest/80 hover:bg-warm bg-transparent flex-shrink-0"
           aria-label="Add to Wishlist"
         >
           <Heart className="size-[14px]" />
-        </button>
+        </Button>
       </div>
 
       {/* Trust signals */}
