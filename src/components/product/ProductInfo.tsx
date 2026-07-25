@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Check } from "lucide-react";
-import { Star, Minus, Plus, ShoppingBag, Heart, Truck, RefreshCw, Leaf, ShieldCheck } from "lucide-react";
+import { Star, Minus, Plus, ShoppingBag, Zap, Truck, RefreshCw, Leaf, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/cart-store";
@@ -236,21 +236,13 @@ export function ProductInfo({ product }: { product: Product }) {
             </>
           )}
         </Button>
+        {/* Buy Now — desktop full label, mobile icon+label */}
         <Button
           variant="outline"
-          className="hidden sm:flex w-full sm:w-auto border-olive/30 text-forest/80 hover:border-olive hover:text-forest hover:bg-warm font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto bg-transparent"
+          className="w-full sm:w-auto border-olive/30 text-forest/80 hover:border-olive hover:text-forest hover:bg-warm font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto bg-transparent flex items-center justify-center"
         >
-          <Heart className="mr-2 size-[14px]" />
-          Add to Wishlist
-        </Button>
-        {/* Mobile wishlist — icon-only */}
-        <Button
-          variant="outline"
-          size="icon"
-          className="sm:hidden w-11 h-11 rounded-sm border-olive/30 text-forest/80 hover:bg-warm bg-transparent flex-shrink-0"
-          aria-label="Add to Wishlist"
-        >
-          <Heart className="size-[14px]" />
+          <Zap className="mr-2 size-[14px]" />
+          Buy Now
         </Button>
       </div>
 

@@ -11,11 +11,12 @@ type HeroSectionProps = {
 export function HeroSection({ image }: HeroSectionProps) {
   return (
     <section className="grid min-h-120 w-full grid-cols-1 lg:grid-cols-2">
-      <div className="flex min-h-120 flex-col justify-center bg-black-forest px-6 py-14 md:px-12">
+      {/* Text panel */}
+      <div className="flex min-h-[min(60vw,30rem)] flex-col justify-center bg-black-forest px-6 py-12 md:min-h-120 md:px-12">
         <p className="flex items-center gap-4 font-sans text-2xs font-medium uppercase tracking-widest text-sunlit-clay before:block before:h-px before:w-7 before:bg-sunlit-clay before:content-['']">
           Summer 2026 Collection
         </p>
-        <h1 className="mt-7 max-w-xl font-serif text-4xl font-light leading-tight text-cornsilk md:text-hero">
+        <h1 className="mt-7 max-w-xl font-serif text-3xl font-light leading-tight text-cornsilk md:text-hero">
           Born from the forest,
           <br />
           <em className="font-light italic text-sunlit-clay">
@@ -42,8 +43,9 @@ export function HeroSection({ image }: HeroSectionProps) {
         </div>
       </div>
 
+      {/* Image panel */}
       <div
-        className="relative min-h-120 overflow-hidden bg-olive-leaf"
+        className="relative min-h-[min(75vw,30rem)] overflow-hidden bg-olive-leaf lg:min-h-120"
         style={{
           backgroundImage:
             "radial-gradient(circle at 30% 18%, rgba(254, 250, 224, 0.18), transparent 34%), radial-gradient(circle at 75% 80%, rgba(221, 161, 94, 0.18), transparent 30%)",
@@ -55,12 +57,13 @@ export function HeroSection({ image }: HeroSectionProps) {
           sizes="(max-width: 1024px) 100vw, 50vw"
           imageClassName="object-cover"
         />
-        <div className="absolute bottom-6 left-6 flex items-center gap-3 rounded-home-card bg-cornsilk p-4 text-black-forest">
-          <div className="flex size-10 items-center justify-center rounded-full bg-warm-mist text-olive-leaf">
-            <Leaf className="size-5" aria-hidden="true" />
+        {/* Eco badge — compact on mobile */}
+        <div className="absolute bottom-6 left-6 flex items-center gap-3 rounded-home-card bg-cornsilk p-3 text-black-forest sm:p-4">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-warm-mist text-olive-leaf sm:size-10">
+            <Leaf className="size-4 sm:size-5" aria-hidden="true" />
           </div>
           <div>
-            <p className="font-serif text-3xl font-bold leading-none text-olive-leaf">
+            <p className="font-serif text-2xl font-bold leading-none text-olive-leaf sm:text-3xl">
               100%
             </p>
             <p className="mt-1 font-sans text-2xs font-medium uppercase tracking-widest text-black-forest/70">

@@ -1,11 +1,34 @@
+"use client";
+
 import { Heart, Plus } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 import { ImageSlot } from "@/components/home/ImageSlot";
+import { useWishlistStore } from "@/lib/wishlist-store";
 import type { Product } from "@/lib/homepage-data";
 
 export function ProductCard({ product }: { product: Product }) {
+  // Granular selectors — component only re-renders when these slices change
+  const toggleItem = useWishlistStore((s) => s.toggleItem);
+  const wishlisted = useWishlistStore((s) =>
+    s.items.some((i) => i.id === product.id)
+  );
+
+  const handleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    toggleItem({
+      id: product.id,
+      slug: product.id, // homepage Product uses id as slug
+      name: product.name,
+      category: product.category,
+      price: parseFloat(product.price.replace(/[^\d.]/g, "")),
+      badge: product.badge,
+      image: product.image.src ?? "",
+    });
+  };
+
   return (
-    <article className="group rounded-home-card border border-olive-leaf/10 bg-card-bg p-3 transition-transform hover:-translate-y-1 hover:shadow-sm">
+    <article className="group relative rounded-home-card border border-olive-leaf/10 bg-card-bg p-3 transition-transform hover:-translate-y-1 hover:shadow-sm">
       <Link href={`/products/${product.id}`} className="block relative aspect-square overflow-hidden rounded-home-card">
         <ImageSlot
           image={product.image}
@@ -23,13 +46,21 @@ export function ProductCard({ product }: { product: Product }) {
           </span>
         ) : null}
       </Link>
-      
+
+      {/* Wishlist button — outside the Link to avoid nested interactive elements */}
       <button
         type="button"
-        className="absolute right-6 top-6 flex size-8 items-center justify-center rounded-full bg-cornsilk text-black-forest transition-opacity hover:opacity-75 z-10"
-        aria-label={`Add ${product.name} to wishlist`}
+        onClick={handleWishlist}
+        aria-label={wishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+        className="absolute right-5 top-5 flex size-8 items-center justify-center rounded-full bg-cornsilk transition-all hover:scale-110 z-10"
       >
-        <Heart className="size-4" aria-hidden="true" />
+        <Heart
+          className={cn(
+            "size-4 transition-colors",
+            wishlisted ? "fill-copper text-copper" : "text-black-forest"
+          )}
+          aria-hidden="true"
+        />
       </button>
 
       <div className="px-1 pb-1 pt-4">

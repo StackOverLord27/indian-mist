@@ -12,7 +12,7 @@ export function NewsletterBar() {
           </p>
         </div>
 
-        <form className="flex w-full max-w-md" action="#">
+        <form className="flex w-full max-w-md flex-col gap-2 sm:flex-row" action="#">
           <label className="sr-only" htmlFor="newsletter-email">
             Email address
           </label>
@@ -20,11 +20,11 @@ export function NewsletterBar() {
             id="newsletter-email"
             type="email"
             placeholder="Email address"
-            className="min-w-0 flex-1 rounded-l-full rounded-r-none border border-black-forest/20 bg-warm-mist/85 px-5 font-sans text-sm text-black-forest outline-none placeholder:text-black-forest/55"
+            className="min-w-0 flex-1 rounded-full border border-black-forest/20 bg-warm-mist/85 px-5 py-3 font-sans text-sm text-black-forest outline-none placeholder:text-black-forest/55 sm:rounded-l-full sm:rounded-r-none sm:py-0"
           />
           <button
             type="submit"
-            className="rounded-l-none rounded-r-full bg-black-forest px-6 font-sans text-xs font-medium uppercase tracking-wide text-cornsilk transition-opacity hover:opacity-90"
+            className="rounded-full bg-black-forest px-6 py-3 font-sans text-xs font-medium uppercase tracking-wide text-cornsilk transition-opacity hover:opacity-90 sm:rounded-l-none sm:rounded-r-full sm:py-0"
           >
             Subscribe
           </button>

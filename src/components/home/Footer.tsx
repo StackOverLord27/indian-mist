@@ -32,14 +32,16 @@ const certifications = ["Eco certified", "Carbon neutral", "Fair trade"];
 export function Footer() {
   return (
     <footer className="bg-forest px-6 pb-7 pt-13 md:px-12">
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10">
+      {/* Top grid — brand + nav columns */}
+      <div className="grid grid-cols-2 gap-10 md:grid-cols-4 lg:grid-cols-5">
+        {/* Brand block — full-width on mobile, 1 col on md, 2 cols on lg */}
         <div className="col-span-2 md:col-span-1 lg:col-span-2">
           <Link href="/" aria-label="Indian Mist home">
             <span className="block font-merriweather text-2xl font-bold text-cornsilk">
               Indian Mist
             </span>
             <span className="mt-1 block font-montserrat text-[9px] font-medium uppercase tracking-widest text-clay">
-              Forest & Eco
+              Forest &amp; Eco
             </span>
           </Link>
           <p className="mt-5 max-w-sm font-montserrat text-xs font-light leading-6 text-cornsilk/60">
@@ -60,6 +62,7 @@ export function Footer() {
           </div>
         </div>
 
+        {/* Nav columns — each 1 col */}
         {footerColumns.map((column) => (
           <div key={column.title} className="col-span-1">
             <h2 className="font-montserrat text-[10px] font-medium uppercase tracking-widest text-clay">
@@ -81,11 +84,12 @@ export function Footer() {
         ))}
       </div>
 
-      <div className="mt-12 flex flex-col justify-between gap-5 border-t border-cornsilk/10 pt-6 md:flex-row text-center md:text-left items-center">
+      {/* Bottom bar */}
+      <div className="mt-12 flex flex-col items-center justify-between gap-5 border-t border-cornsilk/10 pt-6 text-center md:flex-row md:text-left">
         <p className="font-montserrat text-xs font-light text-cornsilk/50">
           © 2026 Indian Mist. All rights reserved.
         </p>
-        <div className="flex flex-wrap gap-2 justify-center">
+        <div className="flex flex-wrap justify-center gap-2">
           {certifications.map((certification) => (
             <span
               key={certification}

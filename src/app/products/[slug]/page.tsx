@@ -55,7 +55,20 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         {/* SECTION 1 — PRODUCT HERO */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 py-8 md:py-12">
           {/* Left Column: Image Gallery */}
-          <ProductGallery images={product.images} badge={product.badge} />
+          <ProductGallery
+            images={product.images}
+            badge={product.badge}
+            wishlistItem={{
+              id: product.id,
+              slug: product.slug,
+              name: product.name,
+              category: product.category,
+              price: product.price,
+              originalPrice: product.originalPrice,
+              badge: product.badge,
+              image: product.images[0] ?? "",
+            }}
+          />
 
           {/* Right Column: Product Info */}
           <ProductInfo product={product} />

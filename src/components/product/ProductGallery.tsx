@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Carousel,
@@ -9,20 +10,28 @@ import {
   CarouselItem,
   type CarouselApi,
 } from "@/components/ui/carousel";
+import { useWishlistStore, type WishlistItem } from "@/lib/wishlist-store";
 import React from "react";
 
 interface ProductGalleryProps {
   images: string[];
   badge?: "New" | "Sale";
+  wishlistItem: WishlistItem; // full item shape for toggling
 }
 
 const placeholderColors = ["bg-[#d4e2c8]", "bg-[#e9edc9]", "bg-[#faedcd]", "bg-[#fefae0]"];
 
-export function ProductGallery({ images, badge }: ProductGalleryProps) {
+export function ProductGallery({ images, badge, wishlistItem }: ProductGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  // Use granular selectors so the component re-renders only when
+  // the specific data it cares about changes.
+  const toggleItem = useWishlistStore((s) => s.toggleItem);
+  const wishlisted = useWishlistStore((s) =>
+    s.items.some((i) => i.id === wishlistItem.id)
+  );
 
-  // Sync carousel api → activeIndex state for dot indicators
+  // Sync carousel api → activeIndex for dot indicators
   React.useEffect(() => {
     if (!carouselApi) return;
     const onSelect = () => setActiveIndex(carouselApi.selectedScrollSnap());
@@ -34,6 +43,22 @@ export function ProductGallery({ images, badge }: ProductGalleryProps) {
     setActiveIndex(index);
     carouselApi?.scrollTo(index);
   };
+
+  const WishlistButton = () => (
+    <button
+      type="button"
+      onClick={() => toggleItem(wishlistItem)}
+      aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+      className="absolute right-3 top-3 z-20 flex size-9 items-center justify-center rounded-full bg-cornsilk/90 backdrop-blur-sm shadow-sm transition-all hover:scale-110 hover:bg-cornsilk"
+    >
+      <Heart
+        className={cn(
+          "size-[18px] transition-all duration-200",
+          wishlisted ? "fill-copper text-copper" : "text-forest/70"
+        )}
+      />
+    </button>
+  );
 
   const BadgeOverlay = () => {
     if (!badge) return null;
@@ -65,11 +90,13 @@ export function ProductGallery({ images, badge }: ProductGalleryProps) {
           priority
         />
         <BadgeOverlay />
+        <WishlistButton />
       </div>
 
       {/* Mobile Swipe Carousel — shadcn Carousel (Embla) */}
       <div className="lg:hidden relative">
         <BadgeOverlay />
+        <WishlistButton />
         <Carousel
           setApi={setCarouselApi}
           opts={{ loop: false, align: "start" }}
@@ -92,7 +119,6 @@ export function ProductGallery({ images, badge }: ProductGalleryProps) {
               </CarouselItem>
             ))}
           </CarouselContent>
-          {/* No CarouselPrevious/Next arrows on mobile — dots are sufficient */}
         </Carousel>
       </div>
 
