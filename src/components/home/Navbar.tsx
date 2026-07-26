@@ -265,13 +265,13 @@ export function Navbar() {
           </Link>
 
           {/* Account — hidden on mobile xs, shown sm+ */}
-          <button
-            type="button"
+          <Link
+            href="/signin"
             className="hidden size-9 items-center justify-center rounded-full text-black-forest transition-opacity hover:opacity-70 sm:flex"
-            aria-label="Open account"
+            aria-label="Sign in to your account"
           >
             <User className="size-5" aria-hidden="true" />
-          </button>
+          </Link>
 
           {/* ── Hamburger — mobile only, hidden md+ ── */}
           <Sheet open={mobileOpen} onOpenChange={handleOpenChange}>
@@ -358,8 +358,13 @@ export function Navbar() {
 
                 {/* Account */}
                 <SheetClose
-                  className="flex w-full items-center gap-3 rounded-full border border-olive-leaf/25 px-4 py-2.5 font-sans text-xs font-medium uppercase tracking-widest text-black-forest/70 transition-colors hover:text-black-forest"
-                  onClick={closeMobile}
+                  render={
+                    <Link
+                      href="/signin"
+                      onClick={closeMobile}
+                      className="flex w-full items-center gap-3 rounded-full border border-olive-leaf/25 px-4 py-2.5 font-sans text-xs font-medium uppercase tracking-widest text-black-forest/70 transition-colors hover:text-black-forest"
+                    />
+                  }
                 >
                   <User className="size-4 shrink-0" aria-hidden="true" />
                   My account
