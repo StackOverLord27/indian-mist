@@ -1,28 +1,18 @@
+"use client";
+
 import Link from "next/link";
-import { ProductCard } from "@/components/home/ProductCard";
-import { mockProducts } from "@/lib/get-product";
-import type { Product as HomeProduct } from "@/lib/homepage-data";
 
+/**
+ * RelatedProducts — "You may also like" section.
+ *
+ * Currently renders nothing because `relatedProductIds` are not yet populated
+ * in the database. When real related-product data is available, this component
+ * should fetch them via an API route (e.g. GET /api/products?ids=a,b,c) since
+ * it's rendered inside client components and can't do direct DB queries.
+ */
 export function RelatedProducts({ productIds }: { productIds: string[] }) {
-  // Map our detailed products to the HomeProduct shape expected by ProductCard
-  const relatedProducts: HomeProduct[] = productIds
-    .map((id) => mockProducts.find((p) => p.id === id))
-    .filter((p): p is NonNullable<typeof p> => p !== undefined)
-    .slice(0, 4)
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      category: p.category,
-      price: `₹${p.price.toLocaleString("en-IN")}`,
-      badge: p.badge,
-      image: {
-        src: p.images[0] || "",
-        alt: p.name,
-        fallbackClassName: "bg-olive-leaf/20",
-      },
-    }));
-
-  if (relatedProducts.length === 0) return null;
+  // No related products to show yet — early return.
+  if (!productIds || productIds.length === 0) return null;
 
   return (
     <div className="mt-16 pt-10 border-t border-olive/10">
@@ -39,11 +29,9 @@ export function RelatedProducts({ productIds }: { productIds: string[] }) {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {relatedProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        <p className="font-montserrat text-sm text-muted-text">
+          Related product recommendations coming soon.
+        </p>
       </div>
     </div>
   );

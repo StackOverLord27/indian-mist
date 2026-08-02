@@ -1,27 +1,42 @@
 import { NextResponse } from "next/server";
+import { randomInt } from "crypto";
+import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/db";
 import { User } from "@/models/User";
-import { Otp } from "@/models/Otp";
+import { setOtp, deleteOtp } from "@/lib/otp-store";
+import { sendOTPVerificationEmail } from "@/lib/mailer";
+import { SignUpSchema } from "@/schemas/auth/signup.schema";
 
-// A simple utility to generate a 6 digit OTP
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
+/**
+ * Generate a cryptographically secure 6-digit OTP.
+ * Uses Node's crypto.randomInt which is backed by a CSPRNG,
+ * unlike Math.random() which is predictable.
+ */
+function generateOTP(): string {
+  return randomInt(100_000, 1_000_000).toString();
+}
 
 export async function POST(req: Request) {
   try {
     await dbConnect();
-    const { name, email, password } = await req.json();
+    const body = await req.json();
+    const parseResult = SignUpSchema.safeParse(body);
 
-    if (!name || !email || !password) {
+    if (!parseResult.success) {
+      // Combine all Zod error messages into a single readable string
+      const errorMessage = parseResult.error.issues
+        .map((err) => err.message)
+        .join(". ");
       return NextResponse.json(
-        { error: "Name, email, and password are required" },
+        { error: errorMessage },
         { status: 400 }
       );
     }
 
+    const { name, email, password } = parseResult.data;
+
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email }).lean();
     if (existingUser) {
       return NextResponse.json(
         { error: "User already exists with this email" },
@@ -29,41 +44,34 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create the user (isVerified will be false by default as per schema)
-    const newUser = new User({
-      name,
-      email,
-      password,
-    });
-    await newUser.save();
+    // Hash the password BEFORE storing in Redis so that plaintext
+    // passwords are never persisted in any intermediate storage.
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Generate and upsert OTP.
-    // Using findOneAndReplace+upsert (instead of a bare create) ensures there is
-    // always exactly one OTP document per email. When a user resends, this
-    // atomically replaces the old document with a fresh one, which resets the
-    // createdAt field and therefore resets MongoDB's TTL clock automatically.
-    // No manual deletion of the old OTP is needed.
+    // Generate OTP, store the hashed password + user payload in Redis, and send via email.
+    // We DO NOT save the user to the database here — that happens after OTP verification.
     const otpCode = generateOTP();
-    await Otp.findOneAndReplace(
-      { email },
-      { email, otp: otpCode, createdAt: new Date() },
-      { upsert: true }
-    );
+    await setOtp(email, otpCode, name, hashedPassword);
 
-    // In a real application, you would send this OTP via Email or SMS here.
-    // For demonstration, we'll log it and return a success message.
-    console.log(`[DEV ONLY] OTP for ${email} is ${otpCode}`);
+    const emailSent = await sendOTPVerificationEmail(email, otpCode);
+
+    if (!emailSent) {
+      // If email fails, clean up the Redis entry immediately.
+      await deleteOtp(email);
+      return NextResponse.json(
+        { error: "Failed to send verification email. Please try again." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(
       {
-        message: "User registered successfully. Please verify your OTP.",
-        email: newUser.email,
-        // Remove this in production!
-        dev_otp: otpCode,
+        message: "OTP sent successfully. Please verify your email.",
+        email: email,
       },
-      { status: 201 }
+      { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Signup error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

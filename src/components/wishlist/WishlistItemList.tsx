@@ -23,6 +23,7 @@ function WishlistItemCard({ item, index }: { item: WishlistItem; index: number }
 
   const inCart = cartItems.some((i) => i.id === item.id);
   const placeholder = placeholderColors[index % placeholderColors.length];
+  const isSoldOut = item.badge === "Sold Out";
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("en-IN", {
@@ -62,7 +63,8 @@ function WishlistItemCard({ item, index }: { item: WishlistItem; index: number }
         <div
           className={cn(
             "w-20 h-20 md:w-24 md:h-24 relative rounded-sm overflow-hidden",
-            placeholder
+            placeholder,
+            isSoldOut && "opacity-60 grayscale"
           )}
         >
           {item.image && (
@@ -102,7 +104,9 @@ function WishlistItemCard({ item, index }: { item: WishlistItem; index: number }
                 <span
                   className={cn(
                     "font-montserrat text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-sm",
-                    item.badge === "Sale"
+                    item.badge === "Sold Out"
+                      ? "bg-muted-text/80 text-cornsilk"
+                      : item.badge === "Sale"
                       ? "bg-warm text-copper"
                       : "bg-forest/10 text-forest"
                   )}
@@ -129,16 +133,22 @@ function WishlistItemCard({ item, index }: { item: WishlistItem; index: number }
           <button
             type="button"
             onClick={handleAddToCart}
-            disabled={inCart || addedToCart}
+            disabled={inCart || addedToCart || isSoldOut}
             className={cn(
               "flex items-center gap-1.5 font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2.5 rounded-sm transition-all min-h-[44px]",
-              inCart || addedToCart
+              (inCart || addedToCart || isSoldOut)
                 ? "bg-olive/80 text-cornsilk cursor-not-allowed"
                 : "bg-forest text-cornsilk hover:bg-olive active:scale-[0.98]"
             )}
           >
-            <ShoppingBag className="size-[12px]" />
-            {inCart || addedToCart ? "In Cart" : "Add to Cart"}
+            {isSoldOut ? (
+               "Sold Out"
+            ) : (
+              <>
+                <ShoppingBag className="size-[12px]" />
+                {inCart || addedToCart ? "In Bag" : "Add to Bag"}
+              </>
+            )}
           </button>
 
           <button

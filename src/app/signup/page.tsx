@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Leaf, UserPlus, AlertCircle, CheckCircle2 } from "lucide-react";
 
@@ -14,6 +15,7 @@ interface FormState {
 }
 
 export default function SignUpPage() {
+  const router = useRouter();
   const [step, setStep] = useState<Step>("register");
   const [form, setForm] = useState<FormState>({
     name: "",
@@ -87,7 +89,8 @@ export default function SignUpPage() {
       if (!res.ok) {
         setError(data.error || "Something went wrong. Please try again.");
       } else {
-        setSuccess("Account created! Check your email for the 6-digit OTP.");
+        setSuccess(null);
+        setError(null);
         setStep("verify");
       }
     } catch {
@@ -119,7 +122,8 @@ export default function SignUpPage() {
       if (!res.ok) {
         setError(data.error || "OTP verification failed. Please try again.");
       } else {
-        setSuccess("Email verified! Your account is ready.");
+        // Tokens are already set by the server — redirect straight to home.
+        router.push("/");
       }
     } catch {
       setError("Network error. Please check your connection and try again.");
@@ -458,14 +462,6 @@ export default function SignUpPage() {
                   </button>
                 )}
 
-                {success && (
-                  <Link
-                    href="/signin"
-                    className="flex w-full items-center justify-center gap-2 rounded-sm bg-olive-leaf px-6 py-3.5 font-montserrat text-xs font-semibold uppercase tracking-wider text-cornsilk transition-colors hover:bg-black-forest"
-                  >
-                    Sign in now
-                  </Link>
-                )}
 
                 {/* Resend */}
                 {!success && (

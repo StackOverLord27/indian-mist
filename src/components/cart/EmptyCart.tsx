@@ -8,7 +8,7 @@ export function EmptyCart() {
     <div className="py-24 text-center max-w-sm mx-auto">
       <ShoppingBag className="w-16 h-16 text-olive/20 mx-auto mb-6" />
       <h2 className="font-merriweather text-xl font-normal text-forest mb-2">
-        Your cart is empty
+        Your bag is empty
       </h2>
       <p className="font-montserrat text-sm font-normal text-muted-text mb-8 leading-relaxed">
         Looks like you haven&apos;t added anything yet. Explore our collection.

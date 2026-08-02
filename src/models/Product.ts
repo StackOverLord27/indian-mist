@@ -11,7 +11,8 @@ export interface IProduct extends Document {
   sizes: string[];
   colors: string[];
   stockQuantity: number;
-  badge?: "New" | "Sale";
+  badge?: "New" | "Sale" | "Sold Out";
+  isCategoryFeatured?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,14 +22,15 @@ const ProductSchema: Schema = new Schema(
     name: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
     description: { type: String, required: true },
-    category: { type: String, required: true },
+    category: { type: String, required: true, index: true },
     price: { type: Number, required: true },
     originalPrice: { type: Number },
     images: [{ type: String }],
     sizes: [{ type: String }],
     colors: [{ type: String }],
     stockQuantity: { type: Number, default: 0 },
-    badge: { type: String, enum: ["New", "Sale"] },
+    badge: { type: String, enum: ["New", "Sale", "Sold Out"] },
+    isCategoryFeatured: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

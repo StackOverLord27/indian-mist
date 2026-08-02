@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LockKeyhole } from "lucide-react";
 import { useCartStore } from "@/lib/cart-store";
@@ -10,6 +11,7 @@ import { OrderSummary } from "@/components/cart/OrderSummary";
 import { RelatedProducts } from "@/components/product/RelatedProducts";
 
 export function CartPageClient() {
+  const router = useRouter();
   const { items, getTotal, getItemCount } = useCartStore();
   const checkoutBtnRef = useRef<HTMLButtonElement | null>(null);
   const [showStickyBar, setShowStickyBar] = useState(false);
@@ -46,14 +48,14 @@ export function CartPageClient() {
               Home
             </Link>
             <span className="mx-2 text-muted-text/40">›</span>
-            <span className="text-forest font-medium">Cart</span>
+            <span className="text-forest font-medium">Bag</span>
           </nav>
 
           {/* Page header */}
           <h1 className="font-merriweather text-2xl md:text-3xl font-normal text-forest mt-2 mb-1">
             {itemCount === 0
-              ? "Your cart"
-              : `${itemCount} item${itemCount !== 1 ? "s" : ""} in your cart`}
+              ? "Your bag"
+              : `${itemCount} item${itemCount !== 1 ? "s" : ""} in your bag`}
           </h1>
           <p className="font-montserrat text-xs text-muted-text font-normal mb-0">
             Review your selections before checkout
@@ -92,6 +94,7 @@ export function CartPageClient() {
           </div>
           <button
             type="button"
+            onClick={() => router.push("/checkout")}
             className="bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider px-6 py-3 rounded-sm hover:bg-olive transition-colors min-h-[44px]"
           >
             Checkout

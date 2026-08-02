@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useRouter } from "next/navigation";
 import { LockKeyhole, RefreshCw, Leaf } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/lib/cart-store";
@@ -28,6 +29,8 @@ export function OrderSummary({
     100
   );
   const remaining = Math.max(SHIPPING_THRESHOLD - subtotal, 0);
+
+  const router = useRouter();
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("en-IN", {
@@ -112,6 +115,7 @@ export function OrderSummary({
       {/* Checkout button */}
       <Button
         ref={checkoutRef}
+        onClick={() => router.push("/checkout")}
         className="mt-6 w-full bg-forest text-cornsilk hover:bg-olive font-montserrat text-xs font-semibold uppercase tracking-wider py-4 rounded-sm h-auto transition-colors flex items-center justify-center gap-2"
       >
         <LockKeyhole className="size-[13px]" />

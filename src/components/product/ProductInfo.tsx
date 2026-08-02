@@ -16,16 +16,18 @@ export function ProductInfo({ product }: { product: Product }) {
     product.colors?.[0]?.name || ""
   );
   const [quantity, setQuantity] = useState(1);
-  // Tracks the quantity that was last added to cart for this variant.
-  // Button is disabled when quantity <= addedQuantity (nothing new to add).
-  // -1 means nothing has been added yet.
-  const [addedQuantity, setAddedQuantity] = useState(-1);
-
-  const isAdded = addedQuantity >= 0 && quantity <= addedQuantity;
-
-  const resetAddedState = () => setAddedQuantity(-1);
-
-  const { addItem } = useCartStore();
+  const { items, addItem } = useCartStore();
+  
+  // Check if the exact currently selected variant is in the cart
+  const currentVariantInCart = items.find(
+    (i) => 
+      i.id === product.id && 
+      i.size === (selectedSize || undefined) && 
+      i.color === (selectedColor || undefined)
+  );
+  
+  const isAdded = !!currentVariantInCart;
+  const isSoldOut = product.badge === "Sold Out";
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -51,7 +53,6 @@ export function ProductInfo({ product }: { product: Product }) {
       color: selectedColor || undefined,
       quantity,
     });
-    setAddedQuantity(quantity);
   };
 
   return (
@@ -129,14 +130,14 @@ export function ProductInfo({ product }: { product: Product }) {
                     onClick={() => {
                       if (isAvailable) {
                         setSelectedSize(size);
-                        resetAddedState();
                       }
                     }}
-                    disabled={!isAvailable}
+                    disabled={!isAvailable || isSoldOut}
                     className={cn(
                       "min-w-[44px] h-10 px-3 border rounded-sm font-montserrat text-sm transition-colors",
-                      !isAvailable && "opacity-40 cursor-not-allowed line-through pointer-events-none",
-                      isAvailable && !isSelected && "border-olive/25 text-forest/75 bg-card hover:border-olive hover:bg-warm cursor-pointer",
+                      (!isAvailable || isSoldOut) && "opacity-40 cursor-not-allowed pointer-events-none",
+                      !isAvailable && "line-through",
+                      isAvailable && !isSelected && !isSoldOut && "border-olive/25 text-forest/75 bg-card hover:border-olive hover:bg-warm cursor-pointer",
                       isSelected && "border-forest bg-forest text-cornsilk cursor-pointer"
                     )}
                   >
@@ -167,10 +168,11 @@ export function ProductInfo({ product }: { product: Product }) {
                     type="button"
                     onClick={() => {
                         setSelectedColor(color.name);
-                        resetAddedState();
                       }}
+                    disabled={isSoldOut}
                     className={cn(
-                      "w-8 h-8 rounded-full border-2 cursor-pointer transition-all",
+                      "w-8 h-8 rounded-full border-2 transition-all",
+                      isSoldOut ? "opacity-40 cursor-not-allowed" : "cursor-pointer",
                       isSelected
                         ? "border-forest ring-2 ring-forest ring-offset-2 ring-offset-cornsilk"
                         : "border-transparent hover:border-olive/50"
@@ -193,7 +195,7 @@ export function ProductInfo({ product }: { product: Product }) {
             <button
               type="button"
               onClick={handleDecrement}
-              disabled={quantity <= 1}
+              disabled={quantity <= 1 || isSoldOut}
               className="w-10 h-full flex items-center justify-center hover:bg-warm transition-colors text-forest disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Minus className="size-[14px]" />
@@ -204,7 +206,8 @@ export function ProductInfo({ product }: { product: Product }) {
             <button
               type="button"
               onClick={handleIncrement}
-              className="w-10 h-full flex items-center justify-center hover:bg-warm transition-colors text-forest"
+              disabled={isSoldOut}
+              className="w-10 h-full flex items-center justify-center hover:bg-warm transition-colors text-forest disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Plus className="size-[14px]" />
             </button>
@@ -216,30 +219,33 @@ export function ProductInfo({ product }: { product: Product }) {
       <div className="mt-6 flex flex-col sm:flex-row gap-3 fixed sm:static bottom-0 left-0 right-0 p-4 sm:p-0 bg-cornsilk sm:bg-transparent border-t border-olive/15 sm:border-0 z-50 sm:z-auto">
         <Button
           onClick={handleAddToCart}
-          disabled={isAdded}
+          disabled={isAdded || isSoldOut}
           className={cn(
             "w-full sm:flex-1 font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto transition-all duration-200",
-            isAdded
+            (isAdded || isSoldOut)
               ? "bg-olive/80 text-cornsilk cursor-not-allowed"
               : "bg-forest text-cornsilk hover:bg-olive active:scale-[0.98]"
           )}
         >
-          {isAdded ? (
+          {isSoldOut ? (
+            "Sold Out"
+          ) : isAdded ? (
             <>
               <Check className="mr-2 size-[14px]" />
-              Added to Cart
+              Added to Bag
             </>
           ) : (
             <>
               <ShoppingBag className="mr-2 size-[14px]" />
-              Add to Cart
+              Add to Bag
             </>
           )}
         </Button>
         {/* Buy Now — desktop full label, mobile icon+label */}
         <Button
           variant="outline"
-          className="w-full sm:w-auto border-olive/30 text-forest/80 hover:border-olive hover:text-forest hover:bg-warm font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto bg-transparent flex items-center justify-center"
+          disabled={isSoldOut}
+          className="w-full sm:w-auto border-olive/30 text-forest/80 hover:border-olive hover:text-forest hover:bg-warm font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto bg-transparent flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Zap className="mr-2 size-[14px]" />
           Buy Now

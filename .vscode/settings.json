@@ -1,0 +1,37 @@
+{
+  // ─── CSS Language Server ───────────────────────────────────────────────────
+  // Disable the built-in CSS validation for files that use Tailwind CSS v4
+  // syntax (@theme, @custom-variant, @apply). The native CSS language server
+  // doesn't understand these at-rules and incorrectly flags them as errors.
+  // Tailwind CSS IntelliSense (bradlc.vscode-tailwindcss) handles validation
+  // for these files instead.
+  "css.validate": false,
+  "scss.validate": false,
+
+  // Associate globals.css with Tailwind CSS so the IntelliSense extension
+  // provides completions and suppresses false-positive warnings.
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+
+  // Tell Tailwind IntelliSense where the config is (v4 uses CSS-based config).
+  "tailwindCSS.experimental.configFile": "src/app/globals.css",
+
+  // Show Tailwind class completions in these languages.
+  "tailwindCSS.includeLanguages": {
+    "typescript": "javascript",
+    "typescriptreact": "javascript"
+  },
+
+  // ─── Editor ───────────────────────────────────────────────────────────────
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}

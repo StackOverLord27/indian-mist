@@ -1,9 +1,10 @@
 "use client";
 
-import { Heart, Plus } from "lucide-react";
+import { Heart, Plus, Check } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { ImageSlot } from "@/components/home/ImageSlot";
+import { useCartStore } from "@/lib/cart-store";
 import { useWishlistStore } from "@/lib/wishlist-store";
 import type { Product } from "@/lib/homepage-data";
 
@@ -13,6 +14,7 @@ export function ProductCard({ product }: { product: Product }) {
   const wishlisted = useWishlistStore((s) =>
     s.items.some((i) => i.id === product.id)
   );
+  const addCartItem = useCartStore((s) => s.addItem);
 
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -27,9 +29,25 @@ export function ProductCard({ product }: { product: Product }) {
     });
   };
 
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    addCartItem({
+      id: product.id,
+      slug: product.id,
+      name: product.name,
+      category: product.category,
+      price: parseFloat(product.price.replace(/[^\d.]/g, "")),
+      image: product.image.src ?? "",
+      quantity: 1,
+    });
+  };
+
+  const inCart = useCartStore((s) => s.items.some((i) => i.id === product.id));
+  const isSoldOut = product.badge === "Sold Out";
+
   return (
-    <article className="group relative rounded-home-card border border-olive-leaf/10 bg-card-bg p-3 transition-transform hover:-translate-y-1 hover:shadow-sm">
-      <Link href={`/products/${product.id}`} className="block relative aspect-square overflow-hidden rounded-home-card">
+    <article className={cn("group relative rounded-home-card border border-olive-leaf/10 bg-card-bg p-3 transition-transform hover:-translate-y-1 hover:shadow-sm", isSoldOut && "opacity-75")}>
+      <Link href={`/products/${product.id}`} className={cn("block relative aspect-square overflow-hidden rounded-home-card", isSoldOut && "opacity-60 grayscale")}>
         <ImageSlot
           image={product.image}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
@@ -39,6 +57,8 @@ export function ProductCard({ product }: { product: Product }) {
             className={
               product.badge === "Sale"
                 ? "absolute left-3 top-3 rounded-full bg-copperwood px-3 py-1 font-sans text-3xs font-medium uppercase tracking-widest text-cornsilk"
+                : product.badge === "Sold Out"
+                ? "absolute left-3 top-3 rounded-full bg-muted-text/80 px-3 py-1 font-sans text-3xs font-medium uppercase tracking-widest text-cornsilk"
                 : "absolute left-3 top-3 rounded-full bg-black-forest px-3 py-1 font-sans text-3xs font-medium uppercase tracking-widest text-cornsilk"
             }
           >
@@ -78,10 +98,21 @@ export function ProductCard({ product }: { product: Product }) {
           </p>
           <button
             type="button"
-            className="flex size-9 items-center justify-center rounded-full bg-olive-leaf text-cornsilk transition-opacity hover:opacity-85"
-            aria-label={`Add ${product.name} to bag`}
+            onClick={handleAddToCart}
+            disabled={isSoldOut || inCart}
+            className={cn(
+              "flex size-9 items-center justify-center rounded-full transition-opacity",
+              (isSoldOut || inCart)
+                ? "bg-muted-text/30 text-cornsilk cursor-not-allowed"
+                : "bg-olive-leaf text-cornsilk hover:opacity-85"
+            )}
+            aria-label={inCart ? `Added ${product.name} to bag` : `Add ${product.name} to bag`}
           >
-            <Plus className="size-4" aria-hidden="true" />
+            {inCart ? (
+              <Check className="size-4" aria-hidden="true" />
+            ) : (
+              <Plus className="size-4" aria-hidden="true" />
+            )}
           </button>
         </div>
       </div>

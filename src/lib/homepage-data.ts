@@ -4,7 +4,7 @@ export type HomeImage = {
   fallbackClassName: string;
 };
 
-export type ProductBadge = "New" | "Sale";
+export type ProductBadge = "New" | "Sale" | "Sold Out";
 
 export type Product = {
   id: string;
@@ -29,6 +29,7 @@ export type Arrival = {
   category: string;
   description: string;
   price: string;
+  badge?: ProductBadge;
   image: HomeImage;
 };
 
@@ -62,7 +63,7 @@ export const featuredProducts: Product[] = [
     name: "Organic Field Tee",
     category: "Apparel",
     price: "₹899",
-    badge: "Sale",
+    badge: "Sold Out",
     image: {
       src: "https://images.unsplash.com/photo-1523398002811-999ca8dec234?q=80&w=1000&auto=format&fit=crop",
       alt: "Organic cotton outdoor shirt",

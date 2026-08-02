@@ -15,7 +15,7 @@ import React from "react";
 
 interface ProductGalleryProps {
   images: string[];
-  badge?: "New" | "Sale";
+  badge?: "New" | "Sale" | "Sold Out";
   wishlistItem: WishlistItem; // full item shape for toggling
 }
 
@@ -66,7 +66,7 @@ export function ProductGallery({ images, badge, wishlistItem }: ProductGalleryPr
       <span
         className={cn(
           "absolute left-4 top-4 z-10 px-2.5 py-1 rounded-sm text-[10px] font-montserrat font-semibold uppercase tracking-wider",
-          badge === "New" ? "bg-forest text-cornsilk" : "bg-copper text-cornsilk"
+          badge === "New" ? "bg-forest text-cornsilk" : badge === "Sold Out" ? "bg-muted-text/80 text-cornsilk" : "bg-copper text-cornsilk"
         )}
       >
         {badge}
@@ -79,7 +79,7 @@ export function ProductGallery({ images, badge, wishlistItem }: ProductGalleryPr
   return (
     <div className="w-full">
       {/* Desktop Main Image */}
-      <div className="hidden lg:block relative w-full aspect-square overflow-hidden rounded-md">
+      <div className={cn("hidden lg:block relative w-full aspect-square overflow-hidden rounded-md", badge === "Sold Out" && "opacity-60 grayscale")}>
         <div className={cn("absolute inset-0", placeholderColors[activeIndex % placeholderColors.length])} />
         <Image
           src={images[activeIndex]}
@@ -105,7 +105,7 @@ export function ProductGallery({ images, badge, wishlistItem }: ProductGalleryPr
           <CarouselContent className="-ml-0">
             {images.map((img, idx) => (
               <CarouselItem key={idx} className="pl-0">
-                <div className="relative w-full aspect-square overflow-hidden">
+                <div className={cn("relative w-full aspect-square overflow-hidden", badge === "Sold Out" && "opacity-60 grayscale")}>
                   <div className={cn("absolute inset-0", placeholderColors[idx % placeholderColors.length])} />
                   <Image
                     src={img}

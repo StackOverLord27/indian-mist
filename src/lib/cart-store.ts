@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { cookieStorage } from "./cookie-storage";
 
 export type CartItem = {
   id: string;
@@ -89,6 +90,8 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: "indian-mist-cart",
+      storage: createJSONStorage(() => cookieStorage),
+      skipHydration: true,
     }
   )
 );

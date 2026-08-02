@@ -1,11 +1,45 @@
+"use client";
+
+import { useRef, useState, useEffect, useCallback } from "react";
 import { ImageSlot } from "@/components/home/ImageSlot";
+import { ArrivalCardSkeleton } from "@/components/ui/skeletons";
 import type { Arrival } from "@/lib/homepage-data";
+import { useCartStore } from "@/lib/cart-store";
+import { cn } from "@/lib/utils";
 
 type NewestArrivalsProps = {
   arrivals: Arrival[];
 };
 
+/** Number of arrival cards to render per batch */
+const BATCH_SIZE = 6;
+
 export function NewestArrivals({ arrivals }: NewestArrivalsProps) {
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const loadMore = useCallback(() => {
+    setVisibleCount((prev) => Math.min(prev + BATCH_SIZE, arrivals.length));
+  }, [arrivals.length]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) loadMore();
+      },
+      { rootMargin: "300px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMore]);
+
+  const visible = arrivals.slice(0, visibleCount);
+  const hasMore = visibleCount < arrivals.length;
+
   return (
     <section className="bg-warm-mist px-6 py-16 md:px-12">
       <div className="mb-8">
@@ -15,25 +49,62 @@ export function NewestArrivals({ arrivals }: NewestArrivalsProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-        {arrivals.map((arrival) => (
+        {visible.map((arrival) => (
           <ArrivalCard key={arrival.id} arrival={arrival} />
         ))}
+
+        {/* Skeleton placeholders for upcoming batch */}
+        {hasMore &&
+          Array.from({ length: Math.min(BATCH_SIZE, arrivals.length - visibleCount) }).map((_, i) => (
+            <ArrivalCardSkeleton key={`skel-${i}`} />
+          ))}
       </div>
+
+      {/* Scroll sentinel */}
+      {hasMore && <div ref={sentinelRef} className="h-1" aria-hidden="true" />}
     </section>
   );
 }
 
 function ArrivalCard({ arrival }: { arrival: Arrival }) {
+  const { addItem, items } = useCartStore();
+  const inCart = items.some((i) => i.id === arrival.id);
+  const isSoldOut = arrival.badge === "Sold Out";
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (inCart || isSoldOut) return;
+    addItem({
+      id: arrival.id,
+      slug: arrival.id,
+      name: arrival.name,
+      category: arrival.category,
+      price: parseFloat(arrival.price.replace(/[^\d.]/g, "")),
+      image: arrival.image.src ?? "",
+      quantity: 1,
+    });
+  };
+
   return (
-    <article className="rounded-home-card border border-olive-leaf/10 bg-cornsilk p-3">
+    <article className={cn("rounded-home-card border border-olive-leaf/10 bg-cornsilk p-3", isSoldOut && "opacity-75")}>
       <div
-        className="relative overflow-hidden rounded-home-card"
+        className={cn("relative overflow-hidden rounded-home-card", isSoldOut && "opacity-60 grayscale")}
         style={{ aspectRatio: "4 / 3" }}
       >
         <ImageSlot
           image={arrival.image}
           sizes="(max-width: 768px) 100vw, 33vw"
         />
+        {arrival.badge ? (
+          <span
+            className={cn(
+              "absolute left-3 top-3 rounded-full px-3 py-1 font-sans text-3xs font-medium uppercase tracking-widest text-cornsilk",
+              arrival.badge === "Sale" ? "bg-copperwood" : arrival.badge === "Sold Out" ? "bg-muted-text/80" : "bg-black-forest"
+            )}
+          >
+            {arrival.badge}
+          </span>
+        ) : null}
       </div>
 
       <div className="p-2 pt-5">
@@ -57,9 +128,16 @@ function ArrivalCard({ arrival }: { arrival: Arrival }) {
           </p>
           <button
             type="button"
-            className="inline-flex h-10 items-center justify-center rounded-full bg-olive-leaf px-5 font-sans text-xs font-medium uppercase tracking-wide text-cornsilk transition-opacity hover:opacity-85"
+            onClick={handleAddToCart}
+            disabled={inCart || isSoldOut}
+            className={cn(
+              "inline-flex h-10 items-center justify-center rounded-full px-5 font-sans text-xs font-medium uppercase tracking-wide text-cornsilk transition-opacity",
+              (inCart || isSoldOut)
+                ? "bg-muted-text/30 cursor-not-allowed"
+                : "bg-olive-leaf hover:opacity-85"
+            )}
           >
-            Add to bag
+            {isSoldOut ? "Sold Out" : inCart ? "Added to bag" : "Add to bag"}
           </button>
         </div>
       </div>

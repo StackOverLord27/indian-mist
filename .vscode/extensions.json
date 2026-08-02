@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    // Tailwind CSS IntelliSense — understands v4 @theme, @custom-variant, @apply
+    "bradlc.vscode-tailwindcss",
+    // Prettier — consistent formatting
+    "esbenp.prettier-vscode",
+    // ESLint — catches JS/TS issues
+    "dbaeumer.vscode-eslint"
+  ]
+}

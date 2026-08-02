@@ -95,9 +95,9 @@ export function CartItemCard({ item, index }: { item: CartItem; index: number })
           </button>
         </div>
 
-        {/* Variant row — hidden on mobile */}
+        {/* Variant row */}
         {(item.size || item.color) && (
-          <div className="hidden sm:flex gap-3 font-montserrat text-xs text-muted-text mb-1">
+          <div className="flex gap-3 font-montserrat text-xs text-muted-text mb-1">
             {item.size && <span>Size: {item.size}</span>}
             {item.size && item.color && (
               <span className="text-muted-text/30">·</span>

@@ -4,6 +4,7 @@ import "./globals.css";
 import { AnnouncementBar } from "@/components/home/AnnouncementBar";
 import { Navbar } from "@/components/home/Navbar";
 import { Footer } from "@/components/home/Footer";
+import { StoreHydration } from "@/lib/use-store-hydration";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,6 +44,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${merriweather.variable} ${montserrat.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <StoreHydration />
         <AnnouncementBar />
         <Navbar />
         <main className="flex-1 w-full">{children}</main>

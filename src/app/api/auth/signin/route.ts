@@ -1,21 +1,33 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import dbConnect from "@/lib/db";
 import { User } from "@/models/User";
-import jwt from "jsonwebtoken";
+import { RefreshToken } from "@/models/RefreshToken";
+import {
+  signAccessToken,
+  signRefreshToken,
+  hashToken,
+  setTokenCookies,
+  REFRESH_TOKEN_MAX_AGE,
+} from "@/lib/auth-tokens";
+import { SignInSchema } from "@/schemas/auth/signin.schema";
 
 export async function POST(req: Request) {
   try {
     await dbConnect();
-    const { email, password } = await req.json();
+    const body = await req.json();
+    const parseResult = SignInSchema.safeParse(body);
 
-    if (!email || !password) {
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Email and password are required" },
+        { error: "Invalid email or password format" },
         { status: 400 }
       );
     }
 
-    // Check if user exists
+    const { email, password } = parseResult.data;
+
+    // ── Validate credentials ───────────────────────────────────────────────
     const user = await User.findOne({ email });
     if (!user) {
       return NextResponse.json(
@@ -24,7 +36,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check if user is verified
     if (!user.isVerified) {
       return NextResponse.json(
         { error: "Please verify your email via OTP before signing in" },
@@ -32,7 +43,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Compare passwords using the method from our schema
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return NextResponse.json(
@@ -41,23 +51,32 @@ export async function POST(req: Request) {
       );
     }
 
-    // Generate JWT
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      throw new Error("JWT_SECRET is not defined in environment variables");
-    }
+    // ── Issue tokens ───────────────────────────────────────────────────────
+    // Each login creates a new "family" — a UUID that groups all refresh-token
+    // rotations for this session. If a consumed refresh token from a family is
+    // ever replayed, the entire family is wiped (see /api/auth/refresh).
+    const family = randomUUID();
 
-    const token = jwt.sign(
-      {
-        userId: user._id,
-        email: user.email,
-        role: user.role,
-      },
-      secret,
-      { expiresIn: "7d" } // Token expires in 7 days
-    );
+    const accessToken = signAccessToken({
+      userId: String(user._id),
+      email: user.email,
+      role: user.role,
+    });
 
-    // Create the response and set the token in an HTTP-only cookie
+    const rawRefreshToken = signRefreshToken({
+      userId: String(user._id),
+      family,
+    });
+
+    // Persist only the hash — never store the raw refresh token in the DB.
+    await RefreshToken.create({
+      userId: user._id,
+      tokenHash: hashToken(rawRefreshToken),
+      family,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_MAX_AGE * 1000),
+    });
+
+    // ── Build response ─────────────────────────────────────────────────────
     const response = NextResponse.json(
       {
         message: "Signed in successfully",
@@ -71,16 +90,9 @@ export async function POST(req: Request) {
       { status: 200 }
     );
 
-    response.cookies.set("auth_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 60 * 60 * 24 * 7, // 7 days in seconds
-      path: "/",
-    });
-
+    setTokenCookies(response, accessToken, rawRefreshToken);
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Signin error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
