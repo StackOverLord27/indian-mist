@@ -7,11 +7,15 @@ export interface IProduct extends Document {
   category: string;
   price: number;
   originalPrice?: number;
-  images: string[];
+  images: { url: string; publicId: string; alt: string; isPrimary: boolean }[];
+  categoryCoverImage?: string;
   sizes: string[];
   colors: string[];
+  features?: string[];
+  materials?: string[];
+  tags?: string[];
   stockQuantity: number;
-  badge?: "New" | "Sale" | "Sold Out";
+  badge?: "New" | "Sale" | "Sold Out" | "";
   isCategoryFeatured?: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -25,15 +29,36 @@ const ProductSchema: Schema = new Schema(
     category: { type: String, required: true, index: true },
     price: { type: Number, required: true },
     originalPrice: { type: Number },
-    images: [{ type: String }],
+    images: [
+      {
+        url: { type: String, required: true },
+        publicId: { type: String, required: true },
+        alt: { type: String, default: "" },
+        isPrimary: { type: Boolean, default: false },
+      },
+    ],
+    categoryCoverImage: { type: String, default: "" },
     sizes: [{ type: String }],
     colors: [{ type: String }],
+    features: [{ type: String }],
+    materials: [{ type: String }],
+    tags: [{ type: String }],
     stockQuantity: { type: Number, default: 0 },
-    badge: { type: String, enum: ["New", "Sale", "Sold Out"] },
+    badge: { type: String, enum: ["New", "Sale", "Sold Out", ""] },
     isCategoryFeatured: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
+
+ProductSchema.pre("validate", function (this: any, next: any) {
+  if (!this.slug && this.name) {
+    this.slug = (this.name as string)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+  }
+  next();
+});
 
 export const Product: Model<IProduct> =
   mongoose.models.Product || mongoose.model<IProduct>("Product", ProductSchema);

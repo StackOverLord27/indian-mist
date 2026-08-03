@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "app/api/admin/products/route.ts": { "maxDuration": 30 },
+    "app/api/admin/carousel/route.ts": { "maxDuration": 30 },
+    "app/api/admin/about/route.ts": { "maxDuration": 30 }
+  }
+}

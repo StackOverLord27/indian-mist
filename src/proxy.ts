@@ -30,7 +30,8 @@ const PUBLIC_API_PREFIXES = [
   "/api/products",
 ];
 
-const PROTECTED_PAGE_PATHS = ["/checkout"];
+const PUBLIC_PAGE_PATHS = ["/admin/login"];
+const PROTECTED_PAGE_PATHS = ["/checkout", "/admin"];
 
 // ─── Proxy function ───────────────────────────────────────────────────────
 
@@ -82,6 +83,11 @@ export async function proxy(req: NextRequest) {
     }
   } else {
     // Page Routes: Default allow, except PROTECTED_PAGE_PATHS
+    const isPublicPage = PUBLIC_PAGE_PATHS.some((p) => pathname === p);
+    if (isPublicPage) {
+      return NextResponse.next();
+    }
+
     const isProtectedPage = PROTECTED_PAGE_PATHS.some(
       (p) => pathname === p || pathname.startsWith(p + "/")
     );

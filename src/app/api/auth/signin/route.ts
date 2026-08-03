@@ -57,10 +57,12 @@ export async function POST(req: Request) {
     // ever replayed, the entire family is wiped (see /api/auth/refresh).
     const family = randomUUID();
 
+    const userRole = email === process.env.SUPER_ADMIN_EMAIL ? 'admin' : 'user';
+
     const accessToken = signAccessToken({
       userId: String(user._id),
       email: user.email,
-      role: user.role,
+      role: userRole,
     });
 
     const rawRefreshToken = signRefreshToken({
@@ -84,7 +86,7 @@ export async function POST(req: Request) {
           id: user._id,
           name: user.name,
           email: user.email,
-          role: user.role,
+          role: userRole,
         },
       },
       { status: 200 }

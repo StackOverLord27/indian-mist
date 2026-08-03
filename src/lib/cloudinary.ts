@@ -7,13 +7,16 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export const uploadImage = async (buffer: Buffer, folder: string = "indian-mist"): Promise<UploadApiResponse> => {
+export const uploadImage = async (
+  buffer: Buffer,
+  options?: { folder?: string; public_id?: string }
+): Promise<{ url: string; publicId: string }> => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
-      { folder },
+      { folder: options?.folder || "indian-mist", public_id: options?.public_id },
       (error, result) => {
         if (result) {
-          resolve(result);
+          resolve({ url: result.secure_url, publicId: result.public_id });
         } else {
           reject(error);
         }
@@ -23,5 +26,17 @@ export const uploadImage = async (buffer: Buffer, folder: string = "indian-mist"
     streamifier.createReadStream(buffer).pipe(uploadStream);
   });
 };
+
+export async function deleteImage(publicId: string): Promise<void> {
+  try {
+    await cloudinary.uploader.destroy(publicId);
+  } catch (error) {
+    console.warn("[Cloudinary] Delete failed:", publicId, error);
+  }
+}
+
+export async function deleteManyImages(publicIds: string[]): Promise<void> {
+  await Promise.all(publicIds.map(deleteImage));
+}
 
 export default cloudinary;
