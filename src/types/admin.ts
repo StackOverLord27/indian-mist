@@ -48,7 +48,8 @@ export interface CarouselImage {
   _id: string;
   url: string;
   publicId: string;
-  altText: string;
+  alt?: string;
+  altText?: string;
   order: number;
   isActive: boolean;
 }
@@ -74,17 +75,74 @@ export interface AboutContent {
   };
 }
 
+export interface HeroSettings {
+  subtitle?: string;
+  titleLine1?: string;
+  titleLine2?: string;
+  description?: string;
+  primaryButtonText?: string;
+  primaryButtonLink?: string;
+  secondaryButtonText?: string;
+  secondaryButtonLink?: string;
+  ecoBadge?: {
+    text?: string;
+    subtext?: string;
+    isVisible?: boolean;
+  };
+}
+
+export interface BrandStorySettings {
+  subtitle?: string;
+  titleLine1?: string;
+  titleLine2?: string;
+  description?: string;
+  tags?: string;
+  buttonText?: string;
+  buttonLink?: string;
+  imageUrl?: string;
+}
+
 export interface SiteSettings {
-  storeName: string;
-  tagline: string;
-  contactEmail: string;
-  socialLinks: {
+  _id?: string;
+  tagline?: string;
+  contactEmail?: string;
+  footerNote?: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  socialLinks?: {
     instagram?: string;
     facebook?: string;
     twitter?: string;
     youtube?: string;
   };
-  footerNote: string;
-  metaTitle: string;
-  metaDescription: string;
+  heroSettings?: HeroSettings;
+  brandStorySettings?: BrandStorySettings;
+  trustStripSettings?: {
+    items: {
+      icon: string;
+      title: string;
+      subtitle: string;
+    }[];
+  };
+  ecoCommitmentSettings?: {
+    subtitle: string;
+    titleLine1: string;
+    titleLine2: string;
+    items: {
+      icon: string;
+      number: string;
+      label: string;
+      description: string;
+    }[];
+  };
+}
+
+export interface AdminCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  image?: { url: string; publicId: string; alt: string };
+  isFeatured: boolean;
+  isHidden?: boolean;
 }

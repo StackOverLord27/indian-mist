@@ -5,11 +5,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Package, 
+  Tags,
   Megaphone, 
   Images, 
   FileText, 
   Settings,
-  LogOut
+  LogOut,
+  LayoutTemplate
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { User } from '@/types/admin';
@@ -42,15 +44,17 @@ export default function AdminSidebar() {
       ]
     },
     {
-      label: 'Products',
+      label: 'Catalog',
       items: [
-        { label: 'Products List', href: '/admin/products', icon: Package, exact: true },
+        { label: 'Products', href: '/admin/products', icon: Package, exact: true },
+        { label: 'Categories', href: '/admin/categories', icon: Tags, exact: true },
         { label: 'Add Product', href: '/admin/products/new', icon: Package, exact: false },
       ]
     },
     {
       label: 'Homepage',
       items: [
+        { label: 'Layout & Text', href: '/admin/homepage', icon: LayoutTemplate, exact: true },
         { label: 'Announcements', href: '/admin/announcements', icon: Megaphone, exact: true },
         { label: 'Carousel', href: '/admin/carousel', icon: Images, exact: true },
       ]

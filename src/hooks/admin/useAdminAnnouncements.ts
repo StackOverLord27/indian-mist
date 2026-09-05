@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as api from '@/lib/admin-api/announcements';
-import { Announcement } from '@/types/admin';
+// import { Announcement } from '@/types/admin';
 
 export const useAnnouncements = () => {
   return useQuery({

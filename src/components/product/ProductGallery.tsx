@@ -21,6 +21,46 @@ interface ProductGalleryProps {
 
 const placeholderColors = ["bg-[#d4e2c8]", "bg-[#e9edc9]", "bg-[#faedcd]", "bg-[#fefae0]"];
 
+const WishlistButton = ({
+  wishlisted,
+  onClick,
+}: {
+  wishlisted: boolean;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+    className="absolute right-3 top-3 z-20 flex size-9 items-center justify-center rounded-full bg-cornsilk/90 backdrop-blur-sm shadow-sm transition-all hover:scale-110 hover:bg-cornsilk"
+  >
+    <Heart
+      className={cn(
+        "size-[18px] transition-all duration-200",
+        wishlisted ? "fill-copper text-copper" : "text-forest/70"
+      )}
+    />
+  </button>
+);
+
+const BadgeOverlay = ({ badge }: { badge?: "New" | "Sale" | "Sold Out" }) => {
+  if (!badge) return null;
+  return (
+    <span
+      className={cn(
+        "absolute left-4 top-4 z-10 px-2.5 py-1 rounded-sm text-[10px] font-montserrat font-semibold uppercase tracking-wider",
+        badge === "New"
+          ? "bg-forest text-cornsilk"
+          : badge === "Sold Out"
+          ? "bg-muted-text/80 text-cornsilk"
+          : "bg-copper text-cornsilk"
+      )}
+    >
+      {badge}
+    </span>
+  );
+};
+
 export function ProductGallery({ images, badge, wishlistItem }: ProductGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
@@ -44,36 +84,6 @@ export function ProductGallery({ images, badge, wishlistItem }: ProductGalleryPr
     carouselApi?.scrollTo(index);
   };
 
-  const WishlistButton = () => (
-    <button
-      type="button"
-      onClick={() => toggleItem(wishlistItem)}
-      aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
-      className="absolute right-3 top-3 z-20 flex size-9 items-center justify-center rounded-full bg-cornsilk/90 backdrop-blur-sm shadow-sm transition-all hover:scale-110 hover:bg-cornsilk"
-    >
-      <Heart
-        className={cn(
-          "size-[18px] transition-all duration-200",
-          wishlisted ? "fill-copper text-copper" : "text-forest/70"
-        )}
-      />
-    </button>
-  );
-
-  const BadgeOverlay = () => {
-    if (!badge) return null;
-    return (
-      <span
-        className={cn(
-          "absolute left-4 top-4 z-10 px-2.5 py-1 rounded-sm text-[10px] font-montserrat font-semibold uppercase tracking-wider",
-          badge === "New" ? "bg-forest text-cornsilk" : badge === "Sold Out" ? "bg-muted-text/80 text-cornsilk" : "bg-copper text-cornsilk"
-        )}
-      >
-        {badge}
-      </span>
-    );
-  };
-
   if (!images || images.length === 0) return null;
 
   return (
@@ -89,14 +99,14 @@ export function ProductGallery({ images, badge, wishlistItem }: ProductGalleryPr
           sizes="(max-width: 1024px) 100vw, 50vw"
           priority
         />
-        <BadgeOverlay />
-        <WishlistButton />
+        <BadgeOverlay badge={badge} />
+        <WishlistButton wishlisted={wishlisted} onClick={() => toggleItem(wishlistItem)} />
       </div>
 
       {/* Mobile Swipe Carousel — shadcn Carousel (Embla) */}
       <div className="lg:hidden relative">
-        <BadgeOverlay />
-        <WishlistButton />
+        <BadgeOverlay badge={badge} />
+        <WishlistButton wishlisted={wishlisted} onClick={() => toggleItem(wishlistItem)} />
         <Carousel
           setApi={setCarouselApi}
           opts={{ loop: false, align: "start" }}

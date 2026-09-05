@@ -27,6 +27,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/auth/verify-otp",
   "/api/auth/refresh",
   "/api/auth/signout",
+  "/api/auth/forgot-password",
   "/api/products",
 ];
 
@@ -112,7 +113,13 @@ export async function proxy(req: NextRequest) {
       );
     }
 
-    // Page route — redirect to /signin, preserving the intended destination.
+    // Page route — redirect to appropriate login page.
+    // Admin routes go to the admin login, public routes go to /signin.
+    const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/');
+    if (isAdminPage) {
+      return NextResponse.redirect(new URL('/admin/login', req.url));
+    }
+
     const signInUrl = new URL("/signin", req.url);
     signInUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(signInUrl);

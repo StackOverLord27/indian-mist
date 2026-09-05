@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -82,7 +83,6 @@ export default function DataTable<T extends Record<string, any>>({
               <TableRow key={i} className="border-b border-olive/8 hover:bg-warm/50 transition-colors">
                 {columns.map((col) => (
                   <TableCell key={col.key} className="font-montserrat text-sm text-forest py-3 px-4">
-                    {/* eslint-disable-next-line @typescript-eslint/no-unsafe-return */}
                     {col.render ? col.render(row) : row[col.key]}
                   </TableCell>
                 ))}

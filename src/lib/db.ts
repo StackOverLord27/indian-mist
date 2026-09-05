@@ -26,9 +26,19 @@ export default async function dbConnect(): Promise<typeof mongoose> {
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 10000,
       }
-    );
+    ).catch(error => {
+      global._mongooseCache.promise = null;
+      throw error;
+    });
   }
-  global._mongooseCache.conn = await global._mongooseCache.promise;
+  
+  try {
+    global._mongooseCache.conn = await global._mongooseCache.promise;
+  } catch (e) {
+    global._mongooseCache.promise = null;
+    throw e;
+  }
+  
   return global._mongooseCache.conn;
 }
 

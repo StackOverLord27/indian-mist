@@ -2,17 +2,19 @@ export const runtime = 'nodejs';
 
 import { NextRequest } from 'next/server';
 import { withAdmin, parseFormData, validateImageFile, errorResponse, successResponse } from '@/lib/api-helpers';
-import { Product } from '@/models/Product';
+import { Product } from '@/models/product.model';
 import { uploadImage, deleteManyImages } from '@/lib/cloudinary';
 import { ProductSchema } from '@/schemas/admin';
 
-export const GET = withAdmin(async (req, { params }) => {
+export const GET = withAdmin(async (req, context: any) => {
+  const params = await context.params;
   const product = await Product.findById(params.id).lean();
   if (!product) return errorResponse('Product not found', 404);
   return successResponse({ product });
 });
 
-export const PUT = withAdmin(async (req, { params }) => {
+export const PUT = withAdmin(async (req, context: any) => {
+  const params = await context.params;
   const product = await Product.findById(params.id);
   if (!product) return errorResponse('Product not found', 404);
 
@@ -98,7 +100,8 @@ export const PUT = withAdmin(async (req, { params }) => {
   return successResponse({ product });
 });
 
-export const DELETE = withAdmin(async (req, { params }) => {
+export const DELETE = withAdmin(async (req, context: any) => {
+  const params = await context.params;
   const product = await Product.findById(params.id);
   if (!product) return errorResponse('Product not found', 404);
 

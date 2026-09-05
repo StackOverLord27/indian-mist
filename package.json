@@ -62,7 +62,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/streamifier": "^0.1.2",
     "babel-plugin-react-compiler": "1.0.0",
-    "eslint": "^10.6.0",
+    "eslint": "^9.10.0",
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4.3.2",
     "typescript": "^6.0.3"

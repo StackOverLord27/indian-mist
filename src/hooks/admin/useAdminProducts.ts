@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import * as api from '@/lib/admin-api/products';
-import { AdminProduct } from '@/types/admin';
+// import { AdminProduct } from '@/types/admin';
 
 export const useAdminProducts = (filters?: { category?: string; page?: number; limit?: number }) => {
   return useQuery({

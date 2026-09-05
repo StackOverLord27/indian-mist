@@ -10,7 +10,7 @@ export async function AnnouncementBar() {
       .sort({ order: 1 })
       .lean();
     
-    displayItems = items.map((item: any) => item.text);
+    displayItems = items.map((item: { text: string }) => item.text);
   } catch (error) {
     console.error("Failed to fetch announcements:", error);
   }

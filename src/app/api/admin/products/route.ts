@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest } from 'next/server';
 import { withAdmin, parseFormData, validateImageFile, errorResponse, successResponse } from '@/lib/api-helpers';
-import { Product } from '@/models/Product';
+import { Product } from '@/models/product.model';
 import { uploadImage } from '@/lib/cloudinary';
 import { ProductSchema } from '@/schemas/admin';
 

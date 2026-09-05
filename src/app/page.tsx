@@ -17,7 +17,11 @@ import {
   Category as UICategory,
 } from "@/lib/homepage-data";
 import dbConnect from "@/lib/db";
-import { Product } from "@/models/Product";
+import { Product } from "@/models/product.model";
+import { Category as CategoryModel } from "@/models/category.model";
+import SiteSettingsModel from "@/models/settings.model";
+import CarouselModel from "@/models/carousel.model";
+import { CarouselImage } from "@/types/admin";
 
 const formatPrice = (price: number) => `₹${price.toLocaleString("en-IN")}`;
 
@@ -27,7 +31,7 @@ export default async function Home() {
   // ─── Parallel aggregation pipelines ──────────────────────────────────────
   // Run all three queries in parallel for optimal latency.
 
-  const [featuredDocs, arrivalDocs, categoryDocs] = await Promise.all([
+  const results = await Promise.all([
     // 1. Featured products: all products with only the fields we need
     Product.find({})
       .sort({ createdAt: -1 })
@@ -40,46 +44,39 @@ export default async function Home() {
       .select("slug name category description price images")
       .lean(),
 
-    // 3. Category counts & images via aggregation pipeline
-    //    Groups by category, counts products, picks a representative image
-    //    (prefers isCategoryFeatured products), all in a single DB round-trip.
-    Product.aggregate<{
-      _id: string;
-      count: number;
-      image: string | null;
-      isFeatured: boolean;
-    }>([
+    // 3. Category counts & images via actual Category collection
+    CategoryModel.aggregate([
+      { $match: { isHidden: { $ne: true } } },
+      { $sort: { isFeatured: -1, createdAt: -1 } },
       {
-        $sort: { isCategoryFeatured: -1, createdAt: -1 },
-      },
-      {
-        $group: {
-          _id: "$category",
-          count: { $sum: 1 },
-          // $first picks the first doc per group — since we sorted by
-          // isCategoryFeatured desc, featured products come first.
-          image: {
-            $first: {
-              $cond: [
-                { $gt: [{ $size: { $ifNull: ["$images", []] } }, 0] },
-                { $arrayElemAt: ["$images", 0] },
-                null,
-              ],
-            },
-          },
-          isFeatured: { $first: { $ifNull: ["$isCategoryFeatured", false] } },
-        },
+        $lookup: {
+          from: "products",
+          localField: "slug",
+          foreignField: "category",
+          as: "products"
+        }
       },
       {
         $project: {
-          _id: 1,
-          count: 1,
+          name: 1,
+          slug: 1,
           image: 1,
           isFeatured: 1,
-        },
-      },
+          count: { $size: "$products" }
+        }
+      }
     ]),
+
+    // 4. Site settings for hero and branding
+    SiteSettingsModel.findOne().lean(),
+
+    // 5. Active carousel images
+    CarouselModel.find({ isActive: true })
+      .sort({ order: 1 })
+      .lean(),
   ]);
+
+  const [featuredDocs, arrivalDocs, categoryDocs, settingsDoc, carouselDocs] = results;
 
   // ─── Map DB results to UI types (fallback to static data if DB is empty)
 
@@ -95,7 +92,7 @@ export default async function Home() {
       price: formatPrice(p.price),
       badge: p.badge,
       image: {
-        src: p.images?.[0] ?? undefined,
+        src: p.images?.[0]?.url || undefined,
         alt: p.name,
         fallbackClassName: "bg-olive-leaf/20",
       },
@@ -110,7 +107,7 @@ export default async function Home() {
       description: p.description,
       price: formatPrice(p.price),
       image: {
-        src: p.images?.[0] ?? undefined,
+        src: p.images?.[0]?.url || undefined,
         alt: p.name,
         fallbackClassName: "bg-olive-leaf/25",
       },
@@ -118,28 +115,45 @@ export default async function Home() {
   }
 
   if (categoryDocs.length > 0) {
-    mappedCategories = categoryDocs.map((cat) => ({
-      id: cat._id.toLowerCase().replace(/\s+/g, "-"),
-      name: cat._id,
+    mappedCategories = categoryDocs.map((cat: any) => ({
+      id: cat.slug,
+      name: cat.name,
       productCount: `${cat.count} product${cat.count !== 1 ? "s" : ""}`,
       featured: cat.isFeatured,
       image: {
-        src: cat.image ?? undefined,
-        alt: `${cat._id} category`,
+        src: cat.image?.url || undefined,
+        alt: cat.image?.alt || `${cat.name} category`,
         fallbackClassName: "bg-black-forest/25",
       },
     }));
   }
 
+  const mappedSlides: CarouselImage[] = (carouselDocs || []).map((c: any) => ({
+    _id: c._id.toString(),
+    url: c.url,
+    alt: c.alt || c.altText || "",
+    altText: c.alt || c.altText || "",
+    publicId: c.publicId || "",
+    order: c.order || 0,
+    isActive: c.isActive !== false,
+  }));
+
   return (
     <div className="w-full bg-cornsilk">
-      <HeroSection image={heroImage} />
-      <TrustStrip />
+      <HeroSection 
+        settings={(settingsDoc as any)?.heroSettings} 
+        slides={mappedSlides}
+        fallbackImage={heroImage}
+      />
+      <TrustStrip items={(settingsDoc as any)?.trustStripSettings?.items} />
       <FeaturedProducts products={mappedFeatured} />
-      <BrandStorySection image={storyImage} />
+      <BrandStorySection 
+        image={storyImage} 
+        settings={(settingsDoc as any)?.brandStorySettings}
+      />
       <CategoryGrid categories={mappedCategories.length > 0 ? mappedCategories : defaultCategories} />
       <NewestArrivals arrivals={mappedArrivals} />
-      <EcoCommitmentSection />
+      <EcoCommitmentSection settings={(settingsDoc as any)?.ecoCommitmentSettings} />
       <NewsletterBar />
     </div>
   );

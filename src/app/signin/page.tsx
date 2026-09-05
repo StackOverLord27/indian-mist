@@ -2,16 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Leaf, LogIn, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export default function SignInPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [form, setForm] = useState({ email: "", password: "" });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setError(null);
@@ -50,7 +52,7 @@ export default function SignInPage() {
         setError(data.error || "Something went wrong. Please try again.");
       } else {
         setSuccess("Signed in successfully! Redirecting…");
-        setTimeout(() => router.push("/"), 1200);
+        setTimeout(() => router.push(callbackUrl), 1200);
       }
     } catch {
       setError("Network error. Please check your connection and try again.");

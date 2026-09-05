@@ -193,7 +193,7 @@ export function ProductTabs({ product }: { product: Product }) {
                   <Star className="size-[12px] text-muted-text/30" />
                 </div>
                 <p className="font-montserrat text-sm font-normal text-muted-text leading-relaxed">
-                  Great materials and fits well with my other gear. A bit pricey but knowing it's organic makes it worth it for me.
+                  Great materials and fits well with my other gear. A bit pricey but knowing it&apos;s organic makes it worth it for me.
                 </p>
                 <div className="mt-2 text-[10px] font-montserrat font-medium text-olive uppercase tracking-wide flex items-center gap-1">
                   <ShieldCheck className="size-[10px]" /> Verified Buyer

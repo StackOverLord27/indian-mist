@@ -3,7 +3,6 @@
 import { useRef, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LockKeyhole } from "lucide-react";
 import { useCartStore } from "@/lib/cart-store";
 import { EmptyCart } from "@/components/cart/EmptyCart";
 import { CartItemList } from "@/components/cart/CartItemList";

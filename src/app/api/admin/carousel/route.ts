@@ -25,7 +25,7 @@ export const POST = withAdmin(async (req: NextRequest) => {
   }
 
   const validationResult = CarouselSchema.safeParse({
-    alt: fields.alt,
+    alt: fields.alt ?? fields.altText,
     isActive: fields.isActive === 'true' || fields.isActive === undefined,
   });
 

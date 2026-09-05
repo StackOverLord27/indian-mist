@@ -14,8 +14,8 @@ export default function AdminCard({ title, description, children, action, classN
       {(title || action) && (
         <div className="flex justify-between items-start mb-4">
           <div>
-            {title && <h3 className="font-merriweather text-base font-normal text-forest">{title}</h3>}
-            {description && <p className="font-montserrat text-xs text-forest/60 mt-0.5">{description}</p>}
+            {title && <h3 className="font-serif text-base font-normal text-forest">{title}</h3>}
+            {description && <p className="font-sans text-xs text-forest/60 mt-0.5">{description}</p>}
           </div>
           {action && <div>{action}</div>}
         </div>

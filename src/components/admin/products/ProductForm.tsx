@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/incompatible-library */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -9,6 +11,10 @@ import ImageUploadZone from '@/components/admin/ui/ImageUploadZone';
 import { AdminProduct } from '@/types/admin';
 import { Loader2, X } from 'lucide-react';
 import { useCreateProduct, useUpdateProduct } from '@/hooks/admin/useAdminProducts';
+import { useAdminCategories } from '@/hooks/admin/useAdminCategories';
+import * as categoryApi from '@/lib/admin-api/categories';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import {
   Select,
   SelectContent,
@@ -49,6 +55,30 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
   const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);
   const [primaryImageId, setPrimaryImageId] = useState<string>('');
   const [coverImageId, setCoverImageId] = useState<string>('');
+  
+  const { data: categoriesData, isLoading: isLoadingCategories } = useAdminCategories({ limit: 100 });
+  const queryClient = useQueryClient();
+  
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
+  const inlineCreateCategory = useMutation({
+    mutationFn: categoryApi.createCategory,
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
+      setValue('category', data.slug);
+      toast.success('Category added');
+      setIsCreatingCategory(false);
+      setNewCategoryName('');
+    }
+  });
+
+  const handleCreateCategory = () => {
+    if (!newCategoryName.trim()) return;
+    const formData = new FormData();
+    formData.append('name', newCategoryName.trim());
+    inlineCreateCategory.mutate(formData);
+  };
   
   // Set initial primary and cover images
   useEffect(() => {
@@ -148,17 +178,54 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
               <input {...register('name')} className={inputClass} placeholder="e.g. Olive Leaf Tea" />
             </AdminFormField>
             <AdminFormField label="Category" required error={errors.category?.message}>
-              <Select onValueChange={(val) => { if (val) setValue('category', val) }} defaultValue={product?.category}>
-                <SelectTrigger className={inputClass}>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tea">Tea</SelectItem>
-                  <SelectItem value="incense">Incense</SelectItem>
-                  <SelectItem value="spices">Spices</SelectItem>
-                  <SelectItem value="wellness">Wellness</SelectItem>
-                </SelectContent>
-              </Select>
+              {isCreatingCategory ? (
+                <div className="flex gap-2">
+                  <input 
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    className={inputClass}
+                    placeholder="New category name"
+                    autoFocus
+                  />
+                  <button 
+                    type="button" 
+                    onClick={handleCreateCategory}
+                    disabled={inlineCreateCategory.isPending}
+                    className="bg-forest text-cornsilk px-3 py-1.5 rounded-sm text-xs font-semibold uppercase hover:bg-olive transition-colors disabled:opacity-50 flex items-center justify-center min-w-16"
+                  >
+                    {inlineCreateCategory.isPending ? <Loader2 className="animate-spin size-4" /> : 'Add'}
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsCreatingCategory(false)}
+                    className="p-2 text-copper hover:bg-copper/10 rounded-sm"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Select onValueChange={(val) => { if (val) setValue('category', val) }} value={watch('category') || undefined}>
+                      <SelectTrigger className={inputClass}>
+                        <SelectValue placeholder={isLoadingCategories ? "Loading..." : "Select category"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoriesData?.categories.map((cat) => (
+                          <SelectItem key={cat._id} value={cat.slug}>{cat.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsCreatingCategory(true)}
+                    className="px-3 py-1.5 text-forest border border-forest/20 rounded-sm text-xs font-semibold uppercase hover:bg-forest hover:text-cornsilk transition-colors"
+                  >
+                    New
+                  </button>
+                </div>
+              )}
             </AdminFormField>
           </div>
 
@@ -280,7 +347,7 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
           <button 
             type="submit" 
             disabled={isPending}
-            className="bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider px-5 py-2.5 rounded-sm hover:bg-olive transition-colors flex items-center justify-center min-w-[120px]"
+            className="bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider px-5 py-2.5 rounded-sm hover:bg-olive transition-colors flex items-center justify-center min-w-30"
           >
             {isPending ? <Loader2 className="animate-spin size-4" /> : (product ? 'Save Changes' : 'Create Product')}
           </button>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import dbConnect from './db';
 import type { NextRequest } from 'next/server';
 import mongoose from 'mongoose';
@@ -134,8 +135,8 @@ export function validateImageFile(file: {
   if (!allowed.includes(file.mimetype)) {
     return { valid: false, message: 'Only JPEG, PNG and WebP are allowed' };
   }
-  if (file.size > 5 * 1024 * 1024) {
-    return { valid: false, message: 'File must be under 5MB' };
+  if (file.size > 10 * 1024 * 1024) {
+    return { valid: false, message: 'File must be under 10MB' };
   }
   return { valid: true };
 }

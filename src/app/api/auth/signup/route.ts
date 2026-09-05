@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/db";
-import { User } from "@/models/User";
+import { User } from "@/models/user.model";
 import { setOtp, deleteOtp } from "@/lib/otp-store";
 import { sendOTPVerificationEmail } from "@/lib/mailer";
 import { SignUpSchema } from "@/schemas/auth/signup.schema";

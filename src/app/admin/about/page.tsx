@@ -34,8 +34,27 @@ export default function AdminAboutPage() {
 
   useEffect(() => {
     if (data) {
-      setContent(data);
-      if (editor && data.mission.body) {
+      setContent(prev => ({
+        ...prev,
+        ...data,
+        mission: {
+          heading: data.mission?.heading ?? prev.mission.heading,
+          body: data.mission?.body ?? prev.mission.body,
+        },
+        drivesUs: {
+          heading: data.drivesUs?.heading ?? prev.drivesUs.heading,
+          cards: data.drivesUs?.cards && data.drivesUs.cards.length > 0
+            ? data.drivesUs.cards
+            : prev.drivesUs.cards,
+        },
+        cta: {
+          heading: data.cta?.heading ?? prev.cta.heading,
+          subtext: data.cta?.subtext ?? prev.cta.subtext,
+          primaryButtonLabel: data.cta?.primaryButtonLabel ?? prev.cta.primaryButtonLabel,
+          secondaryButtonLabel: data.cta?.secondaryButtonLabel ?? prev.cta.secondaryButtonLabel,
+        },
+      }));
+      if (editor && data.mission?.body) {
         editor.commands.setContent(data.mission.body);
       }
     }

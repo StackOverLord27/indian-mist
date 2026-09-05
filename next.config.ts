@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   experimental: {
-    middlewareClientMaxBodySize: 52428800, // 50MB in bytes
+    proxyClientMaxBodySize: 52428800, // 50MB in bytes
   },
   images: {
     remotePatterns: [

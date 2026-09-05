@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 dotenv.config({ path: ".env.local" });

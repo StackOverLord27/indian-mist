@@ -65,3 +65,12 @@ export async function verifyOtp(email: string, providedOtp: string): Promise<Otp
 export async function deleteOtp(email: string) {
   await getRedis().del(email);
 }
+
+/**
+ * Checks if an OTP already exists for the given email.
+ * Useful for preventing rapid overlapping requests.
+ */
+export async function checkOtpExists(email: string): Promise<boolean> {
+  const data = await getRedis().get<OtpData>(email);
+  return !!data;
+}

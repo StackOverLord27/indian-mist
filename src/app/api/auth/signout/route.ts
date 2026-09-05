@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import { RefreshToken } from "@/models/RefreshToken";
+import { RefreshToken } from "@/models/refreshToken.model";
 import { clearTokenCookies, hashToken, verifyRefreshToken } from "@/lib/auth-tokens";
 
 export async function POST(req: NextRequest) {

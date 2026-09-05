@@ -70,11 +70,12 @@ function DesktopNavLink({
     <Link
       href={link.href}
       aria-current={isActive ? "page" : undefined}
-      className={
+      className={cn(
+        "font-sans text-xs font-medium uppercase tracking-widest transition-all",
         isActive
-          ? "font-sans text-xs font-medium uppercase tracking-widest text-olive-leaf"
-          : "font-sans text-xs font-medium uppercase tracking-widest text-black-forest/75 transition-opacity hover:opacity-100"
-      }
+          ? "text-olive-leaf underline underline-offset-8 decoration-2 decoration-olive-leaf"
+          : "text-black-forest/75 hover:opacity-100 hover:text-black-forest"
+      )}
     >
       {link.name}
     </Link>
@@ -200,10 +201,9 @@ export function Navbar() {
           <Image
             src="/InCollage_20260513_093524159.png"
             alt="Indian Mist Logo"
-            width={180}
+            width={64}
             height={64}
-            style={{ width: "auto", height: "100%", objectFit: "contain" }}
-            className="object-contain"
+            className="h-12 w-12 md:h-14 md:w-14 object-contain"
             priority
           />
         </Link>
@@ -298,10 +298,9 @@ export function Navbar() {
                   <Image
                     src="/InCollage_20260513_093524159.png"
                     alt="Indian Mist Logo"
-                    width={140}
-                    height={48}
-                    style={{ width: "auto", height: "70%", objectFit: "contain" }}
-                    className="object-contain"
+                    width={44}
+                    height={44}
+                    className="h-11 w-11 object-contain"
                     priority
                   />
                 </Link>

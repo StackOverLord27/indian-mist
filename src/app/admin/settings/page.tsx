@@ -13,13 +13,12 @@ export default function AdminSettingsPage() {
   const updateMutation = useUpdateSettings();
 
   const [settings, setSettings] = useState<SiteSettings>({
-    storeName: '',
     tagline: '',
     contactEmail: '',
     socialLinks: { instagram: '', facebook: '', twitter: '', youtube: '' },
     footerNote: '',
     metaTitle: '',
-    metaDescription: ''
+    metaDescription: '',
   });
 
   useEffect(() => {
@@ -28,14 +27,16 @@ export default function AdminSettingsPage() {
     }
   }, [data]);
 
+  const brandStory = settings.brandStorySettings || {};
+
   const handleChange = (field: keyof SiteSettings, value: any) => {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSocialChange = (network: keyof SiteSettings['socialLinks'], value: string) => {
+  const handleSocialChange = (network: keyof NonNullable<SiteSettings['socialLinks']>, value: string) => {
     setSettings(prev => ({
       ...prev,
-      socialLinks: { ...prev.socialLinks, [network]: value }
+      socialLinks: { ...(prev.socialLinks || {}), [network]: value }
     }));
   };
 
@@ -53,14 +54,11 @@ export default function AdminSettingsPage() {
       <form onSubmit={handleSubmit} className="max-w-3xl space-y-6">
         <AdminCard title="General Information">
           <div className="space-y-4">
-            <AdminFormField label="Store Name" required>
-              <input value={settings.storeName} onChange={e => handleChange('storeName', e.target.value)} className={inputClass} />
-            </AdminFormField>
             <AdminFormField label="Tagline">
-              <input value={settings.tagline} onChange={e => handleChange('tagline', e.target.value)} className={inputClass} />
+              <input value={settings.tagline ?? ''} onChange={e => handleChange('tagline', e.target.value)} className={inputClass} />
             </AdminFormField>
             <AdminFormField label="Contact Email" required>
-              <input type="email" value={settings.contactEmail} onChange={e => handleChange('contactEmail', e.target.value)} className={inputClass} />
+              <input type="email" value={settings.contactEmail ?? ''} onChange={e => handleChange('contactEmail', e.target.value)} className={inputClass} />
             </AdminFormField>
           </div>
         </AdminCard>
@@ -68,18 +66,18 @@ export default function AdminSettingsPage() {
         <AdminCard title="SEO & Meta">
           <div className="space-y-4">
             <AdminFormField label="Meta Title">
-              <input value={settings.metaTitle} onChange={e => handleChange('metaTitle', e.target.value)} className={inputClass} />
+              <input value={settings.metaTitle ?? ''} onChange={e => handleChange('metaTitle', e.target.value)} className={inputClass} />
             </AdminFormField>
             <AdminFormField label="Meta Description">
               <div className="relative">
                 <textarea 
-                  value={settings.metaDescription} 
+                  value={settings.metaDescription ?? ''} 
                   onChange={e => handleChange('metaDescription', e.target.value)} 
                   className={`${inputClass} resize-none h-24`} 
                   maxLength={160}
                 />
                 <span className="absolute right-3 bottom-3 text-[10px] font-montserrat text-forest/60">
-                  {settings.metaDescription.length}/160
+                  {(settings.metaDescription ?? '').length}/160
                 </span>
               </div>
             </AdminFormField>
@@ -89,20 +87,20 @@ export default function AdminSettingsPage() {
         <AdminCard title="Social Links & Footer">
           <div className="grid grid-cols-2 gap-4 mb-4">
             <AdminFormField label="Instagram URL">
-              <input value={settings.socialLinks.instagram} onChange={e => handleSocialChange('instagram', e.target.value)} className={inputClass} />
+              <input value={settings.socialLinks?.instagram ?? ''} onChange={e => handleSocialChange('instagram', e.target.value)} className={inputClass} />
             </AdminFormField>
             <AdminFormField label="Facebook URL">
-              <input value={settings.socialLinks.facebook} onChange={e => handleSocialChange('facebook', e.target.value)} className={inputClass} />
+              <input value={settings.socialLinks?.facebook ?? ''} onChange={e => handleSocialChange('facebook', e.target.value)} className={inputClass} />
             </AdminFormField>
             <AdminFormField label="Twitter / X URL">
-              <input value={settings.socialLinks.twitter} onChange={e => handleSocialChange('twitter', e.target.value)} className={inputClass} />
+              <input value={settings.socialLinks?.twitter ?? ''} onChange={e => handleSocialChange('twitter', e.target.value)} className={inputClass} />
             </AdminFormField>
             <AdminFormField label="YouTube URL">
-              <input value={settings.socialLinks.youtube} onChange={e => handleSocialChange('youtube', e.target.value)} className={inputClass} />
+              <input value={settings.socialLinks?.youtube ?? ''} onChange={e => handleSocialChange('youtube', e.target.value)} className={inputClass} />
             </AdminFormField>
           </div>
           <AdminFormField label="Footer Note">
-            <textarea value={settings.footerNote} onChange={e => handleChange('footerNote', e.target.value)} className={`${inputClass} h-20 resize-none`} />
+            <textarea value={settings.footerNote ?? ''} onChange={e => handleChange('footerNote', e.target.value)} className={`${inputClass} h-20 resize-none`} />
           </AdminFormField>
         </AdminCard>
 

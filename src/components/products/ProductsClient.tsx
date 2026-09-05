@@ -8,7 +8,7 @@ import { useCartStore } from "@/lib/cart-store";
 import { useWishlistStore } from "@/lib/wishlist-store";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
+// import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -24,6 +24,7 @@ interface ProductItem {
 
 interface FacetItem {
   name: string;
+  value: string;
   count: number;
 }
 
@@ -206,15 +207,15 @@ export default function ProductsClient({
                     <h4 className="font-montserrat text-xs font-semibold uppercase tracking-wider text-forest mb-3">Category</h4>
                     <div className="space-y-2">
                       {facets.categories.map((c) => (
-                        <div key={c.name} className="flex items-center space-x-2">
+                        <div key={c.value} className="flex items-center space-x-2">
                           <Checkbox 
-                            id={`cat-${c.name}`} 
-                            checked={selectedCategories.includes(c.name)}
-                            onCheckedChange={() => toggleCategory(c.name)}
+                            id={`cat-${c.value}`} 
+                            checked={selectedCategories.includes(c.value)}
+                            onCheckedChange={() => toggleCategory(c.value)}
                             className="border-olive/50 data-[state=checked]:bg-forest data-[state=checked]:text-cornsilk rounded-[2px]"
                           />
                           <label 
-                            htmlFor={`cat-${c.name}`}
+                            htmlFor={`cat-${c.value}`}
                             className="text-sm font-montserrat text-black-forest cursor-pointer flex-1"
                           >
                             {c.name}
@@ -236,15 +237,15 @@ export default function ProductsClient({
                     <h4 className="font-montserrat text-xs font-semibold uppercase tracking-wider text-forest mb-3">Status</h4>
                     <div className="space-y-2">
                       {facets.badges.map((b) => (
-                        <div key={b.name} className="flex items-center space-x-2">
+                        <div key={b.value} className="flex items-center space-x-2">
                           <Checkbox 
-                            id={`badge-${b.name}`} 
-                            checked={selectedBadges.includes(b.name)}
-                            onCheckedChange={() => toggleBadge(b.name)}
+                            id={`badge-${b.value}`} 
+                            checked={selectedBadges.includes(b.value)}
+                            onCheckedChange={() => toggleBadge(b.value)}
                             className="border-olive/50 data-[state=checked]:bg-forest data-[state=checked]:text-cornsilk rounded-[2px]"
                           />
                           <label 
-                            htmlFor={`badge-${b.name}`}
+                            htmlFor={`badge-${b.value}`}
                             className="text-sm font-montserrat text-black-forest cursor-pointer flex-1"
                           >
                             {b.name}

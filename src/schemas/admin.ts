@@ -59,4 +59,26 @@ export const SettingsSchema = z.object({
   footerNote: z.string().optional(),
   metaTitle: z.string().optional(),
   metaDescription: z.string().optional(),
+  heroSettings: z.object({
+    subtitle: z.string().optional(),
+    titleLine1: z.string().optional(),
+    titleLine2: z.string().optional(),
+    description: z.string().optional(),
+    primaryButtonText: z.string().optional(),
+    primaryButtonLink: z.string().optional(),
+    secondaryButtonText: z.string().optional(),
+    secondaryButtonLink: z.string().optional(),
+    ecoBadge: z.object({
+      text: z.string().optional(),
+      subtext: z.string().optional(),
+      isVisible: z.boolean().optional(),
+    }).optional(),
+  }).optional(),
+});
+
+export const CategorySchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().optional(),
+  isFeatured: z.boolean().optional().default(false),
+  isHidden: z.boolean().optional().default(false),
 });

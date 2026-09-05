@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import dbConnect from "@/lib/db";
-import { User } from "@/models/User";
-import { RefreshToken } from "@/models/RefreshToken";
+import { User } from "@/models/user.model";
+import { RefreshToken } from "@/models/refreshToken.model";
 import { verifyOtp, deleteOtp } from "@/lib/otp-store";
 import {
   signAccessToken,

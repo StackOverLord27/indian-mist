@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { LockKeyhole, RefreshCw, Leaf } from "lucide-react";
 import { cn } from "@/lib/utils";

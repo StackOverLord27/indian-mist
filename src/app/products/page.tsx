@@ -1,5 +1,5 @@
 import dbConnect from "@/lib/db";
-import { Product } from "@/models/Product";
+import { Product } from "@/models/product.model";
 import ProductsClient from "@/components/products/ProductsClient";
 
 export const revalidate = 0; // Prevent caching for now if we want fresh data, or remove if static

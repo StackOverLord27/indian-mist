@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Old mock products and types removed
 import dbConnect from "@/lib/db";
-import { Product as ProductModel } from "@/models/Product";
+import { Product as ProductModel } from "@/models/product.model";
 
 export type Product = {
   id: string

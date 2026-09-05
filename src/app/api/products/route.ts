@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import { Product } from "@/models/Product";
+import { Product } from "@/models/product.model";
 
 export async function GET(request: NextRequest) {
   try {
@@ -72,6 +72,21 @@ export async function GET(request: NextRequest) {
                 count: { $sum: 1 }
               }
             },
+            {
+              $lookup: {
+                from: "categories",
+                localField: "_id",
+                foreignField: "slug",
+                as: "categoryDoc"
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                count: 1,
+                name: { $ifNull: [{ $arrayElemAt: ["$categoryDoc.name", 0] }, "$_id"] }
+              }
+            },
             { $sort: { count: -1 } }
           ],
           badges: [
@@ -107,10 +122,10 @@ export async function GET(request: NextRequest) {
     const badgeArr = facetResult.badges || [];
 
     const facets = {
-      categories: catArr.map((c: any) => ({ name: c._id, count: c.count })),
+      categories: catArr.map((c: any) => ({ name: c.name, value: c._id, count: c.count })),
       badges: badgeArr
         .filter((b: any) => b._id) // remove null/undefined badges
-        .map((b: any) => ({ name: b._id, count: b.count })),
+        .map((b: any) => ({ name: b._id, value: b._id, count: b.count })),
     };
 
     return NextResponse.json({

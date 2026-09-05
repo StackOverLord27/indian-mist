@@ -7,9 +7,10 @@ import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email'),
+  email: z.email('Please enter a valid email'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
@@ -30,9 +31,13 @@ export default function AdminLoginPage() {
         return;
       }
 
+      // Store user info for the admin sidebar/display
+      localStorage.setItem('im_admin_user', JSON.stringify(response.data.user));
+
+      toast.success('Signed in successfully!');
       router.push('/admin');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to sign in');
+      toast.error(err.response?.data?.error || err.response?.data?.message || 'Failed to sign in');
     }
   };
 
@@ -61,9 +66,17 @@ export default function AdminLoginPage() {
           </div>
 
           <div>
-            <label className="block font-montserrat text-xs font-semibold uppercase tracking-wider text-forest mb-1.5">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block font-montserrat text-xs font-semibold uppercase tracking-wider text-forest">
+                Password
+              </label>
+              <Link
+                href="/forgot-password"
+                className="font-montserrat text-xs text-olive hover:text-copper transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <input
               type="password"
               {...register('password')}
