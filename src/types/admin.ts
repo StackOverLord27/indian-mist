@@ -33,6 +33,7 @@ export interface AdminProduct {
   materials: Material[];
   images: ProductImage[];
   isActive?: boolean;
+  isFeatured?: boolean;
 }
 
 export interface Announcement {
@@ -71,8 +72,21 @@ export interface AboutContent {
     heading: string;
     subtext: string;
     primaryButtonLabel: string;
+    primaryButtonLink?: string;
     secondaryButtonLabel: string;
+    secondaryButtonLink?: string;
   };
+  customSections?: {
+    _id?: string;
+    type: 'image-text-split';
+    heading: string;
+    body: string;
+    imageUrl: string;
+    imagePublicId: string;
+    imageAlt: string;
+    imageAlignment: 'left' | 'right';
+    order: number;
+  }[];
 }
 
 export interface HeroSettings {
@@ -84,6 +98,7 @@ export interface HeroSettings {
   primaryButtonLink?: string;
   secondaryButtonText?: string;
   secondaryButtonLink?: string;
+  theme?: 'forest' | 'midnight' | 'sunlit';
   ecoBadge?: {
     text?: string;
     subtext?: string;
@@ -100,6 +115,17 @@ export interface BrandStorySettings {
   buttonText?: string;
   buttonLink?: string;
   imageUrl?: string;
+}
+
+export interface PricingSettings {
+  /** Flat shipping fee in INR when order is below threshold */
+  shippingCost?: number;
+  /** Order value above which shipping is free (in INR) */
+  freeShippingThreshold?: number;
+  /** GST rate as a percentage, e.g. 18 means 18% */
+  gstRate?: number;
+  /** When true, displayed prices are GST-inclusive */
+  showPricesInclusiveOfGst?: boolean;
 }
 
 export interface SiteSettings {
@@ -135,6 +161,7 @@ export interface SiteSettings {
       description: string;
     }[];
   };
+  pricingSettings?: PricingSettings;
 }
 
 export interface AdminCategory {
@@ -145,4 +172,35 @@ export interface AdminCategory {
   image?: { url: string; publicId: string; alt: string };
   isFeatured: boolean;
   isHidden?: boolean;
+}
+
+export interface AdminCollection {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  products: string[] | AdminProduct[];
+  isActive: boolean;
+  order: number;
+}
+
+export interface AdminBlog {
+  _id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  coverImage: {
+    url: string;
+    publicId: string;
+    alt: string;
+  };
+  category: string;
+  tags: string[];
+  author: string;
+  isPublished: boolean;
+  publishedAt?: string;
+  readTime: number;
+  createdAt: string;
+  updatedAt: string;
 }

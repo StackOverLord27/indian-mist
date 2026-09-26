@@ -12,7 +12,7 @@ export default async function ProductsPage() {
     {
       $facet: {
         data: [
-          { $sort: { createdAt: -1 } },
+          { $sort: { order: 1, createdAt: -1 } },
           { $limit: 12 },
           { 
             $project: {

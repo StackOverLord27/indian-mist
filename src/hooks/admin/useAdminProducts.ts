@@ -59,3 +59,34 @@ export const useDeleteProduct = () => {
     },
   });
 };
+
+export const useReorderProducts = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: api.reorderProducts,
+    onMutate: async (orderedIds: string[]) => {
+      // Optimistic update — reorder the local cache immediately
+      await queryClient.cancelQueries({ queryKey: ['admin-products'] });
+      
+      // We don't have a reliable single previous state because there could be multiple queries matching the key,
+      // so we rely on invalidation for rollback, which is safer here.
+      queryClient.setQueriesData({ queryKey: ['admin-products'] }, (old: any) => {
+        if (!old?.products) return old;
+        const ordered = orderedIds
+          .map(id => old.products.find((p: any) => p._id === id))
+          .filter(Boolean);
+        return { ...old, products: ordered };
+      });
+      return {};
+    },
+    onError: () => {
+      // Revert via refetch on error
+      void queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      toast.error('Failed to reorder');
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+    },
+  });
+};

@@ -8,6 +8,7 @@ export interface ICategory extends Document {
   image?: { url: string; publicId: string; alt: string };
   isFeatured: boolean;
   isHidden: boolean;
+  order: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,6 +25,7 @@ const CategorySchema: Schema = new Schema(
     },
     isFeatured: { type: Boolean, default: false },
     isHidden: { type: Boolean, default: false },
+    order: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

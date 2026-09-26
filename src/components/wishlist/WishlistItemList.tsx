@@ -67,15 +67,18 @@ function WishlistItemCard({ item, index }: { item: WishlistItem; index: number }
             isSoldOut && "opacity-60 grayscale"
           )}
         >
-          {item.image && (
-            <Image
-              src={item.image}
-              alt={item.name}
-              fill
-              className="object-cover"
-              sizes="96px"
-            />
-          )}
+          {(() => {
+            const imgSrc = typeof item.image === 'string' ? item.image : (item.image as any)?.url;
+            return imgSrc ? (
+              <Image
+                src={imgSrc}
+                alt={item.name}
+                fill
+                className="object-cover"
+                sizes="96px"
+              />
+            ) : null;
+          })()}
         </div>
       </Link>
 

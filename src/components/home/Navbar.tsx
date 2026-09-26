@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   ChevronDown,
   Heart,
@@ -181,6 +181,11 @@ export function Navbar() {
 
   // Controlled open state so we can close the sheet programmatically
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const closeMobile = useCallback(() => setMobileOpen(false), []);
   const handleOpenChange = useCallback(
     (open: boolean) => setMobileOpen(open),
@@ -243,7 +248,7 @@ export function Navbar() {
             aria-label="Open wishlist"
           >
             <Heart className="size-5" aria-hidden="true" />
-            {wishlistCount > 0 && (
+            {isMounted && wishlistCount > 0 && (
               <span className="absolute -right-1 top-0 flex size-4 items-center justify-center rounded-full bg-copperwood font-sans text-3xs font-medium text-cornsilk">
                 {wishlistCount > 99 ? "99+" : wishlistCount}
               </span>
@@ -257,7 +262,7 @@ export function Navbar() {
             aria-label="Open shopping bag"
           >
             <ShoppingBag className="size-5" aria-hidden="true" />
-            {itemCount > 0 && (
+            {isMounted && itemCount > 0 && (
               <span className="absolute -right-1 top-0 flex size-4 items-center justify-center rounded-full bg-copperwood font-sans text-3xs font-medium text-cornsilk">
                 {itemCount > 99 ? "99+" : itemCount}
               </span>
@@ -266,9 +271,9 @@ export function Navbar() {
 
           {/* Account — hidden on mobile xs, shown sm+ */}
           <Link
-            href="/signin"
+            href="/profile"
             className="hidden size-9 items-center justify-center rounded-full text-black-forest transition-opacity hover:opacity-70 sm:flex"
-            aria-label="Sign in to your account"
+            aria-label="View your profile"
           >
             <User className="size-5" aria-hidden="true" />
           </Link>
@@ -356,18 +361,14 @@ export function Navbar() {
                 </label>
 
                 {/* Account */}
-                <SheetClose
-                  render={
-                    <Link
-                      href="/signin"
-                      onClick={closeMobile}
-                      className="flex w-full items-center gap-3 rounded-full border border-olive-leaf/25 px-4 py-2.5 font-sans text-xs font-medium uppercase tracking-widest text-black-forest/70 transition-colors hover:text-black-forest"
-                    />
-                  }
+                <Link
+                  href="/profile"
+                  onClick={closeMobile}
+                  className="flex w-full items-center gap-3 rounded-full border border-olive-leaf/25 px-4 py-2.5 font-sans text-xs font-medium uppercase tracking-widest text-black-forest/70 transition-colors hover:text-black-forest"
                 >
                   <User className="size-4 shrink-0" aria-hidden="true" />
-                  My account
-                </SheetClose>
+                  My profile
+                </Link>
               </div>
             </SheetContent>
           </Sheet>

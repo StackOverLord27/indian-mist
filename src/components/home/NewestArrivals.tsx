@@ -40,6 +40,8 @@ export function NewestArrivals({ arrivals }: NewestArrivalsProps) {
   const visible = arrivals.slice(0, visibleCount);
   const hasMore = visibleCount < arrivals.length;
 
+  if (!arrivals || arrivals.length === 0) return null;
+
   return (
     <section className="bg-warm-mist px-6 py-16 md:px-12">
       <div className="mb-8">

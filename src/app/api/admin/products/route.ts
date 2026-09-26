@@ -1,4 +1,5 @@
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { NextRequest } from 'next/server';
 import { withAdmin, parseFormData, validateImageFile, errorResponse, successResponse } from '@/lib/api-helpers';
@@ -19,7 +20,7 @@ export const GET = withAdmin(async (req) => {
 
   const [products, total] = await Promise.all([
     Product.find(filter)
-      .sort({ createdAt: -1 })
+      .sort({ order: 1, createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean(),
@@ -52,6 +53,7 @@ export const POST = withAdmin(async (req) => {
     sizes: parseJSON(fields.sizes, []),
     features: parseJSON(fields.features, []),
     materials: parseJSON(fields.materials, []),
+    isFeatured: fields.isFeatured === 'true',
   };
 
   const validationResult = ProductSchema.safeParse(parsedFields);

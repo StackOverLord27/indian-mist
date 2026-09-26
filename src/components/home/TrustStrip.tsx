@@ -1,5 +1,4 @@
-import * as Icons from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { IconMap, type IconName } from "@/lib/icon-map";
 
 export interface TrustStripItemProps {
   icon: string;
@@ -27,7 +26,7 @@ export function TrustStrip({ items = defaultTrustItems }: TrustStripProps) {
       <div className="flex flex-col sm:flex-row flex-wrap justify-center divide-y divide-olive-leaf/20 sm:divide-y-0 sm:divide-x">
         {displayItems.map((item, index) => {
           // Fallback to Leaf if icon not found
-          const IconComponent = (Icons as any)[item.icon] as LucideIcon || Icons.Leaf;
+          const IconComponent = IconMap[item.icon as IconName] || IconMap.Leaf;
           
           return (
             <div

@@ -40,6 +40,7 @@ const productSchema = z.object({
   sizes: z.array(z.string()).optional(),
   tags: z.string(), // We will handle array conversion manually or let hook form handle it
   badge: z.enum(['New', 'Sale', '']).optional(),
+  isFeatured: z.boolean().default(false),
   materials: z.array(materialSchema),
 });
 
@@ -53,8 +54,9 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
   
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);
-  const [primaryImageId, setPrimaryImageId] = useState<string>('');
   const [coverImageId, setCoverImageId] = useState<string>('');
+  // Track image display order — publicId array; first item = primary
+  const [imageOrder, setImageOrder] = useState<string[]>([]);
   
   const { data: categoriesData, isLoading: isLoadingCategories } = useAdminCategories({ limit: 100 });
   const queryClient = useQueryClient();
@@ -80,19 +82,18 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
     inlineCreateCategory.mutate(formData);
   };
   
-  // Set initial primary and cover images
   useEffect(() => {
     if (product?.images) {
-      const pImg = product.images.find(img => img.isPrimary);
-      if (pImg) setPrimaryImageId(pImg.publicId);
-      
       const cImg = product.images.find(img => img.isCategoryCover);
       if (cImg) setCoverImageId(cImg.publicId);
+      // Initialise order to existing array order; primary is always first
+      const sorted = [...product.images].sort((a, b) => (a.isPrimary ? -1 : b.isPrimary ? 1 : 0));
+      setImageOrder(sorted.map(img => img.publicId));
     }
   }, [product]);
 
   const { register, control, handleSubmit, formState: { errors, isDirty }, setValue, watch } = useForm<ProductFormData>({
-    resolver: zodResolver(productSchema),
+    resolver: zodResolver(productSchema) as any,
     defaultValues: {
       name: product?.name || '',
       category: product?.category || '',
@@ -103,6 +104,7 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
       sizes: product?.sizes || [],
       tags: product?.tags?.join(', ') || '',
       badge: product?.badge || '',
+      isFeatured: product?.isFeatured || false,
       materials: product?.materials || [{ name: '', percentage: 0, origin: '' }],
     }
   });
@@ -127,6 +129,7 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
     if (data.originalPrice) formData.append('originalPrice', data.originalPrice.toString());
     formData.append('description', data.description);
     if (data.badge) formData.append('badge', data.badge);
+    formData.append('isFeatured', data.isFeatured ? 'true' : 'false');
     
     // Arrays need special handling or JSON stringification
     formData.append('features', JSON.stringify(data.features));
@@ -143,7 +146,11 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
       formData.append('removedImageIds', JSON.stringify(removedImageIds));
     }
     
-    if (primaryImageId) formData.append('primaryImageId', primaryImageId);
+    // First image in imageOrder is primary
+    if (imageOrder.length > 0) {
+      formData.append('primaryImageId', imageOrder[0]);
+      formData.append('imageOrder', JSON.stringify(imageOrder));
+    }
     if (coverImageId) formData.append('coverImageId', coverImageId);
 
     if (product) {
@@ -153,15 +160,24 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
     }
   };
 
-  const currentImages = product?.images?.filter(img => !removedImageIds.includes(img.publicId)).map(img => ({
-    ...img,
-    isPrimary: img.publicId === primaryImageId,
-    isCategoryCover: img.publicId === coverImageId,
-  })) || [];
+  const currentImages = product?.images
+    ?.filter(img => !removedImageIds.includes(img.publicId))
+    .sort((a, b) => {
+      const ai = imageOrder.indexOf(a.publicId);
+      const bi = imageOrder.indexOf(b.publicId);
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    })
+    .map((img, idx) => ({
+      ...img,
+      isPrimary: idx === 0, // first in sorted order is always primary
+      isCategoryCover: img.publicId === coverImageId,
+    })) || [];
 
   const handleRemoveExisting = (publicId: string) => {
     setRemovedImageIds(prev => [...prev, publicId]);
-    if (primaryImageId === publicId) setPrimaryImageId('');
+    setImageOrder(prev => prev.filter(id => id !== publicId));
     if (coverImageId === publicId) setCoverImageId('');
   };
 
@@ -250,6 +266,17 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
             </AdminFormField>
           </div>
 
+          <div className="flex items-center space-x-2 py-2">
+            <Checkbox 
+              id="isFeatured" 
+              checked={watch('isFeatured')}
+              onCheckedChange={(checked) => setValue('isFeatured', !!checked, { shouldDirty: true })}
+            />
+            <label htmlFor="isFeatured" className="font-montserrat text-sm font-medium text-forest cursor-pointer">
+              Feature this product on the Homepage
+            </label>
+          </div>
+
           <AdminFormField label="Description" required error={errors.description?.message}>
             <textarea {...register('description')} className={`${inputClass} resize-none h-28`} />
           </AdminFormField>
@@ -322,14 +349,14 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
               maxFiles={10}
               currentImages={currentImages}
               onRemoveExisting={handleRemoveExisting}
-              onSetPrimary={setPrimaryImageId}
+              onReorderImages={setImageOrder}
               onSetCategoryCover={setCoverImageId}
               showCategoryCoverOption={true}
               onFilesSelected={setNewFiles}
             />
           </div>
           <div className="bg-warm border border-olive/15 rounded-sm p-3 font-montserrat text-xs text-forest/60">
-            The ★ Primary image appears first on product pages.
+            Use ↑↓ arrows to reorder images. The <strong>first image</strong> is always shown as Primary on the storefront.
             The Cover image appears on the category browse grid.
           </div>
         </div>

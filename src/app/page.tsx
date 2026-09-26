@@ -32,8 +32,8 @@ export default async function Home() {
   // Run all three queries in parallel for optimal latency.
 
   const results = await Promise.all([
-    // 1. Featured products: all products with only the fields we need
-    Product.find({})
+    // 1. Featured products: products marked with isFeatured
+    Product.find({ isFeatured: true })
       .sort({ createdAt: -1 })
       .select("slug name category price badge images")
       .lean(),
@@ -41,7 +41,7 @@ export default async function Home() {
     // 2. Newest arrivals: all products with description
     Product.find({})
       .sort({ createdAt: -1 })
-      .select("slug name category description price images")
+      .select("slug name category description price badge images")
       .lean(),
 
     // 3. Category counts & images via actual Category collection
@@ -76,13 +76,13 @@ export default async function Home() {
       .lean(),
   ]);
 
-  const [featuredDocs, arrivalDocs, categoryDocs, settingsDoc, carouselDocs] = results;
+  const [featuredDocs, arrivalDocs, categoryDocs, settingsDoc, carouselDocs] = JSON.parse(JSON.stringify(results));
 
-  // ─── Map DB results to UI types (fallback to static data if DB is empty)
+  // ─── Map DB results to UI types (no placeholder fallback)
 
-  let mappedFeatured: UIProduct[] = defaultFeatured;
-  let mappedArrivals: UIArrival[] = defaultArrivals;
-  let mappedCategories: UICategory[] = defaultCategories;
+  let mappedFeatured: UIProduct[] = [];
+  let mappedArrivals: UIArrival[] = [];
+  let mappedCategories: UICategory[] = [];
 
   if (featuredDocs.length > 0) {
     mappedFeatured = featuredDocs.map((p: any) => ({
@@ -106,6 +106,7 @@ export default async function Home() {
       category: p.category,
       description: p.description,
       price: formatPrice(p.price),
+      badge: p.badge,
       image: {
         src: p.images?.[0]?.url || undefined,
         alt: p.name,
@@ -151,7 +152,7 @@ export default async function Home() {
         image={storyImage} 
         settings={(settingsDoc as any)?.brandStorySettings}
       />
-      <CategoryGrid categories={mappedCategories.length > 0 ? mappedCategories : defaultCategories} />
+      <CategoryGrid categories={mappedCategories} />
       <NewestArrivals arrivals={mappedArrivals} />
       <EcoCommitmentSection settings={(settingsDoc as any)?.ecoCommitmentSettings} />
       <NewsletterBar />

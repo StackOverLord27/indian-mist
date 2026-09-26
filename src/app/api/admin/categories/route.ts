@@ -1,4 +1,5 @@
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { NextRequest } from 'next/server';
 import { withAdmin, parseFormData, validateImageFile, errorResponse, successResponse } from '@/lib/api-helpers';
@@ -13,7 +14,7 @@ export const GET = withAdmin(async (req) => {
 
   const [categories, total] = await Promise.all([
     Category.find({})
-      .sort({ createdAt: -1 })
+      .sort({ order: 1, createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean(),

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { UploadCloud, Star, ImageIcon, Trash2, X } from 'lucide-react';
+import { UploadCloud, Star, ImageIcon, Trash2, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { ProductImage } from '@/types/admin';
 
 interface ImageUploadZoneProps {
@@ -12,6 +12,7 @@ interface ImageUploadZoneProps {
   onRemoveExisting?: (publicId: string) => void;
   onSetPrimary?: (publicId: string) => void;
   onSetCategoryCover?: (publicId: string) => void;
+  onReorderImages?: (orderedPublicIds: string[]) => void;
   showCategoryCoverOption?: boolean;
 }
 
@@ -23,6 +24,7 @@ export default function ImageUploadZone({
   onRemoveExisting,
   onSetPrimary,
   onSetCategoryCover,
+  onReorderImages,
   showCategoryCoverOption = false,
 }: ImageUploadZoneProps) {
   const [newFiles, setNewFiles] = useState<File[]>([]);
@@ -43,7 +45,6 @@ export default function ImageUploadZone({
       setNewFiles(updatedFiles);
       onFilesSelected(updatedFiles);
 
-      // Create previews
       const urls = filesArray.map(file => URL.createObjectURL(file));
       setPreviewUrls(multiple ? [...previewUrls, ...urls] : urls);
     }
@@ -64,7 +65,6 @@ export default function ImageUploadZone({
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      // Create a synthetic event
       const event = {
         target: { files: e.dataTransfer.files }
       } as unknown as React.ChangeEvent<HTMLInputElement>;
@@ -74,6 +74,16 @@ export default function ImageUploadZone({
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+  };
+
+  const handleMoveImage = (index: number, direction: 'up' | 'down') => {
+    if (!onReorderImages) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= currentImages.length) return;
+    const newOrder = [...currentImages];
+    const [moved] = newOrder.splice(index, 1);
+    newOrder.splice(targetIndex, 0, moved);
+    onReorderImages(newOrder.map(img => img.publicId));
   };
 
   return (
@@ -100,17 +110,17 @@ export default function ImageUploadZone({
 
       {(currentImages.length > 0 || previewUrls.length > 0) && (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 mt-4">
-          {currentImages.map((img) => (
+          {currentImages.map((img, index) => (
             <div 
               key={img.publicId} 
               className={`relative aspect-square rounded-sm overflow-hidden border-2 transition-colors group ${
-                img.isPrimary ? 'border-olive' : 'border-olive/15'
+                index === 0 ? 'border-olive' : 'border-olive/15'
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={img.url} alt="Product" className="object-cover w-full h-full" />
               
-              {img.isPrimary && (
+              {index === 0 && (
                 <div className="absolute top-1 left-1 bg-forest text-cornsilk text-[8px] font-montserrat uppercase tracking-wider px-1.5 rounded-sm z-10">
                   Primary
                 </div>
@@ -122,14 +132,28 @@ export default function ImageUploadZone({
               )}
 
               <div className="absolute inset-0 bg-forest/60 flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex">
-                {!img.isPrimary && onSetPrimary && (
-                  <button 
-                    type="button" 
-                    onClick={() => onSetPrimary(img.publicId)}
-                    className="text-cornsilk text-[9px] font-montserrat flex items-center gap-1 hover:text-white"
-                  >
-                    <Star className="size-3" /> Set Primary
-                  </button>
+                {/* Reorder arrows */}
+                {onReorderImages && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleMoveImage(index, 'up'); }}
+                      disabled={index === 0}
+                      className="p-1 text-cornsilk hover:bg-white/20 rounded-sm disabled:opacity-30"
+                      title="Move left"
+                    >
+                      <ArrowUp className="size-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleMoveImage(index, 'down'); }}
+                      disabled={index === currentImages.length - 1}
+                      className="p-1 text-cornsilk hover:bg-white/20 rounded-sm disabled:opacity-30"
+                      title="Move right"
+                    >
+                      <ArrowDown className="size-3" />
+                    </button>
+                  </div>
                 )}
                 {showCategoryCoverOption && !img.isCategoryCover && onSetCategoryCover && (
                   <button 

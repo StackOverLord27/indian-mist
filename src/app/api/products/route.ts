@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     // Sorting
     const sortParam = searchParams.get("sort") || "featured";
-    let sortStage: any = { createdAt: -1 }; // Default
+    let sortStage: any = { order: 1, createdAt: -1 }; // Default (Featured)
     
     if (sortParam === "price-low") {
       sortStage = { price: 1 };
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
       name: p.name || "",
       category: p.category || "",
       price: p.price ? `₹${p.price.toLocaleString("en-IN")}` : "₹0", // format price
-      images: p.images || [],
+      images: (p.images || []).map((img: any) => typeof img === 'string' ? img : img?.url).filter(Boolean),
       badge: p.badge,
     }));
 

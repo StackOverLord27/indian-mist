@@ -54,7 +54,8 @@ export default async function RootLayout({
   let settings = null;
   try {
     await dbConnect();
-    settings = await SiteSettingsModel.findOne().lean();
+    const rawSettings = await SiteSettingsModel.findOne().lean();
+    settings = rawSettings ? JSON.parse(JSON.stringify(rawSettings)) : null;
   } catch (e) {
     console.error("Failed to fetch settings for layout", e);
   }

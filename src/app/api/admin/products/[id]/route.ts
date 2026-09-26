@@ -50,8 +50,26 @@ export const PUT = withAdmin(async (req, context: any) => {
     return errorResponse('Product must have at least one image', 400);
   }
 
-  // Step 3: Update primary image
-  if (fields.primaryImagePublicId) {
+  // Step 3: Update primary image and order
+  if (fields.imageOrder) {
+    try {
+      const order: string[] = JSON.parse(fields.imageOrder);
+      product.images.sort((a: any, b: any) => {
+        const ai = order.indexOf(a.publicId);
+        const bi = order.indexOf(b.publicId);
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      });
+      // First image is primary
+      product.images = (product.images as any).map((img: any, idx: number) => ({
+        ...img.toObject?.() ?? img,
+        isPrimary: idx === 0,
+      }));
+    } catch (e) {
+      console.error('Failed to parse imageOrder', e);
+    }
+  } else if (fields.primaryImagePublicId) {
     product.images = (product.images as any).map((img: any) => ({
       ...img.toObject?.() ?? img,
       isPrimary: img.publicId === fields.primaryImagePublicId,
@@ -83,6 +101,7 @@ export const PUT = withAdmin(async (req, context: any) => {
     sizes: fields.sizes ? parseJSON(fields.sizes, []) : product.sizes,
     features: fields.features ? parseJSON(fields.features, []) : product.features,
     materials: fields.materials ? parseJSON(fields.materials, []) : product.materials,
+    isFeatured: fields.isFeatured !== undefined ? fields.isFeatured === 'true' : product.isFeatured,
   };
 
   const validationResult = ProductSchema.safeParse(parsedFields);

@@ -58,3 +58,30 @@ export const useDeleteCategory = () => {
     },
   });
 };
+
+export const useReorderCategories = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: api.reorderCategories,
+    onMutate: async (orderedIds: string[]) => {
+      await queryClient.cancelQueries({ queryKey: ['admin-categories'] });
+      
+      queryClient.setQueriesData({ queryKey: ['admin-categories'] }, (old: any) => {
+        if (!old?.categories) return old;
+        const ordered = orderedIds
+          .map(id => old.categories.find((c: any) => c._id === id))
+          .filter(Boolean);
+        return { ...old, categories: ordered };
+      });
+      return {};
+    },
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
+      toast.error('Failed to reorder');
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
+    },
+  });
+};

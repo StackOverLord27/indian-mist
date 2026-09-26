@@ -29,3 +29,8 @@ export const deleteProduct = async (id: string) => {
   const { data } = await adminAxios.delete(`/api/admin/products/${id}`);
   return data;
 };
+
+export const reorderProducts = async (orderedIds: string[]) => {
+  const { data } = await adminAxios.put('/api/admin/products/reorder', { orderedIds });
+  return data;
+};

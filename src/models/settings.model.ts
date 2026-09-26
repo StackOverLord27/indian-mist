@@ -21,6 +21,7 @@ const SettingsSchema = new mongoose.Schema({
     primaryButtonLink: { type: String, default: '/products' },
     secondaryButtonText: { type: String, default: 'Our story' },
     secondaryButtonLink: { type: String, default: '/about' },
+    theme: { type: String, enum: ['forest', 'midnight', 'sunlit'], default: 'forest' },
     ecoBadge: {
       text: { type: String, default: '100%' },
       subtext: { type: String, default: 'Eco materials' },
@@ -71,6 +72,12 @@ const SettingsSchema = new mongoose.Schema({
         { icon: 'HandHeart', number: '1%', label: 'Revenue donated', description: 'Annual giving toward rewilding and maker welfare.' }
       ]
     }
+  },
+  pricingSettings: {
+    shippingCost: { type: Number, default: 99 },
+    freeShippingThreshold: { type: Number, default: 999 },
+    gstRate: { type: Number, default: 18 }, // stored as a percentage, e.g. 18 means 18%
+    showPricesInclusiveOfGst: { type: Boolean, default: false },
   },
 }, { collection: 'sitesettings', timestamps: true });
 

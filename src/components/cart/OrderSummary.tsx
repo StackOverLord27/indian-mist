@@ -2,13 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { LockKeyhole, RefreshCw, Leaf } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
+import { SHIPPING_THRESHOLD, SHIPPING_COST, GST_RATE } from "@/lib/constants";
 import { useCartStore } from "@/lib/cart-store";
 import { Button } from "@/components/ui/button";
-
-const SHIPPING_THRESHOLD = 999;
-const SHIPPING_COST = 99;
-const GST_RATE = 0.18;
 
 export function OrderSummary({
   checkoutRef,
@@ -31,12 +28,6 @@ export function OrderSummary({
 
   const router = useRouter();
 
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(price);
 
   return (
     <div className="lg:sticky lg:top-20 bg-card border border-olive/10 rounded-md p-5 md:p-6">

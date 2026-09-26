@@ -1,4 +1,5 @@
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { revalidatePath } from 'next/cache';
 import { NextRequest } from 'next/server';

@@ -29,10 +29,12 @@ const PUBLIC_API_PREFIXES = [
   "/api/auth/signout",
   "/api/auth/forgot-password",
   "/api/products",
+  "/api/blogs",
+  "/api/settings",
 ];
 
 const PUBLIC_PAGE_PATHS = ["/admin/login"];
-const PROTECTED_PAGE_PATHS = ["/checkout", "/admin"];
+const PROTECTED_PAGE_PATHS = ["/checkout", "/admin", "/profile"];
 
 // ─── Proxy function ───────────────────────────────────────────────────────
 

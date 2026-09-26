@@ -6,6 +6,8 @@ type CategoryGridProps = {
 };
 
 export function CategoryGrid({ categories }: CategoryGridProps) {
+  if (!categories || categories.length === 0) return null;
+
   return (
     <section className="bg-cornsilk px-6 py-16 md:px-12">
       <div className="mb-8">

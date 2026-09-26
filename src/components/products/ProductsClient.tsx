@@ -308,7 +308,7 @@ export default function ProductsClient({
             <div key={product.id} className={cn("bg-card-surface border border-olive/10 rounded-md overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all duration-200", isSoldOut && "opacity-75")}>
               {/* Product Image Area */}
               <div className={cn(`aspect-square relative overflow-hidden ${placeholderColors[index % 4]} flex items-center justify-center`, isSoldOut && "opacity-60 grayscale")}>
-                {product.images && product.images.length > 0 ? (
+                {product.images && product.images.length > 0 && product.images[0] ? (
                   <Link href={`/products/${product.slug}`} className="absolute inset-0">
                     <Image
                       src={product.images[0]}

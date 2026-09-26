@@ -5,6 +5,7 @@ import { useWishlistStore } from "@/lib/wishlist-store";
 import { EmptyWishlist } from "@/components/wishlist/EmptyWishlist";
 import { WishlistItemList } from "@/components/wishlist/WishlistItemList";
 import { RelatedProducts } from "@/components/product/RelatedProducts";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export function WishlistPageClient() {
   const { items } = useWishlistStore();
@@ -17,13 +18,13 @@ export function WishlistPageClient() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-20">
 
         {/* Breadcrumb */}
-        <nav className="pb-2 flex items-center font-montserrat text-xs text-muted-text">
-          <Link href="/" className="hover:text-olive cursor-pointer transition-colors">
-            Home
-          </Link>
-          <span className="mx-2 text-muted-text/40">›</span>
-          <span className="text-forest font-medium">Wishlist</span>
-        </nav>
+        <Breadcrumb
+          className="pb-2"
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Wishlist" },
+          ]}
+        />
 
         {/* Header */}
         <h1 className="font-merriweather text-2xl md:text-3xl font-normal text-forest mt-2 mb-1">

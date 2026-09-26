@@ -11,6 +11,7 @@ export const ProductSchema = z.object({
   sizes: z.array(z.string()).optional(),
   features: z.array(z.string()).optional(),
   materials: z.array(z.string()).optional(),
+  isFeatured: z.boolean().optional().default(false),
 });
 
 export const AnnouncementSchema = z.object({
@@ -42,8 +43,21 @@ export const AboutSchema = z.object({
     heading: z.string().optional(),
     subtext: z.string().optional(),
     primaryButtonLabel: z.string().optional(),
+    primaryButtonLink: z.string().optional(),
     secondaryButtonLabel: z.string().optional(),
+    secondaryButtonLink: z.string().optional(),
   }).optional(),
+  customSections: z.array(z.object({
+    _id: z.string().optional(),
+    type: z.literal('image-text-split').default('image-text-split'),
+    heading: z.string().optional(),
+    body: z.string().optional(),
+    imageUrl: z.string().optional(),
+    imagePublicId: z.string().optional(),
+    imageAlt: z.string().optional(),
+    imageAlignment: z.enum(['left', 'right']).optional().default('left'),
+    order: z.number().optional().default(0),
+  })).optional(),
 });
 
 export const SettingsSchema = z.object({
@@ -68,11 +82,22 @@ export const SettingsSchema = z.object({
     primaryButtonLink: z.string().optional(),
     secondaryButtonText: z.string().optional(),
     secondaryButtonLink: z.string().optional(),
+    theme: z.enum(['forest', 'midnight', 'sunlit']).optional(),
     ecoBadge: z.object({
       text: z.string().optional(),
       subtext: z.string().optional(),
       isVisible: z.boolean().optional(),
     }).optional(),
+  }).optional(),
+  // Pricing & shipping — stored as editable settings so admins can change rates
+  // without a code deploy. Per-product GST is intentionally NOT supported here;
+  // different HSN codes / product-level rates should be handled at invoice generation
+  // time (e.g., via the order API), not at the checkout display level.
+  pricingSettings: z.object({
+    shippingCost: z.number().nonnegative().optional(),
+    freeShippingThreshold: z.number().nonnegative().optional(),
+    gstRate: z.number().min(0).max(100).optional(), // percentage, e.g. 18
+    showPricesInclusiveOfGst: z.boolean().optional(),
   }).optional(),
 });
 
@@ -81,4 +106,11 @@ export const CategorySchema = z.object({
   description: z.string().optional(),
   isFeatured: z.boolean().optional().default(false),
   isHidden: z.boolean().optional().default(false),
+});
+export const CollectionSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().optional(),
+  isActive: z.boolean().optional().default(true),
+  order: z.number().optional().default(0),
+  products: z.array(z.string()).optional(),
 });

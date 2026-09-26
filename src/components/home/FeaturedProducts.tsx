@@ -39,6 +39,8 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
   const visible = products.slice(0, visibleCount);
   const hasMore = visibleCount < products.length;
 
+  if (!products || products.length === 0) return null;
+
   return (
     <section className="bg-cornsilk px-6 py-16 md:px-12">
       <div className="mb-8 flex items-end justify-between gap-6">

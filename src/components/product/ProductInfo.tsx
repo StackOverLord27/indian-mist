@@ -48,7 +48,7 @@ export function ProductInfo({ product }: { product: Product }) {
       category: product.category,
       price: product.price,
       originalPrice: product.originalPrice,
-      image: product.images[0] ?? "",
+      image: product.images[0] || "",
       size: selectedSize || undefined,
       color: selectedColor || undefined,
       quantity,

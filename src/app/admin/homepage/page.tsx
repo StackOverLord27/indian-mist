@@ -8,6 +8,10 @@ import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SiteSettings, HeroSettings, BrandStorySettings } from '@/types/admin';
+import ImageUploadZone from '@/components/admin/ui/ImageUploadZone';
+import { adminAxios } from '@/lib/admin-axios';
+import toast from 'react-hot-toast';
+import { AVAILABLE_ICONS } from '@/lib/icon-map';
 
 const defaultHeroSettings: HeroSettings = {
   ecoBadge: { text: 'Certified Organic', subtext: 'GOTS', isVisible: true }
@@ -38,6 +42,7 @@ const defaultEcoSettings = {
 export default function AdminHomepageContentPage() {
   const { data, isLoading } = useSiteSettings();
   const updateMutation = useUpdateSettings();
+  const [isUploading, setIsUploading] = useState(false);
 
   const [settings, setSettings] = useState<SiteSettings>({
     heroSettings: defaultHeroSettings,
@@ -239,6 +244,81 @@ export default function AdminHomepageContentPage() {
               />
             </AdminFormField>
 
+            <AdminFormField label="Theme">
+              <div className="grid grid-cols-3 gap-3 mt-1">
+                {([
+                  {
+                    value: 'forest',
+                    label: 'Forest',
+                    desc: 'Dark green',
+                    bg: '#283618',
+                    accent: '#dda15e',
+                    text: '#fefae0',
+                  },
+                  {
+                    value: 'midnight',
+                    label: 'Midnight',
+                    desc: 'Charcoal',
+                    bg: '#1c1917',
+                    accent: '#fbbf24',
+                    text: '#fafaf9',
+                  },
+                  {
+                    value: 'sunlit',
+                    label: 'Sunlit',
+                    desc: 'Terracotta',
+                    bg: '#bc6c25',
+                    accent: '#fefae0',
+                    text: '#fefae0',
+                  },
+                ] as const).map((theme) => {
+                  const isSelected = (hero.theme ?? 'forest') === theme.value;
+                  return (
+                    <button
+                      key={theme.value}
+                      type="button"
+                      onClick={() => handleHeroChange('theme', theme.value)}
+                      className={`relative flex flex-col overflow-hidden rounded border-2 transition-all ${
+                        isSelected
+                          ? 'border-olive shadow-md scale-[1.02]'
+                          : 'border-olive/20 hover:border-olive/50'
+                      }`}
+                    >
+                      {/* Color preview swatch */}
+                      <div
+                        className="h-14 w-full flex items-center justify-center gap-1.5 px-2"
+                        style={{ backgroundColor: theme.bg }}
+                      >
+                        <span
+                          className="font-serif text-sm font-light"
+                          style={{ color: theme.text }}
+                        >
+                          Aa
+                        </span>
+                        <span
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: theme.accent }}
+                        />
+                      </div>
+                      {/* Label row */}
+                      <div className="bg-white px-2 py-1.5 text-left">
+                        <p className="font-sans text-xs font-semibold text-forest leading-none">{theme.label}</p>
+                        <p className="font-sans text-2xs text-forest/50 mt-0.5">{theme.desc}</p>
+                      </div>
+                      {/* Selected checkmark */}
+                      {isSelected && (
+                        <div className="absolute top-1.5 right-1.5 size-4 rounded-full bg-olive flex items-center justify-center">
+                          <svg className="size-2.5 text-cornsilk" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </AdminFormField>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <AdminFormField label="Heading Line 1">
                 <input 
@@ -395,8 +475,36 @@ export default function AdminHomepageContentPage() {
                 <input value={brandStory.buttonLink ?? ''} onChange={e => handleBrandStoryChange('buttonLink', e.target.value)} className={inputClass} />
               </AdminFormField>
             </div>
-            <AdminFormField label="Background Image URL">
-              <input value={brandStory.imageUrl ?? ''} onChange={e => handleBrandStoryChange('imageUrl', e.target.value)} className={inputClass} />
+            <AdminFormField label="Background Image">
+              <div className="space-y-2">
+                <ImageUploadZone 
+                  multiple={false}
+                  maxFiles={1}
+                  currentImages={brandStory.imageUrl ? [{ url: brandStory.imageUrl, publicId: brandStory.imageUrl, isPrimary: true }] : []}
+                  onRemoveExisting={() => handleBrandStoryChange('imageUrl', '')}
+                  onFilesSelected={async (files) => {
+                    if (files.length === 0) return;
+                    setIsUploading(true);
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', files[0]);
+                      formData.append('context', 'brand-story');
+                      const { data } = await adminAxios.post('/api/admin/upload', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                      });
+                      handleBrandStoryChange('imageUrl', data.url);
+                      toast.success('Image uploaded successfully');
+                    } catch (error) {
+                      toast.error('Failed to upload image');
+                    } finally {
+                      setIsUploading(false);
+                    }
+                  }}
+                />
+                <p className="font-montserrat text-xs text-forest/60">
+                  Current URL: {brandStory.imageUrl || 'None'}
+                </p>
+              </div>
             </AdminFormField>
           </div>
         </AdminCard>
@@ -406,12 +514,15 @@ export default function AdminHomepageContentPage() {
             {trustStrip.items.map((item, index) => (
               <div key={index} className="flex flex-col md:flex-row gap-4 items-end p-4 border border-olive/10 bg-white/50 rounded-sm">
                 <AdminFormField label="Icon Name (Lucide)">
-                  <input 
+                  <select 
                     value={item.icon} 
                     onChange={e => handleTrustItemChange(index, 'icon', e.target.value)} 
-                    className={inputClass} 
-                    placeholder="e.g. Leaf, Truck"
-                  />
+                    className={inputClass}
+                  >
+                    {AVAILABLE_ICONS.map(icon => (
+                      <option key={icon} value={icon}>{icon}</option>
+                    ))}
+                  </select>
                 </AdminFormField>
                 <AdminFormField label="Title">
                   <input 
@@ -480,12 +591,15 @@ export default function AdminHomepageContentPage() {
                 <div key={index} className="flex flex-col gap-4 p-4 border border-olive/10 bg-white/50 rounded-sm">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <AdminFormField label="Icon Name (Lucide)">
-                      <input 
+                      <select 
                         value={item.icon} 
                         onChange={e => handleEcoItemChange(index, 'icon', e.target.value)} 
-                        className={inputClass} 
-                        placeholder="e.g. TreePine, Recycle"
-                      />
+                        className={inputClass}
+                      >
+                        {AVAILABLE_ICONS.map(icon => (
+                          <option key={icon} value={icon}>{icon}</option>
+                        ))}
+                      </select>
                     </AdminFormField>
                     <AdminFormField label="Number/Stat">
                       <input 
@@ -533,10 +647,10 @@ export default function AdminHomepageContentPage() {
         <div className="flex justify-end">
           <button 
             type="submit" 
-            disabled={updateMutation.isPending}
+            disabled={updateMutation.isPending || isUploading}
             className="bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider px-8 py-3 rounded-sm hover:bg-olive transition-colors flex items-center justify-center min-w-[150px]"
           >
-            {updateMutation.isPending ? <Loader2 className="animate-spin size-4" /> : 'Save Settings'}
+            {(updateMutation.isPending || isUploading) ? <Loader2 className="animate-spin size-4" /> : 'Save Settings'}
           </button>
         </div>
       </form>

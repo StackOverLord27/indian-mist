@@ -17,7 +17,9 @@ export interface IProduct extends Document {
   tags?: string[];
   stockQuantity: number;
   badge?: "New" | "Sale" | "Sold Out" | "";
+  isFeatured?: boolean;
   isCategoryFeatured?: boolean;
+  order?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,19 +48,20 @@ const ProductSchema: Schema = new Schema(
     tags: [{ type: String }],
     stockQuantity: { type: Number, default: 0 },
     badge: { type: String, enum: ["New", "Sale", "Sold Out", ""] },
+    isFeatured: { type: Boolean, default: false },
     isCategoryFeatured: { type: Boolean, default: false },
+    order: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
 
-ProductSchema.pre("validate", function (this: any, next: any) {
+ProductSchema.pre("validate", function (this: any) {
   if (!this.slug && this.name) {
     this.slug = (this.name as string)
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
   }
-  next();
 });
 
 export const Product: Model<IProduct> =

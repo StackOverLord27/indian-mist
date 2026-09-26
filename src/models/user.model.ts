@@ -4,20 +4,36 @@ import bcrypt from "bcryptjs";
 export interface IUser extends Document {
   name: string;
   email: string;
+  phone?: string;
   password?: string;
   role: "ADMIN" | "CUSTOMER";
   isVerified: boolean;
   createdAt: Date;
+  shippingAddress?: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
 const UserSchema: Schema = new Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
+  phone: { type: String },
   password: { type: String }, // Optional in case of OAuth
   role: { type: String, enum: ["ADMIN", "CUSTOMER"], default: "CUSTOMER" },
   isVerified: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
+  shippingAddress: {
+    street: { type: String },
+    city: { type: String },
+    state: { type: String },
+    zipCode: { type: String },
+    country: { type: String },
+  },
 });
 
 // Pre-save hook to hash password before saving to DB

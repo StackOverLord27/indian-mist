@@ -8,12 +8,18 @@ import { EmptyCart } from "@/components/cart/EmptyCart";
 import { CartItemList } from "@/components/cart/CartItemList";
 import { OrderSummary } from "@/components/cart/OrderSummary";
 import { RelatedProducts } from "@/components/product/RelatedProducts";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export function CartPageClient() {
   const router = useRouter();
   const { items, getTotal, getItemCount } = useCartStore();
   const checkoutBtnRef = useRef<HTMLButtonElement | null>(null);
   const [showStickyBar, setShowStickyBar] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Intersection observer: show sticky mobile bar when checkout button scrolls out of view
   useEffect(() => {
@@ -36,19 +42,23 @@ export function CartPageClient() {
       maximumFractionDigits: 0,
     }).format(p);
 
+  if (!isMounted) {
+    return null; // Prevent hydration mismatch by returning nothing until mounted
+  }
+
   return (
     <>
       <div className="bg-cornsilk min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-20 lg:pb-20">
 
           {/* Breadcrumb */}
-          <nav className="pb-2 flex items-center font-montserrat text-xs text-muted-text">
-            <Link href="/" className="hover:text-olive cursor-pointer transition-colors">
-              Home
-            </Link>
-            <span className="mx-2 text-muted-text/40">›</span>
-            <span className="text-forest font-medium">Bag</span>
-          </nav>
+          <Breadcrumb
+            className="pb-2"
+            items={[
+              { label: "Home", href: "/" },
+              { label: "Bag" },
+            ]}
+          />
 
           {/* Page header */}
           <h1 className="font-merriweather text-2xl md:text-3xl font-normal text-forest mt-2 mb-1">

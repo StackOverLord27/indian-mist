@@ -11,7 +11,9 @@ import {
   FileText, 
   Settings,
   LogOut,
-  LayoutTemplate
+  LayoutTemplate,
+  Library,
+  PenLine
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { User } from '@/types/admin';
@@ -63,7 +65,9 @@ export default function AdminSidebar() {
       label: 'Pages',
       items: [
         { label: 'About Page', href: '/admin/about', icon: FileText, exact: true },
+        { label: 'Blog Posts', href: '/admin/blogs', icon: PenLine, exact: false },
         { label: 'Site Settings', href: '/admin/settings', icon: Settings, exact: true },
+        { label: 'Collections', href: '/admin/collections', icon: Library, exact: false },
       ]
     }
   ];

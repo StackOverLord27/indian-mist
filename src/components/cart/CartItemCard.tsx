@@ -62,15 +62,18 @@ export function CartItemCard({ item, index }: { item: CartItem; index: number })
           placeholder
         )}
       >
-        {item.image && (
-          <Image
-            src={item.image}
-            alt={item.name}
-            fill
-            className="object-cover"
-            sizes="(max-width: 640px) 64px, 96px"
-          />
-        )}
+        {(() => {
+          const imgSrc = typeof item.image === 'string' ? item.image : (item.image as any)?.url;
+          return imgSrc ? (
+            <Image
+              src={imgSrc}
+              alt={item.name}
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 64px, 96px"
+            />
+          ) : null;
+        })()}
       </div>
 
       {/* Info */}

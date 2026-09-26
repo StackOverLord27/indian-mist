@@ -1,5 +1,4 @@
-import * as Icons from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { IconMap, type IconName } from "@/lib/icon-map";
 
 export interface EcoStat {
   icon: string;
@@ -66,7 +65,7 @@ export function EcoCommitmentSection({ settings }: EcoCommitmentProps) {
 
       <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {displayItems.map((stat, index) => {
-          const IconComponent = (Icons as any)[stat.icon] as LucideIcon || Icons.TreePine;
+          const IconComponent = IconMap[stat.icon as IconName] || IconMap.TreePine;
           
           return (
             <article
