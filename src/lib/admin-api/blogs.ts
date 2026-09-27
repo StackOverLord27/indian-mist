@@ -29,3 +29,13 @@ export const deleteBlog = async (id: string) => {
   const { data } = await adminAxios.delete(`/api/admin/blogs/${id}`);
   return data;
 };
+
+export const fetchBlogCategories = async () => {
+  const { data } = await adminAxios.get<{ categories: string[] }>('/api/admin/blogs/categories');
+  return data.categories;
+};
+
+export const createBlogCategory = async (name: string) => {
+  const { data } = await adminAxios.post<{ category: string; categories: string[] }>('/api/admin/blogs/categories', { name });
+  return data;
+};

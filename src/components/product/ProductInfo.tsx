@@ -6,9 +6,21 @@ import { Star, Minus, Plus, ShoppingBag, Zap, Truck, RefreshCw, Leaf, ShieldChec
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/cart-store";
+import { useRouter } from "next/navigation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Product } from "@/lib/get-product";
 
 export function ProductInfo({ product }: { product: Product }) {
+  const router = useRouter();
   const [selectedSize, setSelectedSize] = useState<string>(
     product.availableSizes?.[0] || ""
   );
@@ -16,7 +28,8 @@ export function ProductInfo({ product }: { product: Product }) {
     product.colors?.[0]?.name || ""
   );
   const [quantity, setQuantity] = useState(1);
-  const { items, addItem } = useCartStore();
+  const { items, addItem, setBuyNowItem } = useCartStore();
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
   
   // Check if the exact currently selected variant is in the cart
   const currentVariantInCart = items.find(
@@ -53,6 +66,41 @@ export function ProductInfo({ product }: { product: Product }) {
       color: selectedColor || undefined,
       quantity,
     });
+  };
+
+  const productItemForCheckout = {
+    id: product.id,
+    slug: product.slug,
+    name: product.name,
+    category: product.category,
+    price: product.price,
+    originalPrice: product.originalPrice,
+    image: product.images[0] || "",
+    size: selectedSize || undefined,
+    color: selectedColor || undefined,
+    quantity,
+  };
+
+  const handleBuyNowClick = () => {
+    if (items.length > 0) {
+      setShowMergeDialog(true);
+    } else {
+      setBuyNowItem(productItemForCheckout);
+      router.push("/checkout");
+    }
+  };
+
+  const handleMergeYes = () => {
+    addItem(productItemForCheckout);
+    setBuyNowItem(null); // use full cart
+    setShowMergeDialog(false);
+    router.push("/checkout");
+  };
+
+  const handleMergeNo = () => {
+    setBuyNowItem(productItemForCheckout); // checkout only this item
+    setShowMergeDialog(false);
+    router.push("/checkout");
   };
 
   return (
@@ -245,6 +293,7 @@ export function ProductInfo({ product }: { product: Product }) {
         <Button
           variant="outline"
           disabled={isSoldOut}
+          onClick={handleBuyNowClick}
           className="w-full sm:w-auto border-olive/30 text-forest/80 hover:border-olive hover:text-forest hover:bg-warm font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto bg-transparent flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Zap className="mr-2 size-[14px]" />
@@ -298,6 +347,25 @@ export function ProductInfo({ product }: { product: Product }) {
           </div>
         </div>
       )}
+
+      <AlertDialog open={showMergeDialog} onOpenChange={setShowMergeDialog}>
+        <AlertDialogContent className="bg-cornsilk border-olive/20 max-w-md w-[90vw]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-merriweather text-forest">You have items in your bag</AlertDialogTitle>
+            <AlertDialogDescription className="font-montserrat text-muted-text">
+              You already have {items.length} item{items.length !== 1 ? 's' : ''} in your bag. Would you like to buy them together with this item?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+            <AlertDialogCancel onClick={handleMergeNo} className="border-olive/30 text-forest hover:bg-olive/10 mt-0">
+              No, only buy this
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleMergeYes} className="bg-forest text-cornsilk hover:bg-olive">
+              Yes, buy together
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

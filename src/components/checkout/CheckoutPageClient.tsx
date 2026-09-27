@@ -28,7 +28,20 @@ declare global {
 
 export function CheckoutPageClient() {
   const router = useRouter();
-  const { items, getTotal, getItemCount, clearCart } = useCartStore();
+  const {
+    items,
+    getTotal,
+    getItemCount,
+    clearCart,
+    buyNowItem,
+    setBuyNowItem,
+  } = useCartStore();
+
+  const checkoutItems = buyNowItem ? [buyNowItem] : items;
+  const checkoutItemCount = buyNowItem ? buyNowItem.quantity : getItemCount();
+  const subtotal = buyNowItem
+    ? buyNowItem.price * buyNowItem.quantity
+    : getTotal();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -63,7 +76,8 @@ export function CheckoutPageClient() {
 
   // Fetch user profile on mount — auto-fill ALL fields
   useEffect(() => {
-    axios.get("/api/profile")
+    axios
+      .get("/api/profile")
       .then((res) => {
         setIsAuthenticated(true);
         const { user } = res.data;
@@ -86,15 +100,15 @@ export function CheckoutPageClient() {
 
   // Detect if the user has changed any field from their stored profile values
   const currentValues = watch();
-  const isChanged = !!storedProfile && (
-    currentValues.customerName !== (storedProfile.name || "") ||
-    currentValues.email !== (storedProfile.email || "") ||
-    currentValues.phone !== (storedProfile.phone || "") ||
-    currentValues.street !== (storedProfile.shippingAddress?.street || "") ||
-    currentValues.city !== (storedProfile.shippingAddress?.city || "") ||
-    currentValues.state !== (storedProfile.shippingAddress?.state || "") ||
-    currentValues.zipCode !== (storedProfile.shippingAddress?.zipCode || "")
-  );
+  const isChanged =
+    !!storedProfile &&
+    (currentValues.customerName !== (storedProfile.name || "") ||
+      currentValues.email !== (storedProfile.email || "") ||
+      currentValues.phone !== (storedProfile.phone || "") ||
+      currentValues.street !== (storedProfile.shippingAddress?.street || "") ||
+      currentValues.city !== (storedProfile.shippingAddress?.city || "") ||
+      currentValues.state !== (storedProfile.shippingAddress?.state || "") ||
+      currentValues.zipCode !== (storedProfile.shippingAddress?.zipCode || ""));
 
   // Coupon
   const [coupon, setCoupon] = useState({
@@ -102,6 +116,7 @@ export function CheckoutPageClient() {
     applied: false,
     discount: 0,
     loading: false,
+    error: "",
   });
 
   // Mobile sticky
@@ -111,11 +126,12 @@ export function CheckoutPageClient() {
   const pricing = usePricingSettings();
 
   // Calculation
-  const subtotal = getTotal();
   const shippingFree = subtotal >= pricing.shippingThreshold;
   const shippingCost = shippingFree ? 0 : pricing.shippingCost;
   const discountedSubtotal = Math.max(subtotal - coupon.discount, 0);
-  const taxAmount = Math.round((discountedSubtotal + shippingCost) * pricing.gstRate);
+  const taxAmount = Math.round(
+    (discountedSubtotal + shippingCost) * pricing.gstRate,
+  );
   const totalAmount = discountedSubtotal + shippingCost + taxAmount;
 
   // Mount animation
@@ -136,10 +152,10 @@ export function CheckoutPageClient() {
 
   // Redirect if cart empty (unless success)
   useEffect(() => {
-    if (items.length === 0 && !isSuccess) {
+    if (checkoutItems.length === 0 && !isSuccess) {
       router.push("/cart");
     }
-  }, [items.length, isSuccess, router]);
+  }, [checkoutItems.length, isSuccess, router]);
 
   // Intersection observer for mobile sticky bar
   useEffect(() => {
@@ -147,11 +163,11 @@ export function CheckoutPageClient() {
     if (!btn) return;
     const observer = new IntersectionObserver(
       ([entry]) => setShowStickyBar(!entry.isIntersecting),
-      { threshold: 0 }
+      { threshold: 0 },
     );
     observer.observe(btn);
     return () => observer.disconnect();
-  }, [items.length]);
+  }, [checkoutItems.length]);
 
   // ─── Coupon handlers ──────────────────────────────────────────────────
 
@@ -161,32 +177,42 @@ export function CheckoutPageClient() {
       return;
     }
 
-    setCoupon((prev) => ({ ...prev, loading: true }));
-    // Simulate coupon validation — replace with actual API call
-    setTimeout(() => {
-      const code = coupon.code.trim().toUpperCase();
-      if (code === "MIST10") {
-        const discount = Math.round(subtotal * 0.1);
-        setCoupon((prev) => ({ ...prev, discount, applied: true }));
-        toast.success(`Coupon applied! You save ${formatPrice(discount)}`);
-      } else if (code === "FIRST50") {
-        const discount = Math.min(Math.round(subtotal * 0.5), 500);
-        setCoupon((prev) => ({ ...prev, discount, applied: true }));
-        toast.success(`Coupon applied! You save ${formatPrice(discount)}`);
-      } else {
-        toast.error("Invalid coupon code");
-      }
-      setCoupon((prev) => ({ ...prev, loading: false }));
-    }, 800);
+    setCoupon((prev) => ({ ...prev, loading: true, error: "" }));
+    try {
+      const res = await axios.post("/api/checkout/promo", {
+        code: coupon.code.trim(),
+        subtotal,
+      });
+      const data = res.data;
+      setCoupon({
+        code: data.code,
+        applied: true,
+        discount: data.discountAmount,
+        loading: false,
+        error: "",
+      });
+      toast.success(
+        `Coupon applied! You save ${formatPrice(data.discountAmount)}`,
+      );
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || "Invalid coupon code";
+      setCoupon((prev) => ({ ...prev, loading: false, error: errorMessage }));
+    }
   };
 
   const handleRemoveCoupon = () => {
-    setCoupon({ code: "", applied: false, discount: 0, loading: false });
+    setCoupon({
+      code: "",
+      applied: false,
+      discount: 0,
+      loading: false,
+      error: "",
+    });
     toast.success("Coupon removed");
   };
 
   const handleCouponCodeChange = (code: string) => {
-    setCoupon((prev) => ({ ...prev, code }));
+    setCoupon((prev) => ({ ...prev, code, error: "" }));
   };
 
   // ─── Form submission + Razorpay ───────────────────────────────────────
@@ -197,7 +223,7 @@ export function CheckoutPageClient() {
     try {
       // Step 1: Create order on backend
       const { data: dataRes } = await axios.post("/api/checkout/create-order", {
-        items: items.map((item) => ({
+        items: checkoutItems.map((item) => ({
           productId: item.id,
           name: item.name,
           quantity: item.quantity,
@@ -206,7 +232,7 @@ export function CheckoutPageClient() {
           size: item.size,
           color: item.color,
         })),
-        subtotal: discountedSubtotal,
+        subtotal: subtotal,
         shippingCost,
         taxAmount,
         totalAmount,
@@ -225,8 +251,8 @@ export function CheckoutPageClient() {
         }),
         saveAddress: data.saveAddress,
         ...(coupon.applied && {
-          couponCode: coupon.code.trim().toUpperCase(),
-          couponDiscount: coupon.discount,
+          promoCode: coupon.code,
+          discountAmount: coupon.discount,
         }),
       });
 
@@ -250,15 +276,24 @@ export function CheckoutPageClient() {
         handler: async (response: any) => {
           try {
             // Step 3: Verify payment
-            await axios.post("/api/checkout/verify-payment", {
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            });
+            const { data: verifyRes } = await axios.post(
+              "/api/checkout/verify-payment",
+              {
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              },
+            );
 
-            setOrderId(dataRes.orderId);
+            setOrderId(verifyRes.orderId);
             setIsSuccess(true);
-            clearCart();
+
+            if (buyNowItem) {
+              setBuyNowItem(null);
+            } else {
+              clearCart();
+            }
+
             toast.success("Payment successful! Your order has been placed.");
           } catch (err) {
             toast.error("Payment verification failed. Please contact support.");
@@ -275,14 +310,15 @@ export function CheckoutPageClient() {
       const razorpay = new window.Razorpay(options);
       razorpay.on("payment.failed", (response: any) => {
         toast.error(
-          response.error?.description || "Payment failed. Please try again."
+          response.error?.description || "Payment failed. Please try again.",
         );
         setIsLoading(false);
       });
       razorpay.open();
     } catch (err: any) {
       toast.error(
-        err.response?.data?.message || "Something went wrong. Please try again."
+        err.response?.data?.message ||
+          "Something went wrong. Please try again.",
       );
       setIsLoading(false);
     }
@@ -294,7 +330,7 @@ export function CheckoutPageClient() {
     return <CheckoutSuccess orderId={orderId} />;
   }
 
-  if (items.length === 0) {
+  if (checkoutItems.length === 0) {
     return null; // Will redirect in useEffect
   }
 
@@ -325,8 +361,8 @@ export function CheckoutPageClient() {
                 Checkout
               </h1>
               <p className="font-montserrat text-xs text-muted-text font-normal">
-                {getItemCount()} item{getItemCount() !== 1 ? "s" : ""} in your
-                bag
+                {checkoutItemCount} item{checkoutItemCount !== 1 ? "s" : ""} in
+                your bag
               </p>
             </div>
           </div>
@@ -339,9 +375,7 @@ export function CheckoutPageClient() {
             id="checkout-form"
             onSubmit={handleSubmit(onSubmit)}
             className={`grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8 transition-all duration-700 ${
-              mounted
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-4"
+              mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             }`}
           >
             {/* Left — Shipping Form */}
@@ -356,7 +390,7 @@ export function CheckoutPageClient() {
 
             {/* Right — Order Summary */}
             <CheckoutOrderSummary
-              items={items}
+              items={checkoutItems}
               subtotal={subtotal}
               shippingFree={shippingFree}
               shippingCost={shippingCost}
@@ -369,13 +403,14 @@ export function CheckoutPageClient() {
               onRemoveCoupon={handleRemoveCoupon}
               isLoading={isLoading}
               payBtnRef={payBtnRef}
+              gstRate={pricing.gstRate}
             />
           </form>
         </div>
       </div>
 
       {/* Mobile sticky pay bar */}
-      {items.length > 0 && showStickyBar && (
+      {checkoutItems.length > 0 && showStickyBar && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-cornsilk/95 backdrop-blur-md border-t border-olive/15 p-4 flex justify-between items-center lg:hidden shadow-[0_-4px_24px_rgba(40,54,24,0.08)]">
           <div>
             <p className="font-montserrat text-[10px] text-muted-text uppercase tracking-wider">

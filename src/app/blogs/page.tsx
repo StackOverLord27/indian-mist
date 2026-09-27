@@ -122,46 +122,51 @@ export default async function BlogsPage({
           </div>
         ) : (
           <>
-            {/* Featured post (first post, larger) */}
+            {/* Featured post (first post, bounded compact size) */}
             {blogs.length > 0 && (
               <Link
                 href={`/blogs/${blogs[0].slug}`}
                 className="group block mb-12"
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 bg-card-bg rounded-md overflow-hidden border border-olive/8 hover:border-olive/20 transition-all duration-300">
-                  {/* Image */}
-                  <div className="aspect-[16/10] md:aspect-auto md:h-full overflow-hidden">
-                    {blogs[0].coverImage?.url ? (
-                      <img
-                        src={blogs[0].coverImage.url}
-                        alt={blogs[0].coverImage.alt || blogs[0].title}
-                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full min-h-[280px] bg-olive/10 flex items-center justify-center">
-                        <span className="font-merriweather text-5xl text-olive/15">
-                          IM
-                        </span>
-                      </div>
-                    )}
+                <div className="grid grid-cols-1 md:grid-cols-12 bg-card-bg rounded-md overflow-hidden border border-olive/12 hover:border-olive/30 transition-all duration-300 hover:shadow-md">
+                  {/* Left Column: Framed Image with fixed bounded height */}
+                  <div className="md:col-span-5 bg-card/60 p-4 sm:p-5 flex items-center justify-center border-b md:border-b-0 md:border-r border-olive/10">
+                    <div className="relative w-full h-[240px] sm:h-[270px] md:h-[290px] bg-warm/30 border border-olive/15 rounded-xs p-3 flex items-center justify-center overflow-hidden shadow-xs">
+                      {blogs[0].coverImage?.url ? (
+                        <img
+                          src={blogs[0].coverImage.url}
+                          alt={blogs[0].coverImage.alt || blogs[0].title}
+                          className="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-olive/10 flex items-center justify-center">
+                          <span className="font-merriweather text-4xl text-olive/20">
+                            IM
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {/* Content */}
-                  <div className="p-6 md:p-8 flex flex-col justify-center">
-                    <div className="flex items-center gap-3 mb-4">
+
+                  {/* Right Column: Content */}
+                  <div className="md:col-span-7 p-6 sm:p-8 flex flex-col justify-center">
+                    <div className="flex items-center gap-3 mb-3">
                       <span className="font-montserrat text-[10px] uppercase tracking-widest text-copper font-semibold bg-clay/15 px-2.5 py-1 rounded-sm">
                         {blogs[0].category}
                       </span>
-                      <span className="font-montserrat text-[10px] text-muted-text">
+                      <span className="font-montserrat text-[10px] text-muted-text font-medium">
                         Featured
                       </span>
                     </div>
                     <h2 className="font-merriweather text-2xl md:text-3xl text-forest leading-snug group-hover:text-olive transition-colors">
                       {blogs[0].title}
                     </h2>
-                    <p className="font-montserrat text-sm text-muted-text mt-3 leading-relaxed line-clamp-3">
-                      {blogs[0].excerpt}
-                    </p>
-                    <div className="flex items-center gap-4 mt-6">
+                    {blogs[0].excerpt && (
+                      <p className="font-montserrat text-sm text-muted-text mt-3 leading-relaxed line-clamp-3">
+                        {blogs[0].excerpt}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-4 mt-5">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="size-3.5 text-olive/50" />
                         <span className="font-montserrat text-xs text-muted-text">
@@ -175,7 +180,7 @@ export default async function BlogsPage({
                         </span>
                       </div>
                     </div>
-                    <div className="mt-6 flex items-center gap-2 font-montserrat text-xs uppercase tracking-wider text-olive font-semibold group-hover:gap-3 transition-all">
+                    <div className="mt-5 flex items-center gap-2 font-montserrat text-xs uppercase tracking-wider text-olive font-semibold group-hover:gap-3 transition-all">
                       Read Article
                       <ArrowRight className="size-4" />
                     </div>
@@ -195,12 +200,12 @@ export default async function BlogsPage({
                   >
                     <article className="bg-card-bg rounded-md overflow-hidden border border-olive/8 hover:border-olive/20 transition-all duration-300 hover:shadow-sm h-full flex flex-col">
                       {/* Cover */}
-                      <div className="aspect-[16/10] overflow-hidden">
+                      <div className="h-44 w-full bg-warm/30 p-2.5 flex items-center justify-center overflow-hidden border-b border-olive/8">
                         {blog.coverImage?.url ? (
                           <img
                             src={blog.coverImage.url}
                             alt={blog.coverImage.alt || blog.title}
-                            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                            className="w-full h-full object-contain group-hover:scale-[1.03] transition-transform duration-300"
                           />
                         ) : (
                           <div className="w-full h-full bg-olive/10 flex items-center justify-center">

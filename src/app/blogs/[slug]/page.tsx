@@ -68,22 +68,10 @@ export default async function BlogPostPage({
 
   return (
     <div className="bg-cornsilk min-h-screen">
-      {/* Cover image hero */}
-      {blog.coverImage?.url && (
-        <div className="relative w-full h-[340px] md:h-[440px] overflow-hidden bg-forest">
-          <img
-            src={blog.coverImage.url}
-            alt={blog.coverImage.alt || blog.title}
-            className="w-full h-full object-cover opacity-80"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-forest/80 via-forest/30 to-transparent" />
-        </div>
-      )}
-
-      <div className="max-w-3xl mx-auto px-6 md:px-12 lg:px-16">
-        {/* Breadcrumb */}
+      {/* Breadcrumb section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 pt-6 pb-2">
         <Breadcrumb
-          className="pt-8 pb-4"
+          className="pt-2 pb-2"
           items={[
             { label: "Home", href: "/" },
             { label: "Blog", href: "/blogs" },
@@ -94,94 +82,143 @@ export default async function BlogPostPage({
             { label: blog.title },
           ]}
         />
+      </div>
 
-        {/* Article header */}
-        <header className="mb-10">
-          <span className="inline-block font-montserrat text-[10px] uppercase tracking-widest text-copper font-semibold bg-clay/15 px-2.5 py-1 rounded-sm mb-4">
-            {blog.category}
-          </span>
+      {/* Main split layout container */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 pt-4 pb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 xl:gap-16 items-start">
+          
+          {/* Left Column: Framed cover image box (compact, bounded height) */}
+          <div className="lg:col-span-4 xl:col-span-4 lg:sticky lg:top-24">
+            {blog.coverImage?.url ? (
+              <div className="bg-card/90 backdrop-blur-xs border-2 border-olive/20 rounded-md p-3 sm:p-3.5 shadow-sm hover:shadow-md transition-shadow">
+                {/* Gallery frame matting & border */}
+                <div className="bg-warm/30 border border-olive/15 rounded-xs p-2.5 sm:p-3 flex items-center justify-center h-[260px] sm:h-[300px] md:h-[340px] overflow-hidden">
+                  <img
+                    src={blog.coverImage.url}
+                    alt={blog.coverImage.alt || blog.title}
+                    className="w-full h-full max-h-[310px] object-contain rounded-xs transition-transform duration-300 hover:scale-[1.01]"
+                  />
+                </div>
 
-          <h1 className="font-merriweather text-3xl md:text-4xl lg:text-[2.75rem] font-normal text-forest leading-tight">
-            {blog.title}
-          </h1>
-
-          <p className="font-montserrat text-base text-muted-text mt-4 leading-relaxed">
-            {blog.excerpt}
-          </p>
-
-          {/* Meta */}
-          <div className="flex items-center flex-wrap gap-4 mt-6 pt-6 border-t border-olive/10">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-olive/15 flex items-center justify-center">
-                <User className="size-4 text-olive" />
+                {/* Frame footer / caption */}
+                <div className="mt-2.5 px-1 flex items-center justify-between text-[11px] font-montserrat text-muted-text/80">
+                  <span className="truncate max-w-[180px] sm:max-w-[200px]">
+                    {blog.coverImage.alt || blog.title}
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider text-olive/80 font-semibold ml-2 shrink-0">
+                    {blog.category}
+                  </span>
+                </div>
               </div>
-              <span className="font-montserrat text-xs text-forest font-medium">
-                {blog.author}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Calendar className="size-3.5 text-olive/50" />
-              <span className="font-montserrat text-xs text-muted-text">
-                {formatDate(blog.publishedAt || blog.createdAt)}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Clock className="size-3.5 text-olive/50" />
-              <span className="font-montserrat text-xs text-muted-text">
-                {blog.readTime} min read
-              </span>
-            </div>
+            ) : (
+              <div className="bg-card/90 border-2 border-olive/20 rounded-md p-6 h-[240px] flex items-center justify-center bg-warm/20 text-olive/30 font-merriweather text-xl">
+                Indian Mist
+              </div>
+            )}
           </div>
 
-          {/* Tags */}
-          {blog.tags?.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              {blog.tags.map((tag: string) => (
-                <span
-                  key={tag}
-                  className="font-montserrat text-[10px] text-muted-text border border-olive/15 rounded-sm px-2 py-0.5"
-                >
-                  #{tag}
-                </span>
-              ))}
+          {/* Right Column: Write-up & everything */}
+          <div className={blog.coverImage?.url ? "lg:col-span-8 xl:col-span-8 min-w-0" : "lg:col-span-8 lg:col-start-3 min-w-0"}>
+            <header className="mb-8">
+              <span className="inline-block font-montserrat text-[10px] uppercase tracking-widest text-copper font-semibold bg-clay/15 px-3 py-1 rounded-sm mb-4">
+                {blog.category}
+              </span>
+
+              <h1 className="font-merriweather text-3xl sm:text-4xl lg:text-[2.65rem] font-normal text-forest leading-[1.25] tracking-tight">
+                {blog.title}
+              </h1>
+
+              {blog.excerpt && (
+                <p className="font-montserrat text-base sm:text-lg text-muted-text/90 mt-4 leading-relaxed font-light border-l-2 border-olive/30 pl-4 py-0.5">
+                  {blog.excerpt}
+                </p>
+              )}
+
+              {/* Author & Meta bar */}
+              <div className="flex items-center flex-wrap gap-4 sm:gap-6 mt-6 pt-5 pb-5 border-y border-olive/10">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-olive/15 flex items-center justify-center text-olive">
+                    <User className="size-4" />
+                  </div>
+                  <div>
+                    <p className="font-montserrat text-xs text-forest font-semibold leading-tight">
+                      {blog.author || "Indian Mist Staff"}
+                    </p>
+                    <p className="font-montserrat text-[10px] text-muted-text mt-0.5">
+                      Author
+                    </p>
+                  </div>
+                </div>
+
+                <div className="h-6 w-px bg-olive/10 hidden sm:block" />
+
+                <div className="flex items-center gap-1.5 text-muted-text">
+                  <Calendar className="size-3.5 text-olive/60" />
+                  <span className="font-montserrat text-xs">
+                    {formatDate(blog.publishedAt || blog.createdAt)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-muted-text">
+                  <Clock className="size-3.5 text-olive/60" />
+                  <span className="font-montserrat text-xs">
+                    {blog.readTime} min read
+                  </span>
+                </div>
+              </div>
+
+              {/* Tags */}
+              {blog.tags?.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {blog.tags.map((tag: string) => (
+                    <span
+                      key={tag}
+                      className="font-montserrat text-[10px] text-muted-text bg-olive/5 border border-olive/15 rounded-sm px-2.5 py-0.5 font-medium"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </header>
+
+            {/* Article content */}
+            <article
+              className="prose prose-lg max-w-none
+                font-montserrat text-forest/90 leading-[1.85]
+                prose-headings:font-merriweather prose-headings:text-forest prose-headings:font-normal
+                prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4 prose-h2:border-b prose-h2:border-olive/10 prose-h2:pb-2
+                prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3
+                prose-p:mb-5 prose-p:text-[15px] prose-p:leading-[1.85]
+                prose-a:text-olive prose-a:underline-offset-2 prose-a:decoration-olive/30 hover:prose-a:decoration-olive
+                prose-strong:text-forest prose-strong:font-semibold
+                prose-ul:my-4 prose-li:my-1 prose-li:text-[15px]
+                prose-ol:my-4
+                prose-blockquote:border-l-2 prose-blockquote:border-olive prose-blockquote:bg-olive/5 prose-blockquote:p-4 prose-blockquote:rounded-r-sm prose-blockquote:text-forest/80 prose-blockquote:font-merriweather prose-blockquote:not-italic
+                prose-img:rounded-md prose-img:shadow-sm prose-img:border prose-img:border-olive/10
+                pb-12"
+              dangerouslySetInnerHTML={{ __html: blog.content }}
+            />
+
+            {/* Back link */}
+            <div className="border-t border-olive/10 pt-6 pb-6">
+              <Link
+                href="/blogs"
+                className="inline-flex items-center gap-2 font-montserrat text-xs uppercase tracking-widest text-olive hover:text-forest transition-colors font-semibold"
+              >
+                <ArrowLeft className="size-4" />
+                Back to all posts
+              </Link>
             </div>
-          )}
-        </header>
-
-        {/* Article content */}
-        <article
-          className="prose prose-lg max-w-none
-            font-montserrat text-forest/90 leading-[1.85]
-            prose-headings:font-merriweather prose-headings:text-forest prose-headings:font-normal
-            prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-4
-            prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3
-            prose-p:mb-5 prose-p:text-[15px]
-            prose-a:text-olive prose-a:underline-offset-2 prose-a:decoration-olive/30 hover:prose-a:decoration-olive
-            prose-strong:text-forest prose-strong:font-semibold
-            prose-ul:my-4 prose-li:my-1 prose-li:text-[15px]
-            prose-ol:my-4
-            prose-blockquote:border-olive/30 prose-blockquote:text-forest/70 prose-blockquote:not-italic prose-blockquote:font-merriweather
-            prose-img:rounded-md prose-img:shadow-sm
-            pb-16 mb-0"
-          dangerouslySetInnerHTML={{ __html: blog.content }}
-        />
-
-        {/* Back link */}
-        <div className="border-t border-olive/10 pt-8 pb-10">
-          <Link
-            href="/blogs"
-            className="inline-flex items-center gap-2 font-montserrat text-xs uppercase tracking-widest text-olive hover:text-forest transition-colors"
-          >
-            <ArrowLeft className="size-4" />
-            Back to all posts
-          </Link>
+          </div>
         </div>
       </div>
 
       {/* Related posts */}
       {related.length > 0 && (
         <section className="bg-warm-mist border-t border-olive/8">
-          <div className="max-w-6xl mx-auto px-6 md:px-12 lg:px-16 py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 py-16">
             <h2 className="font-merriweather text-xl text-forest mb-8">
               More from {blog.category}
             </h2>

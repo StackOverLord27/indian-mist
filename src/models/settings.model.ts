@@ -76,8 +76,23 @@ const SettingsSchema = new mongoose.Schema({
   pricingSettings: {
     shippingCost: { type: Number, default: 99 },
     freeShippingThreshold: { type: Number, default: 999 },
-    gstRate: { type: Number, default: 18 }, // stored as a percentage, e.g. 18 means 18%
+    gstRate: { type: Number, default: 18 },
     showPricesInclusiveOfGst: { type: Boolean, default: false },
+    promoCodes: {
+      type: [{
+        code: { type: String, required: true },
+        discountType: { type: String, enum: ['PERCENTAGE', 'FIXED'], required: true },
+        discountValue: { type: Number, required: true },
+        isActive: { type: Boolean, default: true },
+        minOrderValue: { type: Number, default: 0 },
+        maxUses: { type: Number, default: 0 },          // 0 = unlimited
+        maxUsesPerUser: { type: Number, default: 1 },    // default 1 use per user
+        description: { type: String, default: '' },
+        expiresAt: { type: Date, default: null },
+        createdAt: { type: Date, default: Date.now },
+      }],
+      default: []
+    }
   },
 }, { collection: 'sitesettings', timestamps: true });
 

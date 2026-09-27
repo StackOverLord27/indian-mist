@@ -67,3 +67,26 @@ export const useDeleteBlog = () => {
     },
   });
 };
+
+export const useBlogCategories = () => {
+  return useQuery({
+    queryKey: ['admin-blog-categories'],
+    queryFn: api.fetchBlogCategories,
+  });
+};
+
+export const useCreateBlogCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (name: string) => api.createBlogCategory(name),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['admin-blog-categories'], data.categories);
+      void queryClient.invalidateQueries({ queryKey: ['admin-blog-categories'] });
+      toast.success(`Category "${data.category}" created`);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create category');
+    },
+  });
+};

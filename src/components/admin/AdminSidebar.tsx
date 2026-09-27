@@ -13,7 +13,9 @@ import {
   LogOut,
   LayoutTemplate,
   Library,
-  PenLine
+  PenLine,
+  ShoppingBag,
+  Receipt
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { User } from '@/types/admin';
@@ -59,6 +61,13 @@ export default function AdminSidebar() {
         { label: 'Layout & Text', href: '/admin/homepage', icon: LayoutTemplate, exact: true },
         { label: 'Announcements', href: '/admin/announcements', icon: Megaphone, exact: true },
         { label: 'Carousel', href: '/admin/carousel', icon: Images, exact: true },
+      ]
+    },
+    {
+      label: 'Sales',
+      items: [
+        { label: 'Orders', href: '/admin/orders', icon: ShoppingBag, exact: false },
+        { label: 'Pricing & Promos', href: '/admin/pricing', icon: Receipt, exact: true },
       ]
     },
     {

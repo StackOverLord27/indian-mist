@@ -18,6 +18,9 @@ export interface IOrder extends Document {
   subtotal: number;
   shippingCost: number;
   taxAmount: number;
+  discountAmount?: number;
+  promoCode?: string;
+  deliveryNotes?: string;
   paymentStatus: "UNPAID" | "PAID" | "FAILED";
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
@@ -59,6 +62,9 @@ const OrderSchema: Schema = new Schema(
     subtotal: { type: Number, default: 0 },
     shippingCost: { type: Number, default: 0 },
     taxAmount: { type: Number, default: 0 },
+    discountAmount: { type: Number, default: 0 },
+    promoCode: { type: String },
+    deliveryNotes: { type: String },
     paymentStatus: {
       type: String,
       enum: ["UNPAID", "PAID", "FAILED"],
@@ -80,6 +86,9 @@ const OrderSchema: Schema = new Schema(
   },
   { timestamps: true }
 );
+
+// Add compound index to make promo code validation instantaneous
+OrderSchema.index({ userId: 1, promoCode: 1 });
 
 export const Order: Model<IOrder> =
   mongoose.models.Order || mongoose.model<IOrder>("Order", OrderSchema);

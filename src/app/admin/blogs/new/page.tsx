@@ -7,13 +7,7 @@ import { ArrowLeft, Upload, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 
-const BLOG_CATEGORIES = [
-  'Trail Stories',
-  'Gear Guides',
-  'Sustainability',
-  'Brand Updates',
-  'Tips & Tricks',
-];
+import BlogCategorySelect from '@/components/admin/BlogCategorySelect';
 
 export default function AdminNewBlogPage() {
   const createBlog = useCreateBlog();
@@ -230,19 +224,11 @@ export default function AdminNewBlogPage() {
 
           {/* Category */}
           <AdminCard title="Category">
-            <select
+            <BlogCategorySelect
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={setCategory}
               required
-              className="w-full font-montserrat text-sm text-forest bg-cornsilk border border-olive/15 rounded-sm p-2.5 focus:border-olive outline-none"
-            >
-              <option value="">Select a category...</option>
-              {BLOG_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+            />
           </AdminCard>
 
           {/* Author */}

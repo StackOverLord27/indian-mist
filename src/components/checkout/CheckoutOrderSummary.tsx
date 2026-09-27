@@ -3,8 +3,6 @@
 import Image from "next/image";
 import {
   LockKeyhole,
-  Leaf,
-  RefreshCw,
   ShieldCheck,
   Package,
   Loader2,
@@ -12,9 +10,9 @@ import {
   Sparkles,
   Gift,
   X,
+  AlertCircle,
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
-import { GST_RATE } from "@/lib/constants";
 
 interface CartItem {
   id: string;
@@ -31,6 +29,7 @@ interface CouponState {
   applied: boolean;
   discount: number;
   loading: boolean;
+  error?: string;
 }
 
 interface CheckoutOrderSummaryProps {
@@ -47,6 +46,7 @@ interface CheckoutOrderSummaryProps {
   onRemoveCoupon: () => void;
   isLoading: boolean;
   payBtnRef: React.RefObject<HTMLButtonElement | null>;
+  gstRate?: number;
 }
 
 export function CheckoutOrderSummary({
@@ -63,7 +63,9 @@ export function CheckoutOrderSummary({
   onRemoveCoupon,
   isLoading,
   payBtnRef,
+  gstRate = 0.18,
 }: CheckoutOrderSummaryProps) {
+  const gstPercent = Math.round(gstRate * 100);
   return (
     <div className="lg:sticky lg:top-20 self-start space-y-5">
       {/* Order items card */}
@@ -173,6 +175,13 @@ export function CheckoutOrderSummary({
               </button>
             </div>
           )}
+          
+          {coupon.error && (
+            <div className="mt-2 text-[10px] font-montserrat text-red-500 font-medium bg-red-50/50 p-2 rounded-sm border border-red-100/50 flex items-start gap-1.5 transition-all">
+              <span className="mt-0.5">•</span>
+              <span>{coupon.error}</span>
+            </div>
+          )}
         </div>
 
         {/* Pricing */}
@@ -220,7 +229,7 @@ export function CheckoutOrderSummary({
 
           <div className="flex justify-between items-center">
             <span className="font-montserrat text-sm text-muted-text">
-              GST (18%)
+              GST ({gstPercent}%)
             </span>
             <span className="font-montserrat text-sm text-forest font-medium">
               {formatPrice(taxAmount)}
@@ -236,7 +245,7 @@ export function CheckoutOrderSummary({
           <div className="text-right">
             {coupon.applied && coupon.discount > 0 && (
               <span className="font-montserrat text-xs text-muted-text line-through block mb-0.5">
-                {formatPrice(subtotal + shippingCost + Math.round((subtotal + shippingCost) * GST_RATE))}
+                {formatPrice(subtotal + shippingCost + Math.round((subtotal + shippingCost) * gstRate))}
               </span>
             )}
             <span className="font-merriweather text-2xl font-bold text-forest">
@@ -278,18 +287,6 @@ export function CheckoutOrderSummary({
             <ShieldCheck className="text-olive/60 size-3" />
             <span className="font-montserrat text-[10px] text-muted-text/70">
               PCI DSS compliant payment processing
-            </span>
-          </div>
-          <div className="flex items-center justify-center gap-1.5">
-            <RefreshCw className="text-olive/60 size-3" />
-            <span className="font-montserrat text-[10px] text-muted-text/70">
-              Free returns within 30 days
-            </span>
-          </div>
-          <div className="flex items-center justify-center gap-1.5">
-            <Leaf className="text-olive/60 size-3" />
-            <span className="font-montserrat text-[10px] text-muted-text/70">
-              Carbon-neutral delivery
             </span>
           </div>
         </div>

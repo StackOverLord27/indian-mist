@@ -58,7 +58,13 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
 
               {/* Status */}
               <p className={`w-24 text-center font-montserrat text-xs font-bold uppercase tracking-widest ${STATUS_COLOR[order.status] ?? "text-black-forest"}`}>
-                {order.status}
+                {
+                  order.status === "PROCESSING" || order.status === "SHIPPED"
+                    ? "IN PROGRESS"
+                    : order.status === "DELIVERED"
+                    ? "COMPLETED"
+                    : order.status
+                }
               </p>
 
               {/* Total */}

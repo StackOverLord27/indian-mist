@@ -1,15 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, Tag } from "lucide-react";
 import { CartItemCard } from "@/components/cart/CartItemCard";
 import { useCartStore } from "@/lib/cart-store";
-import { Button } from "@/components/ui/button";
 
 export function CartItemList() {
   const { items } = useCartStore();
-  const [promoCode, setPromoCode] = useState("");
 
   return (
     <div>
@@ -33,27 +30,16 @@ export function CartItemList() {
         Continue Shopping
       </Link>
 
-      {/* Promo code */}
+      {/* Promo hint */}
       <div className="mt-6 pt-6 border-t border-olive/10">
-        <label className="font-montserrat text-xs font-semibold uppercase tracking-wider text-forest mb-2 block">
-          Promo Code
-        </label>
-        <div className="flex gap-0">
-          <input
-            type="text"
-            value={promoCode}
-            onChange={(e) => setPromoCode(e.target.value)}
-            placeholder="Enter promo code"
-            className="flex-1 px-4 py-2.5 bg-cornsilk border border-olive/25 rounded-l-sm border-r-0 font-montserrat text-sm text-forest outline-none focus:border-olive transition-colors placeholder:text-muted-text/60"
-          />
-          <Button
-            onClick={() => {/* wire promo logic */}}
-            className="bg-forest text-cornsilk px-5 py-2.5 font-montserrat text-xs font-semibold uppercase tracking-wider rounded-r-sm rounded-l-none hover:bg-olive transition-colors h-auto"
-          >
-            Apply
-          </Button>
+        <div className="flex items-center gap-2 text-olive/60">
+          <Tag className="size-3.5" />
+          <span className="font-montserrat text-xs text-olive/60">
+            Have a promo code? You can apply it at checkout.
+          </span>
         </div>
       </div>
     </div>
   );
 }
+

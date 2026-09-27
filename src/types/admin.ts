@@ -117,6 +117,20 @@ export interface BrandStorySettings {
   imageUrl?: string;
 }
 
+export interface PromoCode {
+  _id?: string;
+  code: string;
+  discountType: 'PERCENTAGE' | 'FIXED';
+  discountValue: number;
+  isActive: boolean;
+  minOrderValue?: number;
+  maxUses?: number;          // 0 = unlimited
+  maxUsesPerUser?: number;   // default 1
+  description?: string;
+  expiresAt?: string | null;
+  createdAt?: string;
+}
+
 export interface PricingSettings {
   /** Flat shipping fee in INR when order is below threshold */
   shippingCost?: number;
@@ -126,6 +140,7 @@ export interface PricingSettings {
   gstRate?: number;
   /** When true, displayed prices are GST-inclusive */
   showPricesInclusiveOfGst?: boolean;
+  promoCodes?: PromoCode[];
 }
 
 export interface SiteSettings {

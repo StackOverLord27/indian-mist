@@ -4,6 +4,11 @@ import Settings from '@/models/settings.model';
 
 export const GET = withDB(async () => {
   const settings = await Settings.findOne().lean();
+  
+  if (settings?.pricingSettings?.promoCodes) {
+    delete settings.pricingSettings.promoCodes;
+  }
+  
   return successResponse({ settings: settings ?? {} });
 });
 

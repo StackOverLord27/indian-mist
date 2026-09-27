@@ -17,6 +17,8 @@ export type CartItem = {
 
 type CartStore = {
   items: CartItem[];
+  buyNowItem: CartItem | null;
+  setBuyNowItem: (item: CartItem | null) => void;
   addItem: (item: CartItem) => void;
   removeItem: (id: string, size?: string, color?: string) => void;
   updateQuantity: (
@@ -38,6 +40,9 @@ export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],
+      buyNowItem: null,
+      
+      setBuyNowItem: (item) => set({ buyNowItem: item }),
 
       addItem: (item) => {
         const key = itemKey(item.id, item.size, item.color);
