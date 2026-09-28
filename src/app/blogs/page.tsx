@@ -131,7 +131,7 @@ export default async function BlogsPage({
                 <div className="grid grid-cols-1 md:grid-cols-12 bg-card-bg rounded-md overflow-hidden border border-olive/12 hover:border-olive/30 transition-all duration-300 hover:shadow-md">
                   {/* Left Column: Framed Image with fixed bounded height */}
                   <div className="md:col-span-5 bg-card/60 p-4 sm:p-5 flex items-center justify-center border-b md:border-b-0 md:border-r border-olive/10">
-                    <div className="relative w-full h-[240px] sm:h-[270px] md:h-[290px] bg-warm/30 border border-olive/15 rounded-xs p-3 flex items-center justify-center overflow-hidden shadow-xs">
+                    <div className="relative w-full h-[200px] sm:h-[220px] md:h-[240px] bg-warm/30 border border-olive/15 rounded-xs p-3 flex items-center justify-center overflow-hidden shadow-xs">
                       {blogs[0].coverImage?.url ? (
                         <img
                           src={blogs[0].coverImage.url}

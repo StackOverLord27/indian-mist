@@ -45,27 +45,38 @@ export async function proxy(req: NextRequest) {
   if (pathname.startsWith("/api/")) {
     try {
       const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+      const isDev = process.env.NODE_ENV === "development";
+      const isLocalhost = ip === "127.0.0.1" || ip === "::1" || ip.includes("127.0.0.1");
 
-      // Determine which rate limiter to use
-      const isAuthRoute = pathname.startsWith("/api/auth/");
-      const ratelimit = isAuthRoute ? getAuthRateLimit() : getGlobalApiRateLimit();
+      // In development mode on localhost, skip aggressive rate limiting to prevent dev HMR lockouts
+      if (!isDev || !isLocalhost) {
+        // Only apply strict auth rate limiter to credential submission endpoints
+        const isStrictAuthRoute =
+          pathname === "/api/auth/signin" ||
+          pathname === "/api/auth/signup" ||
+          pathname === "/api/auth/verify-otp" ||
+          pathname === "/api/auth/forgot-password";
 
-      // If rate limiter is available (Redis configured), enforce limits
-      if (ratelimit) {
-        const { success, limit, remaining, reset } = await ratelimit.limit(ip);
+        const ratelimit = isStrictAuthRoute
+          ? getAuthRateLimit()
+          : getGlobalApiRateLimit();
 
-        if (!success) {
-          return NextResponse.json(
-            { error: "Too many requests. Please try again later." },
-            {
-              status: 429,
-              headers: {
-                "X-RateLimit-Limit": limit.toString(),
-                "X-RateLimit-Remaining": remaining.toString(),
-                "X-RateLimit-Reset": reset.toString(),
-              },
-            }
-          );
+        if (ratelimit) {
+          const { success, limit, remaining, reset } = await ratelimit.limit(ip);
+
+          if (!success) {
+            return NextResponse.json(
+              { error: "Too many requests. Please try again later." },
+              {
+                status: 429,
+                headers: {
+                  "X-RateLimit-Limit": limit.toString(),
+                  "X-RateLimit-Remaining": remaining.toString(),
+                  "X-RateLimit-Reset": reset.toString(),
+                },
+              }
+            );
+          }
         }
       }
     } catch (error) {
@@ -115,8 +126,14 @@ export async function proxy(req: NextRequest) {
       );
     }
 
-    // Page route — redirect to appropriate login page.
-    // Admin routes go to the admin login, public routes go to /signin.
+    // Page route — if user has a refresh_token cookie, allow the page to render
+    // so client components (like AdminProtectedRoute) can silently refresh without redirecting!
+    const refreshToken = req.cookies.get("refresh_token")?.value;
+    if (refreshToken) {
+      return NextResponse.next();
+    }
+
+    // Page route — redirect to appropriate login page when no tokens exist.
     const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/');
     if (isAdminPage) {
       return NextResponse.redirect(new URL('/admin/login', req.url));

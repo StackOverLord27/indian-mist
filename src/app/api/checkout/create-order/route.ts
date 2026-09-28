@@ -6,11 +6,6 @@ import { Order } from "@/models/order.model";
 import { User } from "@/models/user.model";
 import Razorpay from "razorpay";
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
-
 export const POST = withDB(async (req: NextRequest) => {
   const userId = req.headers.get("x-user-id");
   if (!userId) return errorResponse("Unauthenticated", 401);
@@ -106,6 +101,12 @@ export const POST = withDB(async (req: NextRequest) => {
     validatedDiscount = calculatedDiscount;
   }
 
+  // Initialize Razorpay
+  const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID || "dummy_key_for_build",
+    key_secret: process.env.RAZORPAY_KEY_SECRET || "dummy_secret_for_build",
+  });
+
   // Create Razorpay order
   const razorpayOrder = await razorpay.orders.create({
     amount: Math.round(totalAmount * 100), // Razorpay expects amount in paise
@@ -117,7 +118,7 @@ export const POST = withDB(async (req: NextRequest) => {
     },
   });
 
-  // Store pending order details in Redis for up to 2 hours
+  // Store pending order details in Redis for up to 30 minutes
   const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
   const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
@@ -156,8 +157,8 @@ export const POST = withDB(async (req: NextRequest) => {
     ...(deliveryNotes?.trim() && { deliveryNotes: deliveryNotes.trim() }),
   };
 
-  // Store the data in Redis securely using the razorpay order id
-  await redis.set(`pending_order_${razorpayOrder.id}`, orderData, { ex: 7200 });
+  // Store the data in Redis securely using the razorpay order id (expires in 30 mins)
+  await redis.set(`pending_order_${razorpayOrder.id}`, orderData, { ex: 1800 });
 
   // If the user checked "Save this address", update their profile
   if (saveAddress) {

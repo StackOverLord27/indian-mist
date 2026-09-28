@@ -14,7 +14,7 @@ export const GET = withDB(async (req: NextRequest) => {
     return errorResponse("User not found", 404);
   }
 
-  const orders = await Order.find({ userId })
+  const orders = await Order.find({ userId, paymentStatus: "PAID" })
     .sort({ createdAt: -1 })
     .populate("items.productId", "name images price slug")
     .lean();

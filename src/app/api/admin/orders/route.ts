@@ -7,14 +7,9 @@ export const GET = withAdmin(async (req: NextRequest) => {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
 
-    let query: any = {};
+    let query: any = { paymentStatus: 'PAID' };
     if (status && status !== 'ALL') {
       query.status = status;
-    }
-
-    // Exclude PENDING orders since they are unpaid checkouts that failed/abandoned
-    if (!status || status === 'ALL') {
-      query.status = { $ne: 'PENDING' };
     }
 
     const orders = await Order.find(query).sort({ createdAt: -1 });

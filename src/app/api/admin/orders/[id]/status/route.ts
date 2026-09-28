@@ -2,9 +2,10 @@ import { NextRequest } from 'next/server';
 import { withAdmin, errorResponse, successResponse } from '@/lib/api-helpers';
 import { Order } from '@/models/order.model';
 
-export const PATCH = withAdmin(async (req: NextRequest, { params }) => {
+export const PATCH = withAdmin(async (req: NextRequest, context: any) => {
   try {
-    const { id } = params as any;
+    const resolvedParams = await Promise.resolve(context?.params);
+    const id = resolvedParams?.id;
     if (!id) return errorResponse('Order ID required', 400);
 
     const body = await req.json();

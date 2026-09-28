@@ -93,11 +93,11 @@ export default async function BlogPostPage({
             {blog.coverImage?.url ? (
               <div className="bg-card/90 backdrop-blur-xs border-2 border-olive/20 rounded-md p-3 sm:p-3.5 shadow-sm hover:shadow-md transition-shadow">
                 {/* Gallery frame matting & border */}
-                <div className="bg-warm/30 border border-olive/15 rounded-xs p-2.5 sm:p-3 flex items-center justify-center h-[260px] sm:h-[300px] md:h-[340px] overflow-hidden">
+                <div className="bg-warm/30 border border-olive/15 rounded-xs p-2.5 sm:p-3 flex items-center justify-center h-[220px] sm:h-[240px] md:h-[260px] overflow-hidden">
                   <img
                     src={blog.coverImage.url}
                     alt={blog.coverImage.alt || blog.title}
-                    className="w-full h-full max-h-[310px] object-contain rounded-xs transition-transform duration-300 hover:scale-[1.01]"
+                    className="w-full h-full max-h-[240px] object-contain rounded-xs transition-transform duration-300 hover:scale-[1.01]"
                   />
                 </div>
 

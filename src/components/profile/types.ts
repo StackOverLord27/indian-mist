@@ -14,15 +14,28 @@ export type UserData = {
   shippingAddress?: ShippingAddress;
 };
 
+export type OrderItemData = {
+  productId?: { _id?: string; name?: string; slug?: string; images?: { url: string }[] } | any;
+  name?: string;
+  quantity: number;
+  priceAtPurchase: number;
+  image?: string;
+  selectedSize?: string;
+  selectedColor?: string;
+};
+
 export type OrderData = {
   _id: string;
   totalAmount: number;
+  subtotal?: number;
+  shippingCost?: number;
+  taxAmount?: number;
+  discountAmount?: number;
+  promoCode?: string;
+  deliveryNotes?: string;
   status: string;
   paymentStatus: string;
   createdAt: string;
-  items: {
-    productId: { name: string; images: { url: string }[] };
-    quantity: number;
-    priceAtPurchase: number;
-  }[];
+  shippingAddress?: ShippingAddress;
+  items: OrderItemData[];
 };

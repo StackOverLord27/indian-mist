@@ -90,6 +90,10 @@ const OrderSchema: Schema = new Schema(
 // Add compound index to make promo code validation instantaneous
 OrderSchema.index({ userId: 1, promoCode: 1 });
 
+if (process.env.NODE_ENV === "development") {
+  delete (mongoose.models as any).Order;
+}
+
 export const Order: Model<IOrder> =
   mongoose.models.Order || mongoose.model<IOrder>("Order", OrderSchema);
 

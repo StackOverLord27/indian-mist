@@ -7,30 +7,72 @@ export const adminAxios = axios.create({
   },
 });
 
-adminAxios.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('im_admin_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: unknown) => void;
+  reject: (reason?: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve();
     }
-  }
-  return config;
-});
+  });
+  failedQueue = [];
+};
 
 adminAxios.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('im_admin_token');
-        localStorage.removeItem('im_admin_user');
-        window.location.href = '/admin/login';
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If 401 and not already retried
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      // Don't loop refresh requests
+      if (originalRequest.url?.includes('/api/auth/refresh')) {
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
+          localStorage.removeItem('im_admin_user');
+          window.location.href = '/admin/login';
+        }
+        return Promise.reject(error);
       }
-    } else if (error.response?.status === 403) {
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then(() => adminAxios(originalRequest))
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        await axios.post('/api/auth/refresh');
+        processQueue(null);
+        return adminAxios(originalRequest);
+      } catch (refreshErr) {
+        processQueue(refreshErr);
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
+          localStorage.removeItem('im_admin_user');
+          window.location.href = '/admin/login';
+        }
+        return Promise.reject(refreshErr);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    if (error.response?.status === 403) {
       if (typeof window !== 'undefined') {
         window.location.href = '/';
       }
     }
+
     return Promise.reject(error);
   }
 );
