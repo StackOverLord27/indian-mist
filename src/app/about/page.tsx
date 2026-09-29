@@ -7,7 +7,8 @@ export default async function AboutPage() {
   let about: AboutContent | null = null;
   
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3000'}/api/admin/about`, { 
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    const res = await fetch(`${baseUrl}/api/admin/about`, { 
       next: { revalidate: 300 } 
     });
     if (res.ok) {
