@@ -176,11 +176,6 @@ function MobileNavItem({
 export function Navbar() {
   const pathname = usePathname();
 
-  // Hide storefront navbar on admin pages
-  if (pathname?.startsWith("/admin")) {
-    return null;
-  }
-
   const isHome = pathname === "/";
   const itemCount = useCartStore((s) => s.items.reduce((sum, i) => sum + i.quantity, 0));
   const wishlistCount = useWishlistStore((s) => s.items.length);
@@ -198,6 +193,11 @@ export function Navbar() {
     []
   );
 
+  // Hide storefront navbar on admin pages
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
+
   return (
     <nav
       className={`sticky z-40 h-16 w-full border-b border-olive-leaf/15 bg-cornsilk ${isHome ? "top-8 sm:top-7" : "top-0"}`}
@@ -206,7 +206,7 @@ export function Navbar() {
         {/* ── Logo ── */}
         <Link
           href="/"
-          className="flex h-full max-w-[140px] shrink-0 items-center md:max-w-[180px]"
+          className="flex h-full max-w-35 shrink-0 items-center md:max-w-45"
           aria-label="Indian Mist home"
         >
           <Image
@@ -236,16 +236,7 @@ export function Navbar() {
 
         {/* ── Right action icons ── */}
         <div className="flex items-center justify-end gap-1 sm:gap-2">
-          {/* Search — visible on lg+ */}
-          <label className="hidden h-9 w-56 items-center gap-2 rounded-full border border-olive-leaf bg-warm-mist px-4 lg:flex">
-            <Search className="size-4 text-olive-leaf" aria-hidden="true" />
-            <span className="sr-only">Search products</span>
-            <input
-              type="search"
-              placeholder="Search"
-              className="min-w-0 flex-1 bg-transparent font-sans text-xs text-black-forest outline-none placeholder:text-olive-leaf/60"
-            />
-          </label>
+
 
           {/* Wishlist */}
           <Link
@@ -304,7 +295,7 @@ export function Navbar() {
                   href="/"
                   onClick={closeMobile}
                   aria-label="Indian Mist home"
-                  className="flex h-full max-w-[140px] items-center"
+                  className="flex h-full max-w-35 items-center"
                 >
                   <Image
                     src="/InCollage_20260513_093524159.png"
@@ -352,19 +343,7 @@ export function Navbar() {
 
               {/* Drawer footer — search + account */}
               <div className="shrink-0 space-y-3 border-t border-olive-leaf/15 px-5 py-4">
-                {/* Search */}
-                <label className="flex h-10 items-center gap-2 rounded-full border border-olive-leaf bg-warm-mist px-4">
-                  <Search
-                    className="size-4 shrink-0 text-olive-leaf"
-                    aria-hidden="true"
-                  />
-                  <span className="sr-only">Search products</span>
-                  <input
-                    type="search"
-                    placeholder="Search products…"
-                    className="min-w-0 flex-1 bg-transparent font-sans text-xs text-black-forest outline-none placeholder:text-olive-leaf/60"
-                  />
-                </label>
+
 
                 {/* Account */}
                 <Link

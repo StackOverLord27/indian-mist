@@ -424,7 +424,7 @@ export function CheckoutPageClient() {
             type="submit"
             form="checkout-form"
             disabled={isLoading}
-            className="bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider px-6 py-3.5 rounded-sm hover:bg-olive transition-colors min-h-[44px] flex items-center gap-2 disabled:opacity-50"
+            className="bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider px-6 py-3.5 rounded-sm hover:bg-olive transition-colors min-h-11 flex items-center gap-2 disabled:opacity-50"
           >
             {isLoading ? (
               <>

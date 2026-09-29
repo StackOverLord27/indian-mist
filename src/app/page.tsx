@@ -7,10 +7,7 @@ import { NewsletterBar } from "@/components/home/NewsletterBar";
 import { NewestArrivals } from "@/components/home/NewestArrivals";
 import { TrustStrip } from "@/components/home/TrustStrip";
 import {
-  categories as defaultCategories,
-  featuredProducts as defaultFeatured,
   heroImage,
-  newestArrivals as defaultArrivals,
   storyImage,
   Product as UIProduct,
   Arrival as UIArrival,
@@ -22,6 +19,9 @@ import { Category as CategoryModel } from "@/models/category.model";
 import SiteSettingsModel from "@/models/settings.model";
 import CarouselModel from "@/models/carousel.model";
 import { CarouselImage } from "@/types/admin";
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const formatPrice = (price: number) => `₹${price.toLocaleString("en-IN")}`;
 

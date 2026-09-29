@@ -26,7 +26,7 @@ export function CartItemList() {
         href="/products"
         className="mt-6 inline-flex items-center gap-1.5 text-olive font-montserrat text-xs font-semibold uppercase tracking-wider hover:text-copper transition-colors"
       >
-        <ArrowLeft className="size-[13px]" />
+        <ArrowLeft className="size-3.25" />
         Continue Shopping
       </Link>
 

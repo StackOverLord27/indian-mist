@@ -43,31 +43,6 @@ export default async function AboutPage() {
     };
   }
 
-  // Pre-fill custom sections with mock data if none exist to demonstrate the new block builder
-  if (!about.customSections || about.customSections.length === 0) {
-    about.customSections = [
-      {
-        type: 'image-text-split',
-        heading: "Crafted for the Elements",
-        body: "Every piece we make is rigorously tested in the wild before it ever reaches your hands. From the initial sketch to the final stitch, our focus is on durability, sustainability, and uncompromising quality.",
-        imageUrl: "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=1200&auto=format&fit=crop",
-        imagePublicId: "",
-        imageAlt: "Hiking gear",
-        imageAlignment: "left",
-        order: 0
-      } as any,
-      {
-        type: 'image-text-split',
-        heading: "Sustainable at the Source",
-        body: "We partner with local artisans and sustainable farms to source organic cotton and recycled materials. Our supply chain is 100% transparent, because we believe you deserve to know exactly what you're wearing.",
-        imageUrl: "https://images.unsplash.com/photo-1605281317010-fe5ffe798166?q=80&w=1200&auto=format&fit=crop",
-        imagePublicId: "",
-        imageAlt: "Organic materials",
-        imageAlignment: "right",
-        order: 1
-      } as any
-    ];
-  }
 
   return (
     <div className="flex flex-col min-h-screen">

@@ -114,7 +114,7 @@ export default function AdminSettingsPage() {
           <button 
             type="submit" 
             disabled={updateMutation.isPending}
-            className="bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider px-8 py-3 rounded-sm hover:bg-olive transition-colors flex items-center justify-center min-w-[150px]"
+            className="bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider px-8 py-3 rounded-sm hover:bg-olive transition-colors flex items-center justify-center min-w-37.5"
           >
             {updateMutation.isPending ? <Loader2 className="animate-spin size-4" /> : 'Save Settings'}
           </button>

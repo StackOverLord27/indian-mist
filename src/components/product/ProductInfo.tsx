@@ -119,7 +119,7 @@ export function ProductInfo({ product }: { product: Product }) {
               <Star
                 key={star}
                 className={cn(
-                  "size-[14px]",
+                  "size-3.5",
                   star <= Math.round(product.rating)
                     ? "fill-clay text-clay"
                     : "text-muted-text/30"
@@ -182,7 +182,7 @@ export function ProductInfo({ product }: { product: Product }) {
                     }}
                     disabled={!isAvailable || isSoldOut}
                     className={cn(
-                      "min-w-[44px] h-10 px-3 border rounded-sm font-montserrat text-sm transition-colors",
+                      "min-w-11 h-10 px-3 border rounded-sm font-montserrat text-sm transition-colors",
                       (!isAvailable || isSoldOut) && "opacity-40 cursor-not-allowed pointer-events-none",
                       !isAvailable && "line-through",
                       isAvailable && !isSelected && !isSoldOut && "border-olive/25 text-forest/75 bg-card hover:border-olive hover:bg-warm cursor-pointer",
@@ -246,7 +246,7 @@ export function ProductInfo({ product }: { product: Product }) {
               disabled={quantity <= 1 || isSoldOut}
               className="w-10 h-full flex items-center justify-center hover:bg-warm transition-colors text-forest disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Minus className="size-[14px]" />
+              <Minus className="size-3.5" />
             </button>
             <div className="w-12 h-full text-center font-montserrat text-sm font-medium text-forest border-x border-olive/25 flex items-center justify-center">
               {quantity}
@@ -257,7 +257,7 @@ export function ProductInfo({ product }: { product: Product }) {
               disabled={isSoldOut}
               className="w-10 h-full flex items-center justify-center hover:bg-warm transition-colors text-forest disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Plus className="size-[14px]" />
+              <Plus className="size-3.5" />
             </button>
           </div>
         </div>
@@ -279,12 +279,12 @@ export function ProductInfo({ product }: { product: Product }) {
             "Sold Out"
           ) : isAdded ? (
             <>
-              <Check className="mr-2 size-[14px]" />
+              <Check className="mr-2 size-3.5" />
               Added to Bag
             </>
           ) : (
             <>
-              <ShoppingBag className="mr-2 size-[14px]" />
+              <ShoppingBag className="mr-2 size-3.5" />
               Add to Bag
             </>
           )}
@@ -296,7 +296,7 @@ export function ProductInfo({ product }: { product: Product }) {
           onClick={handleBuyNowClick}
           className="w-full sm:w-auto border-olive/30 text-forest/80 hover:border-olive hover:text-forest hover:bg-warm font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto bg-transparent flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Zap className="mr-2 size-[14px]" />
+          <Zap className="mr-2 size-3.5" />
           Buy Now
         </Button>
       </div>
@@ -304,25 +304,25 @@ export function ProductInfo({ product }: { product: Product }) {
       {/* Trust signals */}
       <div className="mt-5 flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <Truck className="text-olive size-[14px]" />
+          <Truck className="text-olive size-3.5" />
           <span className="font-montserrat text-xs text-muted-text font-normal">
             Free shipping on orders above ₹999
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <RefreshCw className="text-olive size-[14px]" />
+          <RefreshCw className="text-olive size-3.5" />
           <span className="font-montserrat text-xs text-muted-text font-normal">
             30-day hassle-free returns
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Leaf className="text-olive size-[14px]" />
+          <Leaf className="text-olive size-3.5" />
           <span className="font-montserrat text-xs text-muted-text font-normal">
             1 tree planted with this order
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <ShieldCheck className="text-olive size-[14px]" />
+          <ShieldCheck className="text-olive size-3.5" />
           <span className="font-montserrat text-xs text-muted-text font-normal">
             Secure checkout · Encrypted payment
           </span>

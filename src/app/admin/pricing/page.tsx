@@ -60,7 +60,7 @@ function PromoCodeEditor({
           ? isExpired
             ? "border-amber-300 bg-amber-50/30"
             : "border-olive/20 bg-warm-mist"
-          : "border-olive/10 bg-olive/[0.03]"
+          : "border-olive/10 bg-olive/3"
       }`}
     >
       {/* Summary row */}
@@ -70,7 +70,7 @@ function PromoCodeEditor({
       >
         {/* Status dot */}
         <div
-          className={`w-2 h-2 rounded-full flex-shrink-0 ${
+          className={`w-2 h-2 rounded-full shrink-0 ${
             !promo.isActive
               ? "bg-gray-400"
               : isExpired
@@ -536,7 +536,7 @@ export default function AdminPricingPage() {
           description="Global configuration for shipping fees and taxes applied at checkout."
         >
           <div className="p-3 mb-4 rounded-sm bg-amber-50 border border-amber-200 flex gap-2 items-start">
-            <AlertCircle className="size-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="size-3.5 text-amber-600 mt-0.5 shrink-0" />
             <p className="font-sans text-xs text-amber-700">
               <strong>Per-product GST:</strong> Different HSN codes carry
               different GST slabs (5%, 12%, 18%, 28%). For now a single
@@ -723,7 +723,7 @@ export default function AdminPricingPage() {
           <button
             type="submit"
             disabled={updateMutation.isPending}
-            className="bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider px-8 py-3 rounded-sm hover:bg-olive transition-colors flex items-center justify-center min-w-[150px] shadow-lg shadow-forest/20"
+            className="bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider px-8 py-3 rounded-sm hover:bg-olive transition-colors flex items-center justify-center min-w-37.5 shadow-lg shadow-forest/20"
           >
             {updateMutation.isPending ? (
               <Loader2 className="animate-spin size-4" />

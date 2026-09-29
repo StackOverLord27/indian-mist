@@ -68,7 +68,7 @@ function OrderRow({ order, updateStatus, getStatusColor }: any) {
             {order.paymentStatus}
           </div>
           {order.razorpayPaymentId && (
-            <div className="font-montserrat text-[10px] text-muted-text font-mono mt-0.5">
+            <div className="text-[10px] text-muted-text font-mono mt-0.5">
               {order.razorpayPaymentId}
             </div>
           )}
@@ -81,7 +81,7 @@ function OrderRow({ order, updateStatus, getStatusColor }: any) {
         <TableCell onClick={(e) => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="font-montserrat text-[10px] uppercase tracking-wider font-bold h-8 border border-olive/30 hover:bg-olive/10 rounded-md px-3 flex items-center justify-between min-w-[120px] bg-white"
+              className="font-montserrat text-[10px] uppercase tracking-wider font-bold h-8 border border-olive/30 hover:bg-olive/10 rounded-md px-3 flex items-center justify-between min-w-30 bg-white"
             >
               <span
                 className={`px-2 py-0.5 rounded-full mr-2 ${getStatusColor(
@@ -158,7 +158,7 @@ function OrderRow({ order, updateStatus, getStatusColor }: any) {
                   <Package className="h-4 w-4" />
                   Ordered Items
                 </div>
-                <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="space-y-3 max-h-62.5 overflow-y-auto pr-2 custom-scrollbar">
                   {order.items.map((item: any, idx: number) => (
                     <div key={idx} className="flex gap-3 bg-white p-2 border border-olive/10 rounded-sm">
                       {item.image && (

@@ -6,6 +6,8 @@ import { Blog } from "@/models/blog.model";
 import { Calendar, Clock, ArrowLeft, ArrowRight, User } from "lucide-react";
 import type { Metadata } from "next";
 
+export const revalidate = 0;
+
 async function getBlogBySlug(slug: string) {
   await dbConnect();
   const blog = await Blog.findOne({ slug, isPublished: true }).lean();
@@ -93,17 +95,17 @@ export default async function BlogPostPage({
             {blog.coverImage?.url ? (
               <div className="bg-card/90 backdrop-blur-xs border-2 border-olive/20 rounded-md p-3 sm:p-3.5 shadow-sm hover:shadow-md transition-shadow">
                 {/* Gallery frame matting & border */}
-                <div className="bg-warm/30 border border-olive/15 rounded-xs p-2.5 sm:p-3 flex items-center justify-center h-[220px] sm:h-[240px] md:h-[260px] overflow-hidden">
+                <div className="bg-warm/30 border border-olive/15 rounded-xs p-2.5 sm:p-3 flex items-center justify-center h-55 sm:h-60 md:h-65 overflow-hidden">
                   <img
                     src={blog.coverImage.url}
                     alt={blog.coverImage.alt || blog.title}
-                    className="w-full h-full max-h-[240px] object-contain rounded-xs transition-transform duration-300 hover:scale-[1.01]"
+                    className="w-full h-full max-h-60 object-contain rounded-xs transition-transform duration-300 hover:scale-[1.01]"
                   />
                 </div>
 
                 {/* Frame footer / caption */}
                 <div className="mt-2.5 px-1 flex items-center justify-between text-[11px] font-montserrat text-muted-text/80">
-                  <span className="truncate max-w-[180px] sm:max-w-[200px]">
+                  <span className="truncate max-w-45 sm:max-w-50">
                     {blog.coverImage.alt || blog.title}
                   </span>
                   <span className="text-[10px] uppercase tracking-wider text-olive/80 font-semibold ml-2 shrink-0">
@@ -112,7 +114,7 @@ export default async function BlogPostPage({
                 </div>
               </div>
             ) : (
-              <div className="bg-card/90 border-2 border-olive/20 rounded-md p-6 h-[240px] flex items-center justify-center bg-warm/20 text-olive/30 font-merriweather text-xl">
+              <div className="bg-card/90 border-2 border-olive/20 rounded-md p-6 h-60 flex items-center justify-center text-olive/30 font-merriweather text-xl">
                 Indian Mist
               </div>
             )}
@@ -125,7 +127,7 @@ export default async function BlogPostPage({
                 {blog.category}
               </span>
 
-              <h1 className="font-merriweather text-3xl sm:text-4xl lg:text-[2.65rem] font-normal text-forest leading-[1.25] tracking-tight">
+              <h1 className="font-merriweather text-3xl sm:text-4xl lg:text-[2.65rem] font-normal text-forest leading-tight tracking-tight">
                 {blog.title}
               </h1>
 
@@ -230,7 +232,7 @@ export default async function BlogPostPage({
                   className="group block"
                 >
                   <article className="bg-card-bg rounded-md overflow-hidden border border-olive/8 hover:border-olive/20 transition-all duration-300 hover:shadow-sm">
-                    <div className="aspect-[16/10] overflow-hidden">
+                    <div className="aspect-16/10 overflow-hidden">
                       {post.coverImage?.url ? (
                         <img
                           src={post.coverImage.url}

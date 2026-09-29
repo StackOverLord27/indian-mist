@@ -152,53 +152,11 @@ export function ProductTabs({ product }: { product: Product }) {
                 </div>
               </div>
             </div>
-
-            {/* Mock Reviews List */}
-            <div className="space-y-0">
-              <div className="border-b border-olive/10 py-5 last:border-0">
-                <div className="flex justify-between items-start">
-                  <span className="font-montserrat text-sm font-semibold text-forest">
-                    Sarah M.
-                  </span>
-                  <span className="font-montserrat text-xs text-muted-text">
-                    Oct 12, 2025
-                  </span>
-                </div>
-                <div className="flex gap-0.5 text-clay mt-1 mb-2">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <Star key={s} className="size-[12px] fill-clay" />
-                  ))}
-                </div>
-                <p className="font-montserrat text-sm font-normal text-muted-text leading-relaxed">
-                  Absolutely love the quality. It feels sturdy yet surprisingly light. The natural colors match the pictures perfectly!
-                </p>
-                <div className="mt-2 text-[10px] font-montserrat font-medium text-olive uppercase tracking-wide flex items-center gap-1">
-                  <ShieldCheck className="size-[10px]" /> Verified Buyer
-                </div>
-              </div>
-
-              <div className="border-b border-olive/10 py-5 last:border-0">
-                <div className="flex justify-between items-start">
-                  <span className="font-montserrat text-sm font-semibold text-forest">
-                    David K.
-                  </span>
-                  <span className="font-montserrat text-xs text-muted-text">
-                    Sep 28, 2025
-                  </span>
-                </div>
-                <div className="flex gap-0.5 text-clay mt-1 mb-2">
-                  {[1, 2, 3, 4].map((s) => (
-                    <Star key={s} className="size-[12px] fill-clay" />
-                  ))}
-                  <Star className="size-[12px] text-muted-text/30" />
-                </div>
-                <p className="font-montserrat text-sm font-normal text-muted-text leading-relaxed">
-                  Great materials and fits well with my other gear. A bit pricey but knowing it&apos;s organic makes it worth it for me.
-                </p>
-                <div className="mt-2 text-[10px] font-montserrat font-medium text-olive uppercase tracking-wide flex items-center gap-1">
-                  <ShieldCheck className="size-[10px]" /> Verified Buyer
-                </div>
-              </div>
+            {/* Reviews State */}
+            <div className="py-8 text-center border-t border-olive/10">
+              <p className="font-montserrat text-sm text-muted-text">
+                No reviews yet. Be the first to review this product!
+              </p>
             </div>
           </div>
         )}

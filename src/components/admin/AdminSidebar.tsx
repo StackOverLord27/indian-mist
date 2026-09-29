@@ -82,7 +82,7 @@ export default function AdminSidebar() {
   ];
 
   return (
-    <aside className="w-60 bg-forest flex-shrink-0 flex flex-col h-full">
+    <aside className="w-60 bg-forest shrink-0 flex flex-col h-full">
       <div className="p-6 border-b border-white/5">
         <h1 className="font-merriweather text-cornsilk text-xl">Indian Mist</h1>
         <p className="font-montserrat text-[10px] text-clay uppercase tracking-widest mt-1">Admin</p>

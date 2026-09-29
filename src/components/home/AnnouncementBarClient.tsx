@@ -20,7 +20,7 @@ export function AnnouncementBarClient({ displayItems }: { displayItems: string[]
                 ·
               </span>
             )}
-            <span className="block truncate max-w-[250px] sm:max-w-none">{text}</span>
+            <span className="block truncate max-w-62.5 sm:max-w-none">{text}</span>
           </span>
         ))}
       </div>

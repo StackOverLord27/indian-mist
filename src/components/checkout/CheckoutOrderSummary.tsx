@@ -78,13 +78,13 @@ export function CheckoutOrderSummary({
         </div>
 
         {/* Item list */}
-        <div className="space-y-3 pb-5 border-b border-olive/10 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin">
+        <div className="space-y-3 pb-5 border-b border-olive/10 max-h-60 overflow-y-auto pr-1 scrollbar-thin">
           {items.map((item, idx) => (
             <div
               key={idx}
               className="flex gap-3 group"
             >
-              <div className="w-14 h-14 flex-shrink-0 rounded-sm overflow-hidden bg-olive/10 relative">
+              <div className="w-14 h-14 shrink-0 rounded-sm overflow-hidden bg-olive/10 relative">
                 {(() => {
                   const imgSrc = typeof item.image === 'string' ? item.image : (item.image as any)?.url;
                   return imgSrc ? (

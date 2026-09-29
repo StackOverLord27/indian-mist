@@ -54,7 +54,7 @@ export default function AdminHomepageContentPage() {
       tags: 'Organic cotton, Natural dyes, Zero plastic, Fair trade',
       buttonText: 'Read our story',
       buttonLink: '/about',
-      imageUrl: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2000&auto=format&fit=crop'
+      imageUrl: ''
     },
     trustStripSettings: { items: defaultTrustItems },
     ecoCommitmentSettings: defaultEcoSettings,
@@ -84,7 +84,7 @@ export default function AdminHomepageContentPage() {
           tags: data.brandStorySettings?.tags ?? 'Organic cotton, Natural dyes, Zero plastic, Fair trade',
           buttonText: data.brandStorySettings?.buttonText ?? 'Read our story',
           buttonLink: data.brandStorySettings?.buttonLink ?? '/about',
-          imageUrl: data.brandStorySettings?.imageUrl ?? 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2000&auto=format&fit=crop'
+          imageUrl: data.brandStorySettings?.imageUrl ?? ''
         },
         trustStripSettings: {
           items: data.trustStripSettings?.items?.length ? data.trustStripSettings.items : defaultTrustItems,

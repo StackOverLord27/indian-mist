@@ -63,26 +63,7 @@ export function HeroSection({ settings, slides = [], fallbackImage }: HeroSectio
 
   const activeSlides = slides.filter(s => s.isActive !== false);
 
-  const effectiveSlides: CarouselImage[] = activeSlides.length > 0
-    ? activeSlides
-    : [
-        {
-          _id: "default-hero-1",
-          url: fallbackImage?.src || "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1600&auto=format&fit=crop",
-          alt: fallbackImage?.alt || "Forest trail with warm morning light",
-          publicId: "",
-          order: 1,
-          isActive: true,
-        },
-        {
-          _id: "default-hero-2",
-          url: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2000&auto=format&fit=crop",
-          alt: "Embrace the Forest",
-          publicId: "",
-          order: 2,
-          isActive: true,
-        }
-      ];
+  const effectiveSlides: CarouselImage[] = activeSlides;
 
   return (
     <section className="grid min-h-120 w-full grid-cols-1 lg:grid-cols-2">

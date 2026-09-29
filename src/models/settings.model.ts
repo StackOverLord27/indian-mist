@@ -36,7 +36,7 @@ const SettingsSchema = new mongoose.Schema({
     tags: { type: String, default: 'Organic cotton, Natural dyes, Zero plastic, Fair trade' },
     buttonText: { type: String, default: 'Read our story' },
     buttonLink: { type: String, default: '/about' },
-    imageUrl: { type: String, default: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2000&auto=format&fit=crop' },
+    imageUrl: { type: String, default: '' },
   },
   trustStripSettings: {
     items: {
