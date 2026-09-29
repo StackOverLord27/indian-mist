@@ -24,11 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const materialSchema = z.object({
-  name: z.string().min(1, 'Material name is required'),
-  percentage: z.number().min(0).max(100, 'Must be between 0 and 100'),
-  origin: z.string().min(1, 'Origin is required'),
-});
+
 
 const productSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(120),
@@ -41,7 +37,7 @@ const productSchema = z.object({
   tags: z.string(), // We will handle array conversion manually or let hook form handle it
   badge: z.enum(['New', 'Sale', '']).optional(),
   isFeatured: z.boolean().default(false),
-  materials: z.array(materialSchema),
+  materials: z.array(z.string()),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -105,7 +101,7 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
       tags: product?.tags?.join(', ') || '',
       badge: product?.badge || '',
       isFeatured: product?.isFeatured || false,
-      materials: product?.materials || [{ name: '', percentage: 0, origin: '' }],
+      materials: product?.materials || [''],
     }
   });
 
@@ -326,15 +322,13 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
             <label className="block font-montserrat text-xs font-semibold uppercase tracking-wider text-forest mb-1.5">Materials / Ingredients</label>
             {materialFields.map((field, index) => (
               <div key={field.id} className="flex gap-2 mb-2">
-                <input {...register(`materials.${index}.name` as const)} className={`${inputClass} w-2/5`} placeholder="Name" />
-                <input type="number" {...register(`materials.${index}.percentage` as const, { valueAsNumber: true })} className={`${inputClass} w-1/5`} placeholder="%" />
-                <input {...register(`materials.${index}.origin` as const)} className={`${inputClass} w-2/5`} placeholder="Origin" />
+                <input {...register(`materials.${index}` as const)} className={inputClass} placeholder="e.g. 100% Organic Cotton from India" />
                 <button type="button" onClick={() => removeMaterial(index)} className="p-2 text-copper hover:bg-copper/10 rounded-sm">
                   <X className="size-5" />
                 </button>
               </div>
             ))}
-            <button type="button" onClick={() => appendMaterial({ name: '', percentage: 0, origin: '' })} className="text-xs font-montserrat text-olive hover:underline">
+            <button type="button" onClick={() => appendMaterial('')} className="text-xs font-montserrat text-olive hover:underline">
               + Add Material
             </button>
           </div>

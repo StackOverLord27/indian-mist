@@ -84,10 +84,12 @@ export async function POST(req: NextRequest) {
   // Reuse the same family UUID — it groups all rotations for this session.
   const { family } = payload;
 
+  const userRole = user.email === process.env.SUPER_ADMIN_EMAIL ? 'admin' : user.role;
+
   const newAccessToken = signAccessToken({
     userId: String(user._id),
     email: user.email,
-    role: user.role,
+    role: userRole,
   });
 
   const newRawRefreshToken = signRefreshToken({ userId: String(user._id), family });

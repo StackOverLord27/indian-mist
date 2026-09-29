@@ -106,8 +106,8 @@ export function setTokenCookies(
   (res as NextResponse).cookies.set("refresh_token", refreshToken, {
     ...base,
     maxAge: REFRESH_TOKEN_MAX_AGE,
-    // Scope refresh token to /api/auth/ — covers both /refresh and /signout.
-    path: "/api/auth/",
+    // Scope refresh token to / so proxy middleware can read it on page loads
+    path: "/",
   });
 }
 
@@ -121,6 +121,6 @@ export function clearTokenCookies(
   (res as NextResponse).cookies.set("access_token", "", clear);
   (res as NextResponse).cookies.set("refresh_token", "", {
     ...clear,
-    path: "/api/auth/",
+    path: "/",
   });
 }
