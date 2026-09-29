@@ -13,12 +13,6 @@ export interface ProductImage {
   isCategoryCover?: boolean;
 }
 
-export interface Material {
-  name: string;
-  percentage: number;
-  origin: string;
-}
-
 export interface AdminProduct {
   _id: string; // Mongo ID
   name: string;
@@ -30,7 +24,7 @@ export interface AdminProduct {
   sizes?: string[];
   tags: string[];
   badge?: 'New' | 'Sale' | '';
-  materials: Material[];
+  materials: string[];
   images: ProductImage[];
   isActive?: boolean;
   isFeatured?: boolean;

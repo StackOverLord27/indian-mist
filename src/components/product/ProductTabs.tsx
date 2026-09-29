@@ -65,13 +65,7 @@ export function ProductTabs({ product }: { product: Product }) {
                   className="flex items-center gap-3 py-3 border-b border-olive/10 last:border-0"
                 >
                   <span className="font-montserrat text-sm text-forest font-medium">
-                    {material.name}
-                  </span>
-                  <span className="font-montserrat text-xs text-muted-text ml-auto">
-                    {material.percentage}%
-                  </span>
-                  <span className="font-montserrat text-xs text-olive">
-                    {material.origin}
+                    {material}
                   </span>
                 </div>
               ))}

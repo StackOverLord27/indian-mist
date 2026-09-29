@@ -19,7 +19,7 @@ export type Product = {
   sizes?: string[]
   availableSizes?: string[]
   colors?: { name: string; hex: string }[]
-  materials: { name: string; percentage: number; origin: string }[]
+  materials: string[]
   careInstructions: string[]
   tags: string[]
   relatedProductIds: string[]
@@ -34,7 +34,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   await dbConnect();
   
   const p = await ProductModel.findOne({ slug })
-    .select("slug name category price originalPrice badge description images sizes colors")
+    .select("slug name category price originalPrice badge description images sizes colors materials")
     .lean();
   if (!p) return null;
 
@@ -54,7 +54,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     sizes: p.sizes || [],
     availableSizes: p.sizes || [],
     colors: (p.colors || []).map((c: string) => ({ name: c, hex: "#000" })),
-    materials: [],
+    materials: p.materials || [],
     careInstructions: [],
     tags: [],
     relatedProductIds: [],
