@@ -6,7 +6,8 @@ import { Collection } from '@/models/collection.model';
 import { CollectionSchema } from '@/schemas/admin';
 
 export const GET = withAdmin(async (req, { params }) => {
-  const collection = await Collection.findById(params.id).populate('products').lean();
+  const { id } = await params;
+  const collection = await Collection.findById(id).populate('products').lean();
   if (!collection) {
     return errorResponse('Collection not found', 404);
   }
@@ -14,6 +15,7 @@ export const GET = withAdmin(async (req, { params }) => {
 });
 
 export const PUT = withAdmin(async (req, { params }) => {
+  const { id } = await params;
   let body;
   try {
     body = await req.json();
@@ -31,7 +33,7 @@ export const PUT = withAdmin(async (req, { params }) => {
   }
 
   const collection = await Collection.findByIdAndUpdate(
-    params.id,
+    id,
     { $set: validationResult.data },
     { new: true, runValidators: true }
   ).populate('products');
@@ -44,7 +46,8 @@ export const PUT = withAdmin(async (req, { params }) => {
 });
 
 export const DELETE = withAdmin(async (req, { params }) => {
-  const collection = await Collection.findByIdAndDelete(params.id);
+  const { id } = await params;
+  const collection = await Collection.findByIdAndDelete(id);
   if (!collection) {
     return errorResponse('Collection not found', 404);
   }

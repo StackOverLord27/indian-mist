@@ -306,13 +306,13 @@ export function ProductInfo({ product }: { product: Product }) {
         <div className="flex items-center gap-2">
           <Truck className="text-olive size-3.5" />
           <span className="font-montserrat text-xs text-muted-text font-normal">
-            Free shipping on orders above ₹999
+            Free shipping on orders above ₹599
           </span>
         </div>
         <div className="flex items-center gap-2">
           <RefreshCw className="text-olive size-3.5" />
           <span className="font-montserrat text-xs text-muted-text font-normal">
-            30-day hassle-free returns
+            7-day hassle-free returns
           </span>
         </div>
         <div className="flex items-center gap-2">
