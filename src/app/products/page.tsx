@@ -47,7 +47,7 @@ export default async function ProductsPage() {
     name: p.name,
     category: p.category,
     price: formatPrice(p.price),
-    images: p.images || [],
+    images: (p.images || []).map((img: any) => typeof img === 'string' ? img : img?.url).filter(Boolean),
     badge: p.badge,
   }));
 

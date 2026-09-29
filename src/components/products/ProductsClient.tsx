@@ -324,28 +324,21 @@ export default function ProductsClient({
                   </Link>
                 )}
                 
-                <div className="absolute top-2 left-2 z-10">
-                  <span className="bg-forest text-cornsilk text-[10px] font-montserrat font-semibold uppercase tracking-wider px-2 py-1 rounded-sm">
-                    {product.category}
-                  </span>
-                </div>
-                {product.badge && (
-                  <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
+                <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
+                  {product.badge && (
                     <span className={cn(
-                      "text-cornsilk text-[10px] font-montserrat font-semibold uppercase tracking-wider px-2 py-1 rounded-sm",
+                      "text-cornsilk text-[10px] font-montserrat font-semibold uppercase tracking-wider px-2 py-1 rounded-sm shadow-sm",
                       product.badge === "Sold Out" ? "bg-muted-text/80" : 
                       product.badge === "Sale" ? "bg-copperwood" : "bg-black-forest"
                     )}>
                       {product.badge}
                     </span>
-                  </div>
-                )}
-                <div className="absolute top-2 right-2 z-10">
+                  )}
                   <button
                     type="button"
                     onClick={() => handleToggleWishlist(product)}
                     aria-label={isWishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
-                    className="bg-cornsilk/80 rounded-full w-8 h-8 flex items-center justify-center text-copper hover:bg-cornsilk transition"
+                    className="bg-cornsilk/80 rounded-full w-8 h-8 flex items-center justify-center text-copper hover:bg-cornsilk transition shadow-sm"
                   >
                     <Heart
                       className={cn(

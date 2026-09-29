@@ -41,7 +41,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           items={[
             { label: "Home", href: "/" },
             { label: "Products", href: "/products" },
-            { label: product.category, href: `/products?category=${encodeURIComponent(product.category)}` },
             { label: product.name },
           ]}
         />
