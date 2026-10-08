@@ -32,7 +32,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   }
 
   return (
-    <div className="bg-cornsilk min-h-screen">
+    <div className="bg-cornsilk min-h-screen page-enter">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pb-24 lg:pb-0">
         
         {/* Breadcrumb */}

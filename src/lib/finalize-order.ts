@@ -1,6 +1,8 @@
 import type { HydratedDocument } from "mongoose";
 import { Order, type IOrder } from "@/models/order.model";
-import { Product } from "@/models/product.model";
+import { settleStockForPaidOrder } from "@/lib/stock-reservation";
+import Settings from "@/models/settings.model";
+import type { SiteSettings } from "@/types/admin";
 
 type PendingOrder = Record<string, unknown> & {
   userId: string;
@@ -19,24 +21,44 @@ async function getRedis() {
   return new Redis({ url, token });
 }
 
-async function decrementStock(items: IOrder["items"]) {
-  for (const item of items) {
-    try {
-      const updated = await Product.findOneAndUpdate(
-        { _id: item.productId, trackInventory: true },
-        { $inc: { stockQuantity: -item.quantity } },
-        { new: true },
+/**
+ * Things the shop should look at are saved on the order as a note. The customer has paid,
+ * so the order always stands:
+ *  - a promo code used beyond its limit (two checkouts opened at once can both pass the limit check)
+ *  - stock that ran out after the hold on it expired
+ */
+async function recordReviewNotes(order: HydratedDocument<IOrder>, stockNote: string | null) {
+  const notes: string[] = stockNote ? [stockNote] : [];
+
+  try {
+    if (order.promoCode) {
+      const settings = await Settings.findOne().lean<SiteSettings>();
+      const promo = settings?.pricingSettings?.promoCodes?.find(
+        (p) => p.code.toUpperCase() === order.promoCode,
       );
-      if (updated && updated.stockQuantity <= 0) {
-        await Product.updateOne(
-          { _id: item.productId },
-          { $set: { stockQuantity: 0, badge: "Sold Out" } },
-        );
+
+      if (promo) {
+        const others = { promoCode: order.promoCode, paymentStatus: "PAID" as const, _id: { $ne: order._id } };
+        const maxPerUser = promo.maxUsesPerUser ?? 1;
+        const reasons: string[] = [];
+
+        if (maxPerUser > 0 && (await Order.countDocuments({ ...others, userId: order.userId })) >= maxPerUser) {
+          reasons.push(`this customer already used it ${maxPerUser} time(s)`);
+        }
+        if (promo.maxUses && promo.maxUses > 0 && (await Order.countDocuments(others)) >= promo.maxUses) {
+          reasons.push(`it passed its total limit of ${promo.maxUses} uses`);
+        }
+        if (reasons.length) {
+          notes.push(`Promo code ${order.promoCode} was used beyond its limit: ${reasons.join(" and ")}.`);
+        }
       }
-    } catch (error) {
-      // The customer has already paid, so never fail the order over a stock update
-      console.error("[finalizeOrder] stock update failed:", item.productId, error);
     }
+  } catch (error) {
+    console.error("[finalizeOrder] promo review check failed:", error);
+  }
+
+  if (notes.length) {
+    await Order.updateOne({ _id: order._id }, { reviewNote: notes.join(" ") });
   }
 }
 
@@ -107,7 +129,14 @@ export async function finalizeOrder(opts: {
     throw error;
   }
 
-  await decrementStock(order.items);
+  let stockNote: string | null = null;
+  try {
+    stockNote = await settleStockForPaidOrder(razorpayOrderId, order.items);
+  } catch (error) {
+    // The customer has already paid, so never fail the order over a stock update
+    console.error("[finalizeOrder] stock settle failed:", error);
+  }
+  await recordReviewNotes(order, stockNote);
 
   if (pending.promoCode && pending.userId) {
     await redis.del(`promo_lock_${pending.userId}_${String(pending.promoCode).toUpperCase()}`);

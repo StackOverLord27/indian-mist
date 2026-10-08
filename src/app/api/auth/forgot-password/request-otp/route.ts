@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomInt } from "crypto";
 import dbConnect from "@/lib/db";
 import { User } from "@/models/user.model";
 import { setOtp, checkOtpExists } from "@/lib/otp-store";
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
     }
 
     // Check if an OTP request is already pending to prevent overwriting/spam
-    const otpExists = await checkOtpExists(email);
+    const otpExists = await checkOtpExists("reset", email);
     if (otpExists) {
       return NextResponse.json(
         { error: "An OTP request is already pending for this email. Please check your inbox or wait 5 minutes before trying again." },
@@ -40,10 +41,10 @@ export async function POST(req: Request) {
     }
 
     // Generate a secure 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = randomInt(100_000, 1_000_000).toString();
 
     // Store the OTP in Upstash Redis (5 min TTL)
-    await setOtp(email, otp);
+    await setOtp("reset", email, otp);
 
     // Send the OTP email
     const emailSent = await sendOTPVerificationEmail(email, otp);

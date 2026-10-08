@@ -133,13 +133,28 @@ export async function parseFormData(req: NextRequest): Promise<{
   return { fields, files };
 }
 
+// The first bytes of a real JPEG, PNG or WebP file. The browser-reported type can be faked.
+function looksLikeImage(buffer: Buffer): boolean {
+  const isJpeg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  const isPng =
+    buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+  const isWebp =
+    buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+  return isJpeg || isPng || isWebp;
+}
+
 export function validateImageFile(file: {
   mimetype: string;
   size: number;
+  buffer?: Buffer;
 }): { valid: boolean; message?: string } {
   const allowed = ['image/jpeg', 'image/png', 'image/webp'];
   if (!allowed.includes(file.mimetype)) {
     return { valid: false, message: 'Only JPEG, PNG and WebP are allowed' };
+  }
+  if (file.buffer && !looksLikeImage(file.buffer)) {
+    return { valid: false, message: 'This file is not a valid image' };
   }
   if (file.size > 10 * 1024 * 1024) {
     return { valid: false, message: 'File must be under 10MB' };

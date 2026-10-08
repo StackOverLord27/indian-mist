@@ -167,7 +167,11 @@ export function CheckoutPageClient() {
 
   // Redirect if cart empty (unless success)
   useEffect(() => {
-    if (checkoutItems.length === 0 && !isSuccess) {
+    if (isSuccess) return;
+    // Read the cart as it is right now: on a fresh page load the saved cart is restored just
+    // after the first render, so the value captured during that render can still be empty.
+    const { items, buyNowItem } = useCartStore.getState();
+    if (!buyNowItem && items.length === 0) {
       router.push("/cart");
     }
   }, [checkoutItems.length, isSuccess, router]);
@@ -318,6 +322,10 @@ export function CheckoutPageClient() {
           ondismiss: () => {
             setIsLoading(false);
             toast.error("Payment cancelled");
+            // Put the held stock back on sale right away
+            axios
+              .post("/api/checkout/release", { razorpayOrderId: dataRes.razorpayOrderId })
+              .catch(() => {});
           },
         },
       };

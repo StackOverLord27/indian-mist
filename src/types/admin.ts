@@ -56,7 +56,33 @@ export interface CarouselImage {
   isActive: boolean;
 }
 
+export interface AboutImage {
+  url: string;
+  publicId: string;
+  alt: string;
+}
+
 export interface AboutContent {
+  hero?: {
+    eyebrow?: string;
+    headline?: string;
+    lead?: string;
+  };
+  story?: {
+    eyebrow?: string;
+    heading?: string;
+    body?: string;
+    image?: Partial<AboutImage>;
+  };
+  gallery?: {
+    isVisible?: boolean;
+    eyebrow?: string;
+    heading?: string;
+    linkLabel?: string;
+    linkHref?: string;
+    images?: Partial<AboutImage>[];
+  };
+  /** Legacy: older content stored the story text here. Used only as a fallback. */
   mission: {
     heading: string;
     body: string;
@@ -258,6 +284,7 @@ export interface AdminOrder {
   totalAmount: number;
   promoCode?: string;
   deliveryNotes?: string;
+  reviewNote?: string;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   shippingAddress: {

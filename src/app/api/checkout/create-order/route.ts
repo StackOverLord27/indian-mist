@@ -1,5 +1,12 @@
 export const runtime = "nodejs";
 
+import {
+  reserveStock,
+  releaseReservation,
+  releaseExpiredReservations,
+  releaseUserReservations,
+  attachRazorpayOrder,
+} from "@/lib/stock-reservation";
 import type { SiteSettings } from "@/types/admin";
 import { NextRequest } from "next/server";
 import mongoose from "mongoose";
@@ -9,28 +16,10 @@ import { User } from "@/models/user.model";
 import { Product } from "@/models/product.model";
 import Settings from "@/models/settings.model";
 import { SHIPPING_COST, SHIPPING_THRESHOLD } from "@/lib/constants";
+import { CreateOrderSchema } from "@/schemas/checkout-api";
 import Razorpay from "razorpay";
 
 const MAX_QTY_PER_ITEM = 50;
-
-type CartLine = { productId?: string; quantity?: number; size?: string; color?: string };
-
-type CreateOrderBody = {
-  items?: CartLine[];
-  customerName?: string;
-  email?: string;
-  phone?: string;
-  shippingAddress?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    zipCode?: string;
-    country?: string;
-  };
-  saveAddress?: boolean;
-  promoCode?: string;
-  deliveryNotes?: string;
-};
 
 type OrderLine = {
   productId: unknown;
@@ -46,7 +35,17 @@ export const POST = withDB(async (req: NextRequest) => {
   const userId = req.headers.get("x-user-id");
   if (!userId) return errorResponse("Unauthenticated", 401);
 
-  const body = (await req.json()) as CreateOrderBody;
+  let rawBody: unknown;
+  try {
+    rawBody = await req.json();
+  } catch {
+    return errorResponse("Invalid request", 400);
+  }
+
+  const parsedBody = CreateOrderSchema.safeParse(rawBody);
+  if (!parsedBody.success) {
+    return errorResponse(parsedBody.error.issues[0]?.message ?? "Invalid request", 400);
+  }
   const {
     items,
     customerName,
@@ -56,18 +55,7 @@ export const POST = withDB(async (req: NextRequest) => {
     saveAddress,
     promoCode,
     deliveryNotes,
-  } = body;
-
-  if (!Array.isArray(items) || !items.length) return errorResponse("Cart is empty", 400);
-  if (!customerName || !email || !phone)
-    return errorResponse("Customer details are required", 400);
-  if (
-    !shippingAddress?.street ||
-    !shippingAddress?.city ||
-    !shippingAddress?.state ||
-    !shippingAddress?.zipCode
-  )
-    return errorResponse("Complete shipping address is required", 400);
+  } = parsedBody.data;
 
   // ─── Prices come from the database, never from the browser ──────────────
   const requestedIds: string[] = items.map((i) => String(i?.productId ?? ""));
@@ -118,19 +106,6 @@ export const POST = withDB(async (req: NextRequest) => {
       selectedSize: item.size,
       selectedColor: item.color,
     });
-  }
-
-  // ─── Stock check (only for products with stock tracking turned on) ───────
-  for (const [id, qty] of requestedQty) {
-    const product = productByKey.get(id);
-    if (product?.trackInventory && qty > (product.stockQuantity ?? 0)) {
-      return errorResponse(
-        product.stockQuantity > 0
-          ? `Only ${product.stockQuantity} left of ${product.name}`
-          : `${product.name} is out of stock`,
-        400,
-      );
-    }
   }
 
   // ─── Settings: shipping rates and promo codes ────────────────────────────
@@ -209,6 +184,19 @@ export const POST = withDB(async (req: NextRequest) => {
 
   if (totalAmount < 1) return errorResponse("Order total is too low", 400);
 
+  // ─── Hold the stock for this checkout ─────────────────────────────────────
+  // The stock is taken in one atomic step, so two shoppers can never both get the last unit.
+  await releaseExpiredReservations();
+  await releaseUserReservations(userId);
+  const hold = await reserveStock(
+    userId,
+    [...requestedQty].map(([productId, quantity]) => ({ productId, quantity })),
+  );
+  if (!hold.ok) return errorResponse(hold.message, 400);
+  const releaseHold = async () => {
+    if (hold.reservationId) await releaseReservation({ _id: hold.reservationId });
+  };
+
   // Initialize Razorpay
   const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID || "dummy_key_for_build",
@@ -216,21 +204,29 @@ export const POST = withDB(async (req: NextRequest) => {
   });
 
   // Create Razorpay order
-  const razorpayOrder = await razorpay.orders.create({
-    amount: Math.round(totalAmount * 100), // Razorpay expects amount in paise
-    currency: "INR",
-    receipt: `order_${Date.now()}`,
-    notes: {
-      customerName,
-      email,
-    },
-  });
+  let razorpayOrder;
+  try {
+    razorpayOrder = await razorpay.orders.create({
+      amount: Math.round(totalAmount * 100), // Razorpay expects amount in paise
+      currency: "INR",
+      receipt: `order_${Date.now()}`,
+      notes: {
+        customerName,
+        email,
+      },
+    });
+  } catch (error) {
+    await releaseHold();
+    throw error;
+  }
+  if (hold.reservationId) await attachRazorpayOrder(hold.reservationId, razorpayOrder.id);
 
   // Store pending order details in Redis for up to 30 minutes
   const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
   const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
   if (!redisUrl || !redisToken || redisUrl.startsWith("your_")) {
+    await releaseHold();
     return errorResponse("Redis is not configured for pending orders", 500);
   }
 
@@ -257,7 +253,12 @@ export const POST = withDB(async (req: NextRequest) => {
   };
 
   // Store the data in Redis securely using the razorpay order id (expires in 30 mins)
-  await redis.set(`pending_order_${razorpayOrder.id}`, orderData, { ex: 1800 });
+  try {
+    await redis.set(`pending_order_${razorpayOrder.id}`, orderData, { ex: 1800 });
+  } catch (error) {
+    await releaseHold();
+    throw error;
+  }
 
   // If the user checked "Save this address", update their profile
   if (saveAddress) {

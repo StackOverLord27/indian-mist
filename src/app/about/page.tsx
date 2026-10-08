@@ -1,158 +1,254 @@
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import Link from "next/link";
 import Image from "next/image";
 import { IconMap, type IconName } from "@/lib/icon-map";
-import { AboutContent } from "@/types/admin";
+import type { AboutContent, AboutImage } from "@/types/admin";
 import dbConnect from "@/lib/db";
 import { sanitizeRichText } from "@/lib/sanitize";
 import About from "@/models/about.model";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import CarouselModel from "@/models/carousel.model";
+import { Category as CategoryModel } from "@/models/category.model";
+import { resolveAbout } from "@/lib/about-content";
 
 export const revalidate = 60;
 
-const DEFAULT_ABOUT: AboutContent = {
-  mission: {
-    heading: "Our Mission",
-    body: "<p>We believe that exploring nature shouldn't come at its expense. Indian Mist is dedicated to providing premium, sustainably sourced gear for the mindful adventurer.</p>"
-  },
-  drivesUs: {
-    heading: "What Drives Us",
-    cards: [
-      { icon: "Globe2", title: "Global Impact", body: "We partner with communities worldwide to ensure fair trade practices." },
-      { icon: "RefreshCw", title: "Circular Economy", body: "From recycled packaging to gear repair programs, we're committed to minimizing waste." },
-      { icon: "HeartHandshake", title: "Community First", body: "We foster a community of outdoor enthusiasts who share our passion for adventure." }
-    ]
-  },
-  cta: {
-    heading: "Join the Movement",
-    subtext: "Discover our collection of sustainable gear and start your next adventure with peace of mind.",
-    primaryButtonLabel: "Shop Now",
-    secondaryButtonLabel: "Our Story"
-  },
-  customSections: []
-};
-
 export default async function AboutPage() {
   let saved: Partial<AboutContent> | null = null;
+  let fallbackPhotos: AboutImage[] = [];
 
   try {
     await dbConnect();
-    const doc = await About.findOne().lean();
+    const [doc, imgs, cats] = await Promise.all([
+      About.findOne().lean(),
+      CarouselModel.find({ isActive: true }).sort({ order: 1 }).limit(5).lean(),
+      CategoryModel.find({ "image.url": { $exists: true, $ne: "" } }).limit(5).lean(),
+    ]);
     saved = doc ? JSON.parse(JSON.stringify(doc)) : null;
+
+    // Used only until photos are added in the admin gallery
+    const carousel = JSON.parse(JSON.stringify(imgs)) as { url: string; publicId?: string; alt?: string; altText?: string }[];
+    fallbackPhotos = carousel.map((c) => ({ url: c.url, publicId: c.publicId ?? "", alt: c.alt || c.altText || "" }));
+    const seen = new Set(fallbackPhotos.map((p) => p.url));
+    for (const c of JSON.parse(JSON.stringify(cats)) as { name: string; image?: { url?: string; alt?: string } }[]) {
+      if (fallbackPhotos.length >= 5) break;
+      if (!c.image?.url || seen.has(c.image.url)) continue;
+      seen.add(c.image.url);
+      fallbackPhotos.push({ url: c.image.url, publicId: "", alt: c.image.alt || c.name });
+    }
   } catch (error) {
     console.error("Failed to load about content:", error);
   }
 
-  // Each section falls back to the default text if it has not been filled in yet
-  const about: AboutContent = {
-    mission: saved?.mission?.heading ? saved.mission : DEFAULT_ABOUT.mission,
-    drivesUs: saved?.drivesUs?.heading && saved.drivesUs.cards?.length ? saved.drivesUs : DEFAULT_ABOUT.drivesUs,
-    cta: saved?.cta?.heading ? saved.cta : DEFAULT_ABOUT.cta,
-    customSections: saved?.customSections ?? [],
-  };
+  const about = resolveAbout(saved);
+  const photos = (about.gallery.images.length >= 3 ? about.gallery.images : fallbackPhotos).slice(0, 5);
+  const showGallery = about.gallery.isVisible && photos.length >= 3;
+  const moreSections = about.extraSections;
+  const storyImage = about.story.image;
+  const storyHtml = sanitizeRichText(about.story.body);
+
+  const eyebrow = "font-montserrat text-[13px] font-semibold uppercase tracking-[0.24em]";
+  const gutter = "max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16";
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Hero Section */}
-      <section className="bg-cornsilk px-6 md:px-12 lg:px-16 py-20 md:py-28">
-        <div className="max-w-2xl mx-auto text-center">
-          <div className="w-12 h-12 rounded-full bg-warm border border-olive/20 flex items-center justify-center mx-auto mb-6">
-            <IconMap.Leaf size={20} className="text-olive" />
-          </div>
-          <h1 className="font-merriweather text-4xl md:text-5xl font-normal text-forest mb-6">
-            {about.mission.heading}
-          </h1>
-          {/* Note: TipTap HTML output is sanitized by default on the client, but for Server Components injecting HTML, ensure the backend doesn't accept malicious inputs. */}
-          <div 
-            className="font-montserrat text-base font-light text-muted-text leading-relaxed max-w-lg mx-auto mt-4 prose prose-sm prose-olive text-center"
-            dangerouslySetInnerHTML={{ __html: sanitizeRichText(about.mission.body) }} 
-          />
+    <div className="bg-cornsilk min-h-screen page-enter">
+      <div className={`${gutter} pt-6 pb-4`}>
+        <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "About" }]} />
+      </div>
+
+      {/* Hero */}
+      <section className="bg-forest text-cornsilk">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 md:py-16 text-center flex flex-col items-center gap-5">
+          <span className={`${eyebrow} text-clay`}>{about.hero.eyebrow}</span>
+          <h1 className="font-merriweather text-3xl md:text-5xl font-normal leading-[1.15]">{about.hero.headline}</h1>
+          {about.hero.lead && (
+            <p className="max-w-xl font-montserrat text-base leading-relaxed text-cornsilk/75">{about.hero.lead}</p>
+          )}
         </div>
       </section>
 
-      {/* Dynamic Custom Sections */}
-      {about.customSections && about.customSections.length > 0 && (
-        <section className="bg-background">
-          {about.customSections.sort((a, b) => a.order - b.order).map((section, idx) => (
-            <div key={idx} className={`flex flex-col ${section.imageAlignment === 'right' ? 'md:flex-row-reverse' : 'md:flex-row'} items-stretch min-h-[500px]`}>
-              {/* Image Half */}
-              <div className="w-full md:w-1/2 relative aspect-4/3 md:aspect-auto md:min-h-[37.5vw]">
-                {section.imageUrl ? (
-                  <Image 
-                    src={section.imageUrl} 
-                    alt={section.imageAlt || section.heading} 
-                    fill 
-                    className="object-cover" 
-                  />
-                ) : (
-                  <div className="absolute inset-0 bg-warm-mist flex items-center justify-center">
-                    <span className="font-montserrat text-sm text-forest/60">No image uploaded</span>
-                  </div>
-                )}
+      {/* Story */}
+      <ScrollReveal>
+      <section className="py-16 md:py-24">
+        <div className={`${gutter} grid items-center gap-10 md:grid-cols-2 md:gap-16 lg:gap-[72px]`}>
+          <div className="relative aspect-4/5 overflow-hidden rounded-[20px] border border-[#E9D6A8] bg-warm">
+            {storyImage.url ? (
+              <Image
+                src={storyImage.url}
+                alt={storyImage.alt || about.story.heading}
+                fill
+                sizes="(min-width: 768px) 50vw, 100vw"
+                className="object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <IconMap.Leaf size={40} className="text-olive/40" aria-hidden="true" />
               </div>
-              
-              {/* Text Half */}
-              <div className="w-full md:w-1/2 flex items-center justify-center p-12 md:p-16 lg:p-24 bg-cornsilk/50">
-                <div className="max-w-md w-full">
-                  <h2 className="font-merriweather text-3xl font-normal text-forest mb-6">{section.heading}</h2>
-                  <p className="font-montserrat text-base font-light text-muted-text leading-relaxed whitespace-pre-line">
+            )}
+          </div>
+          <div className="flex flex-col gap-6">
+            <span className={`${eyebrow} text-copper`}>{about.story.eyebrow}</span>
+            <h2 className="font-merriweather text-3xl md:text-[40px] font-normal leading-tight text-forest">
+              {about.story.heading}
+            </h2>
+            {storyHtml && (
+              <div
+                className="font-montserrat text-base md:text-[17px] leading-[1.8] text-muted-text [&_p+p]:mt-6 [&_a]:underline [&_strong]:text-forest [&_h2]:font-merriweather [&_h2]:text-2xl [&_h2]:text-forest [&_ul]:list-disc [&_ul]:pl-6"
+                dangerouslySetInnerHTML={{ __html: storyHtml }}
+              />
+            )}
+          </div>
+        </div>
+
+        {moreSections.length > 0 && (
+          <div className={`${gutter} space-y-16 md:space-y-24 mt-16 md:mt-24`}>
+            {moreSections.map((section, idx) => (
+              <div
+                key={section._id ?? idx}
+                className={`grid items-center gap-10 md:grid-cols-2 md:gap-16 lg:gap-[72px] ${
+                  section.imageAlignment === "right" ? "md:[&>div:first-child]:order-2" : ""
+                }`}
+              >
+                <div className="relative aspect-4/5 overflow-hidden rounded-[20px] border border-[#E9D6A8] bg-warm">
+                  {section.imageUrl ? (
+                    <Image
+                      src={section.imageUrl}
+                      alt={section.imageAlt || section.heading}
+                      fill
+                      sizes="(min-width: 768px) 50vw, 100vw"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <IconMap.Leaf size={40} className="text-olive/40" aria-hidden="true" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col gap-6">
+                  <h2 className="font-merriweather text-3xl md:text-[40px] font-normal leading-tight text-forest">
+                    {section.heading}
+                  </h2>
+                  <p className="font-montserrat text-base md:text-[17px] leading-[1.8] text-muted-text whitespace-pre-line">
                     {section.body}
                   </p>
                 </div>
               </div>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {/* Values Section */}
-      <section className="bg-warm px-6 md:px-12 lg:px-16 py-16 md:py-20">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="font-merriweather text-3xl font-normal text-forest text-center mb-2">{about.drivesUs.heading}</h2>
-            <div className="w-12 h-px bg-forest mx-auto mt-3 mb-12" />
+            ))}
           </div>
+        )}
+      </section>
+      </ScrollReveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {about.drivesUs.cards.map((card, i) => {
-              const Icon = IconMap[card.icon as IconName] || IconMap.Globe2;
-              return (
-                <div key={i} className="bg-card-surface border border-olive/10 rounded-md p-6 md:p-8 text-left hover:-translate-y-1 transition-transform">
-                  <div className="w-10 h-10 flex items-center justify-center border border-olive/25 rounded-sm bg-warm mb-4">
-                    <Icon size={20} className="text-olive" />
-                  </div>
-                  <h3 className="font-merriweather text-lg font-normal text-forest mb-3">{card.title}</h3>
-                  <p className="font-montserrat text-sm font-light text-muted-text leading-relaxed">
-                    {card.body}
-                  </p>
-                </div>
-              );
-            })}
+      {/* What inspires us */}
+      <ScrollReveal>
+      <section className="bg-warm py-16 md:py-24">
+        <div className={`${gutter} flex flex-col gap-12 md:gap-14`}>
+          <div className="text-center">
+            <h2 className="font-merriweather text-3xl md:text-[40px] font-normal text-forest">
+              {about.values.heading}
+            </h2>
+          </div>
+          <div className="flex flex-wrap justify-center gap-6">
+            {about.values.cards.map((card, i) => (
+              <div
+                key={i}
+                className="w-full sm:w-[calc((100%-1.5rem)/2)] lg:w-[calc((100%-4.5rem)/4)] flex flex-col gap-4 rounded-[18px] border border-[#EBD9AE] bg-cornsilk px-7 py-9"
+              >
+                <span className="font-merriweather text-4xl leading-none text-clay">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <h3 className="font-merriweather text-xl font-bold text-forest">{card.title}</h3>
+                <p className="font-montserrat text-[15px] leading-[1.75] text-muted-text">{card.body}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
+      </ScrollReveal>
 
-      {/* CTA Section */}
-      <section className="bg-forest px-6 md:px-12 py-16 md:py-20">
-        <div className="max-w-xl mx-auto text-center">
-          <h2 className="font-merriweather text-3xl md:text-4xl font-normal text-cornsilk">
-            {about.cta.heading}
-          </h2>
-          <p className="font-montserrat text-sm font-light text-cornsilk/75 mt-4 leading-relaxed max-w-md mx-auto">
-            {about.cta.subtext}
-          </p>
-          <div className="flex gap-3 justify-center mt-8 flex-wrap">
+      {/* In the wild: photo mosaic */}
+      {showGallery && (
+        <ScrollReveal>
+        <section className="py-16 md:py-24">
+          <div className={`${gutter} flex flex-col gap-12`}>
+            <div className="flex items-end justify-between gap-4 flex-wrap">
+              <div className="flex flex-col gap-3.5">
+                <span className={`${eyebrow} text-copper`}>{about.gallery.eyebrow}</span>
+                <h2 className="font-merriweather text-3xl md:text-[40px] font-normal text-forest">
+                  {about.gallery.heading}
+                </h2>
+              </div>
+              {about.gallery.linkLabel && (
+              <Link
+                href={about.gallery.linkHref}
+                className="font-montserrat text-[13px] font-semibold uppercase tracking-[0.08em] text-forest border-b border-forest pb-1 hover:text-olive hover:border-olive transition-colors"
+              >
+                {about.gallery.linkLabel}
+              </Link>
+              )}
+            </div>
+
+            {/* Bento layout on desktop (one pattern per photo count); even grid on smaller screens */}
+            <div className="grid grid-cols-2 gap-1 lg:grid-cols-4 lg:auto-rows-[220px] lg:grid-flow-dense">
+              {photos.map((photo, i) => {
+                const caption = photo.alt;
+                const patterns: Record<number, string[]> = {
+                  3: ["lg:col-span-2 lg:row-span-2", "lg:col-span-2", "lg:col-span-2"],
+                  4: ["lg:col-span-2 lg:row-span-2", "lg:row-span-2", "", ""],
+                  5: ["lg:row-span-2", "lg:col-span-2", "lg:row-span-2", "", ""],
+                };
+                const span = patterns[photos.length]?.[i] ?? "";
+                const lastOdd = photos.length % 2 === 1 && i === photos.length - 1;
+                return (
+                  <div
+                    key={`${photo.url}-${i}`}
+                    className={`relative overflow-hidden rounded-2xl bg-warm aspect-square lg:aspect-auto ${span} ${
+                      lastOdd ? "max-lg:col-span-2 max-lg:aspect-[2/1]" : ""
+                    }`}
+                  >
+                    <Image
+                      src={photo.url}
+                      alt={caption || "Indian Mist"}
+                      fill
+                      sizes="(min-width: 1024px) 50vw, 100vw"
+                      className="object-cover"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+        </ScrollReveal>
+      )}
+
+      {/* CTA */}
+      <ScrollReveal>
+      <section className="bg-forest text-cornsilk">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 md:py-20 text-center flex flex-col items-center gap-5">
+          <h2 className="font-merriweather text-3xl md:text-[44px] font-normal leading-tight">{about.cta.heading}</h2>
+          <p className="font-montserrat text-[17px] text-cornsilk/80 leading-relaxed">{about.cta.subtext}</p>
+          <div className="flex gap-4 flex-wrap justify-center mt-2">
             {about.cta.primaryButtonLabel && (
-              <Link href={about.cta.primaryButtonLink || "/products"} className="bg-clay text-cornsilk hover:bg-copper font-montserrat text-xs font-semibold uppercase tracking-wider px-6 py-3 rounded-sm transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
+              <Link
+                href={about.cta.primaryButtonLink || "/products"}
+                className="bg-clay text-forest hover:bg-copper hover:text-cornsilk font-montserrat text-sm font-semibold uppercase tracking-[0.08em] px-8 py-4 rounded-[10px] transition-colors min-h-[44px] flex items-center justify-center"
+              >
                 {about.cta.primaryButtonLabel}
               </Link>
             )}
             {about.cta.secondaryButtonLabel && (
-              <Link href={about.cta.secondaryButtonLink || "/blogs"} className="bg-transparent text-cornsilk/80 border border-cornsilk/25 hover:border-cornsilk/60 font-montserrat text-xs font-semibold uppercase tracking-wider px-6 py-3 rounded-sm transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
+              <Link
+                href={about.cta.secondaryButtonLink || "/blogs"}
+                className="border border-[#6F7A55] hover:border-cornsilk/70 text-cornsilk font-montserrat text-sm font-semibold uppercase tracking-[0.08em] px-8 py-4 rounded-[10px] transition-colors min-h-[44px] flex items-center justify-center"
+              >
                 {about.cta.secondaryButtonLabel}
               </Link>
             )}
           </div>
         </div>
       </section>
+      </ScrollReveal>
     </div>
   );
 }

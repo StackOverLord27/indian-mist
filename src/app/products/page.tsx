@@ -2,6 +2,7 @@ import dbConnect from "@/lib/db";
 import { imageUrls, type ProductFacetResult } from "@/types/product-facets";
 import { Product } from "@/models/product.model";
 import ProductsClient from "@/components/products/ProductsClient";
+import { PageEnter } from "@/components/ui/PageEnter";
 
 export const revalidate = 60;
 
@@ -83,12 +84,16 @@ export default async function ProductsPage({
       .map((b) => ({ name: b._id, value: b._id, count: b.count })),
   };
 
-  return <ProductsClient
-    initialProducts={formattedProducts}
-    initialFacets={initialFacets}
-    initialHasMore={12 < total}
-    initialTotal={total}
-    initialCategory={initialCategory}
-    initialSort={initialSort}
-  />;
+  return (
+    <PageEnter>
+      <ProductsClient
+        initialProducts={formattedProducts}
+        initialFacets={initialFacets}
+        initialHasMore={12 < total}
+        initialTotal={total}
+        initialCategory={initialCategory}
+        initialSort={initialSort}
+      />
+    </PageEnter>
+  );
 }

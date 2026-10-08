@@ -164,7 +164,7 @@ export function ProductGallery({
                     alt={`Product image ${idx + 1}`}
                     fill
                     className="object-cover"
-                    sizes="100vw"
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                     priority={idx === 0}
                   />
                 </div>

@@ -34,6 +34,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/contact",
   "/api/subscribe",
   "/api/webhooks/razorpay",
+  "/api/csp-report",
 ];
 
 const PUBLIC_PAGE_PATHS = ["/admin/login"];
@@ -47,7 +48,12 @@ export async function proxy(req: NextRequest) {
   // 1. Rate Limiting (API routes only) — fail-open if Redis is unconfigured
   if (pathname.startsWith("/api/")) {
     try {
-      const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+      // Prefer headers set by the hosting platform; a client-supplied x-forwarded-for can be faked
+      const ip =
+        req.headers.get("x-vercel-forwarded-for") ||
+        req.headers.get("x-real-ip") ||
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        "127.0.0.1";
       const isDev = process.env.NODE_ENV === "development";
       const isLocalhost = ip === "127.0.0.1" || ip === "::1" || ip.includes("127.0.0.1");
 

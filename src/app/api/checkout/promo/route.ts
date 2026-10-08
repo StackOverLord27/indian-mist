@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { isBlocked, recordFailure } from "@/lib/attempt-limit";
 import type { SiteSettings } from "@/types/admin";
 import { withDB, errorResponse, successResponse } from "@/lib/api-helpers";
 import Settings from "@/models/settings.model";
@@ -21,6 +22,12 @@ export const POST = withDB(async (req: NextRequest) => {
 
     const normalizedCode = code.trim().toUpperCase();
 
+    // Limit how many wrong codes one account can try
+    const guessKey = `promo:${userId}`;
+    if (await isBlocked(guessKey, 15)) {
+      return errorResponse("Too many invalid promo codes. Please try again in 10 minutes.", 429);
+    }
+
     const settings = await Settings.findOne().lean<SiteSettings>();
     const promoCodes = settings?.pricingSettings?.promoCodes || [];
     const promo = promoCodes.find(
@@ -28,6 +35,7 @@ export const POST = withDB(async (req: NextRequest) => {
     );
 
     if (!promo) {
+      await recordFailure(guessKey, 10 * 60);
       return errorResponse("Invalid promo code", 400);
     }
     if (!promo.isActive) {

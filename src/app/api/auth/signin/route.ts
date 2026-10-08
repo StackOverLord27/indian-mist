@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isBlocked, recordFailure, clearAttempts } from "@/lib/attempt-limit";
 import { randomUUID } from "crypto";
 import dbConnect from "@/lib/db";
 import { User } from "@/models/user.model";
@@ -11,6 +12,9 @@ import {
   REFRESH_TOKEN_MAX_AGE,
 } from "@/lib/auth-tokens";
 import { SignInSchema } from "@/schemas/auth/signin.schema";
+
+const MAX_LOGIN_FAILURES = 10;
+const LOGIN_WINDOW_SEC = 15 * 60;
 
 export async function POST(req: Request) {
   try {
@@ -27,9 +31,19 @@ export async function POST(req: Request) {
 
     const { email, password } = parseResult.data;
 
+    // Stop password guessing on a single account, even when the attacker rotates IP addresses
+    const attemptKey = `login:${email}`;
+    if (await isBlocked(attemptKey, MAX_LOGIN_FAILURES)) {
+      return NextResponse.json(
+        { error: "Too many failed sign-in attempts. Please try again in 15 minutes." },
+        { status: 429 }
+      );
+    }
+
     // ── Validate credentials ───────────────────────────────────────────────
     const user = await User.findOne({ email });
     if (!user) {
+      await recordFailure(attemptKey, LOGIN_WINDOW_SEC);
       return NextResponse.json(
         { error: "Invalid email or password" },
         { status: 401 }
@@ -45,11 +59,14 @@ export async function POST(req: Request) {
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      await recordFailure(attemptKey, LOGIN_WINDOW_SEC);
       return NextResponse.json(
         { error: "Invalid email or password" },
         { status: 401 }
       );
     }
+
+    await clearAttempts(attemptKey);
 
     // ── Issue tokens ───────────────────────────────────────────────────────
     // Each login creates a new "family" — a UUID that groups all refresh-token

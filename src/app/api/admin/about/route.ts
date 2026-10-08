@@ -2,10 +2,28 @@ export const runtime = 'nodejs';
 
 import { revalidatePath } from 'next/cache';
 import { NextRequest } from 'next/server';
-import { withAdmin, parseFormData, successResponse, errorResponse } from '@/lib/api-helpers';
+import { withAdmin, parseFormData, validateImageFile, successResponse, errorResponse } from '@/lib/api-helpers';
 import About from '@/models/about.model';
-import { uploadImage, deleteImage } from '@/lib/cloudinary';
+import { uploadImage, deleteImage, deleteManyImages } from '@/lib/cloudinary';
 import { AboutSchema } from '@/schemas/admin';
+
+type AboutImages = {
+  story?: { image?: { publicId?: string } };
+  gallery?: { images?: { publicId?: string }[] };
+  customSections?: { imagePublicId?: string }[];
+  teamPhoto?: { publicId?: string };
+};
+
+// Every Cloudinary file the About page currently points to
+function collectPublicIds(doc: AboutImages | null | undefined): Set<string> {
+  const ids = [
+    doc?.story?.image?.publicId,
+    ...(doc?.gallery?.images ?? []).map((i) => i.publicId),
+    ...(doc?.customSections ?? []).map((s) => s.imagePublicId),
+    doc?.teamPhoto?.publicId,
+  ];
+  return new Set(ids.filter((id): id is string => !!id));
+}
 
 export const GET = withAdmin(async () => {
   const about = await About.findOne().lean();
@@ -24,6 +42,10 @@ export const PUT = withAdmin(async (req: NextRequest) => {
     if (fields.cta) update.cta = JSON.parse(fields.cta);
 
     if (files.length) {
+      const fileValidation = validateImageFile(files[0]);
+      if (!fileValidation.valid) {
+        return errorResponse(fileValidation.message!, 400);
+      }
       // Delete old team photo from Cloudinary if exists
       const existing = await About.findOne().select('teamPhoto').lean<{ teamPhoto?: { publicId?: string } } | null>();
       if (existing?.teamPhoto?.publicId) {
@@ -51,12 +73,24 @@ export const PUT = withAdmin(async (req: NextRequest) => {
     return errorResponse('Validation failed', 400, errors);
   }
 
+  const before = await About.findOne().lean<AboutImages | null>();
+
   const about = await About.findOneAndUpdate(
     {},
     { $set: update },
     { upsert: true, new: true, runValidators: true }
   );
   
+  // Delete photos that were replaced or removed, so nothing is left behind in Cloudinary.
+  // A cleanup problem must never fail the save itself.
+  try {
+    const stillUsed = collectPublicIds(about.toObject() as AboutImages);
+    const unused = [...collectPublicIds(before)].filter((id) => !stillUsed.has(id));
+    if (unused.length) await deleteManyImages(unused);
+  } catch (error) {
+    console.error('About image cleanup failed:', error);
+  }
+
   revalidatePath('/about');
   return successResponse({ about });
 });

@@ -11,6 +11,7 @@ import { Navbar } from "@/components/home/Navbar";
 import { Footer } from "@/components/home/Footer";
 import { StoreHydration } from "@/lib/use-store-hydration";
 import { AppToaster } from "@/components/ui/AppToaster";
+import { ClientSetup } from "@/components/ui/ClientSetup";
 
 // Variable fonts: one file covers every weight. Merriweather also loads italic for headings.
 const merriweather = Merriweather({
@@ -68,6 +69,7 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <StoreHydration />
+        <ClientSetup />
         <AppToaster />
         <AnnouncementBar />
         <Navbar categories={navCategories} collections={navCollections} />

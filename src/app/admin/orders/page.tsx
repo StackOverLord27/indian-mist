@@ -155,6 +155,13 @@ function OrderRow({
                   <p>Email: {order.email}</p>
                 </div>
 
+                {order.reviewNote && (
+                  <div className="mt-3 p-2.5 bg-red-50 border border-red-200 rounded-sm">
+                    <p className="font-montserrat text-[10px] text-red-700 uppercase tracking-widest font-semibold mb-1">Needs review</p>
+                    <p className="font-montserrat text-xs text-red-900">{order.reviewNote}</p>
+                  </div>
+                )}
+
                 {/* Delivery Notes */}
                 {order.deliveryNotes && (
                   <div className="mt-3 p-2.5 bg-amber-50/60 border border-amber-200/50 rounded-sm">

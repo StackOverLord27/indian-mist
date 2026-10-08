@@ -51,13 +51,13 @@ export async function POST(req: Request) {
     // Generate OTP, store the hashed password + user payload in Redis, and send via email.
     // We DO NOT save the user to the database here — that happens after OTP verification.
     const otpCode = generateOTP();
-    await setOtp(email, otpCode, name, hashedPassword);
+    await setOtp("signup", email, otpCode, name, hashedPassword);
 
     const emailSent = await sendOTPVerificationEmail(email, otpCode);
 
     if (!emailSent) {
       // If email fails, clean up the Redis entry immediately.
-      await deleteOtp(email);
+      await deleteOtp("signup", email);
       return NextResponse.json(
         { error: "Failed to send verification email. Please try again." },
         { status: 500 }

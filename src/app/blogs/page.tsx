@@ -5,6 +5,7 @@ import dbConnect from "@/lib/db";
 import { Blog } from "@/models/blog.model";
 import { Calendar, Clock, ArrowRight } from "lucide-react";
 import Image from "next/image";
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
 
 export const revalidate = 0;
 
@@ -41,7 +42,7 @@ export default async function BlogsPage({
   };
 
   return (
-    <div className="bg-cornsilk min-h-screen">
+    <div className="bg-cornsilk min-h-screen page-enter">
       {/* Hero header */}
       <div className="relative bg-forest overflow-hidden">
         <div className="absolute inset-0 opacity-10">
@@ -128,9 +129,10 @@ export default async function BlogsPage({
           <>
             {/* Featured post (first post, bounded compact size) */}
             {blogs.length > 0 && (
+              <ScrollReveal className="mb-12">
               <Link
                 href={`/blogs/${blogs[0].slug}`}
-                className="group block mb-12"
+                className="group block"
               >
                 <div className="grid grid-cols-1 md:grid-cols-12 bg-card-bg rounded-md overflow-hidden border border-olive/12 hover:border-olive/30 transition-all duration-300 hover:shadow-md">
                   {/* Left Column: Framed Image with fixed bounded height */}
@@ -192,16 +194,17 @@ export default async function BlogsPage({
                   </div>
                 </div>
               </Link>
+              </ScrollReveal>
             )}
 
             {/* Remaining posts grid */}
             {blogs.length > 1 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                 {blogs.slice(1).map((blog) => (
+                  <ScrollReveal key={blog._id} className="h-full">
                   <Link
-                    key={blog._id}
                     href={`/blogs/${blog.slug}`}
-                    className="group block"
+                    className="group block h-full"
                   >
                     <article className="bg-card-bg rounded-md overflow-hidden border border-olive/8 hover:border-olive/20 transition-all duration-300 hover:shadow-sm h-full flex flex-col">
                       {/* Cover */}
@@ -250,6 +253,7 @@ export default async function BlogsPage({
                       </div>
                     </article>
                   </Link>
+                  </ScrollReveal>
                 ))}
               </div>
             )}

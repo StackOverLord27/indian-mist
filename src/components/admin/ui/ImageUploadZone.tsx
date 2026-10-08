@@ -123,7 +123,11 @@ export default function ImageUploadZone({
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt="Product" className="object-cover w-full h-full" />
+              {img.url ? (
+                <img src={img.url} alt="Product" className="object-cover w-full h-full" />
+              ) : (
+                <div className="w-full h-full bg-olive/10" />
+              )}
               
               {index === 0 && (
                 <div className="absolute top-1 left-1 bg-forest text-cornsilk text-[8px] font-montserrat uppercase tracking-wider px-1.5 rounded-sm z-10">

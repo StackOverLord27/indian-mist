@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     const { email, otp, newPassword } = parseResult.data;
 
     // Verify OTP via Redis
-    const validOtpData = await verifyOtp(email, otp);
+    const validOtpData = await verifyOtp("reset", email, otp);
     if (!validOtpData) {
       return NextResponse.json(
         { error: "Invalid or expired OTP. Please request a new one." },
@@ -52,7 +52,10 @@ export async function POST(req: Request) {
     await user.save();
 
     // Clean up OTP
-    await deleteOtp(email);
+    await deleteOtp("reset", email);
+
+    // A password reset must end every existing session (including any stolen one)
+    await RefreshToken.deleteMany({ userId: user._id });
 
     // ── Issue fresh tokens and auto-signin ─────────────────────────────────────
     const family = randomUUID();

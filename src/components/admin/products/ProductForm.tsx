@@ -256,7 +256,7 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
               ) : (
                 <div className="flex gap-2">
                   <div className="flex-1">
-                    <Select onValueChange={(val) => { if (val) setValue('category', val) }} value={watch('category') || undefined}>
+                    <Select onValueChange={(val) => { if (val) setValue('category', val) }} value={watch('category') || ''}>
                       <SelectTrigger className={inputClass}>
                         <SelectValue placeholder={isLoadingCategories ? "Loading..." : "Select category"} />
                       </SelectTrigger>

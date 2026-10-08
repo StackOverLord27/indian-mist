@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { randomUUID } from "crypto";
 import dbConnect from "@/lib/db";
 import { User } from "@/models/user.model";
@@ -12,20 +13,26 @@ import {
   REFRESH_TOKEN_MAX_AGE,
 } from "@/lib/auth-tokens";
 
+const VerifyOtpSchema = z.object({
+  email: z.string().email().toLowerCase().trim(),
+  otp: z.string().regex(/^\d{6}$/),
+});
+
 export async function POST(req: Request) {
   try {
     await dbConnect();
-    const { email, otp } = await req.json();
+    const parsed = VerifyOtpSchema.safeParse(await req.json());
 
-    if (!email || !otp) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Email and OTP are required" },
+        { error: "Email and a 6-digit OTP are required" },
         { status: 400 }
       );
     }
+    const { email, otp } = parsed.data;
 
     // Verify the OTP in Redis
-    const otpData = await verifyOtp(email, otp);
+    const otpData = await verifyOtp("signup", email, otp);
 
     if (!otpData) {
       return NextResponse.json(
@@ -38,7 +45,7 @@ export async function POST(req: Request) {
     // If a user already exists with this email, don't create a duplicate.
     const existingUser = await User.findOne({ email }).lean();
     if (existingUser) {
-      await deleteOtp(email);
+      await deleteOtp("signup", email);
       return NextResponse.json(
         { error: "An account with this email already exists. Please sign in." },
         { status: 409 }
@@ -67,7 +74,7 @@ export async function POST(req: Request) {
     );
 
     // Consume the OTP immediately so it cannot be replayed.
-    await deleteOtp(email);
+    await deleteOtp("signup", email);
 
     // Issue tokens — log the user in automatically, no need to sign in again.
     const family = randomUUID();

@@ -39,7 +39,38 @@ export const CarouselSchema = z.object({
   isActive: z.boolean().optional().default(true),
 });
 
+const AboutImageSchema = z.object({
+  url: z.string().optional(),
+  publicId: z.string().optional(),
+  alt: z.string().optional(),
+});
+
 export const AboutSchema = z.object({
+  hero: z
+    .object({
+      eyebrow: z.string().optional(),
+      headline: z.string().optional(),
+      lead: z.string().optional(),
+    })
+    .optional(),
+  story: z
+    .object({
+      eyebrow: z.string().optional(),
+      heading: z.string().optional(),
+      body: z.string().optional(),
+      image: AboutImageSchema.optional(),
+    })
+    .optional(),
+  gallery: z
+    .object({
+      isVisible: z.boolean().optional(),
+      eyebrow: z.string().optional(),
+      heading: z.string().optional(),
+      linkLabel: z.string().optional(),
+      linkHref: z.string().optional(),
+      images: z.array(AboutImageSchema).optional(),
+    })
+    .optional(),
   mission: z
     .object({
       heading: z.string().optional(),

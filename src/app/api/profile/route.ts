@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { withDB, successResponse, errorResponse } from "@/lib/api-helpers";
 import { User } from "@/models/user.model";
 import { Order } from "@/models/order.model";
+import { ProfileUpdateSchema } from "@/schemas/checkout-api";
 
 export const GET = withDB(async (req: NextRequest) => {
   const userId = req.headers.get("x-user-id");
@@ -29,18 +30,30 @@ export const PUT = withDB(async (req: NextRequest) => {
   }
 
   try {
-    const body = await req.json();
-    const { shippingAddress, phone, name } = body;
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return errorResponse("Invalid request", 400);
+    }
+
+    const parsed = ProfileUpdateSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return errorResponse(parsed.error.issues[0]?.message ?? "Invalid request", 400);
+    }
+    const { shippingAddress, phone, name } = parsed.data;
 
     const updateFields: Record<string, unknown> = {};
-    if (shippingAddress !== undefined) updateFields.shippingAddress = shippingAddress;
+    if (shippingAddress !== undefined) {
+      updateFields.shippingAddress = { ...shippingAddress, country: shippingAddress.country || "India" };
+    }
     if (phone !== undefined) updateFields.phone = phone;
     if (name !== undefined) updateFields.name = name;
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { $set: updateFields },
-      { new: true }
+      { new: true, runValidators: true }
     ).select("-password").lean();
 
     if (!updatedUser) {
@@ -49,6 +62,7 @@ export const PUT = withDB(async (req: NextRequest) => {
 
     return successResponse({ user: updatedUser });
   } catch (error) {
-    return errorResponse(error instanceof Error ? error.message : "Failed to update profile", 500);
+    console.error("Failed to update profile:", error);
+    return errorResponse("Failed to update profile", 500);
   }
 });

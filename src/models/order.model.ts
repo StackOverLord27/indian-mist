@@ -21,6 +21,7 @@ export interface IOrder extends Document {
   discountAmount?: number;
   promoCode?: string;
   deliveryNotes?: string;
+  reviewNote?: string;
   paymentStatus: "UNPAID" | "PAID" | "FAILED";
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
@@ -65,6 +66,7 @@ const OrderSchema: Schema = new Schema(
     discountAmount: { type: Number, default: 0 },
     promoCode: { type: String },
     deliveryNotes: { type: String },
+    reviewNote: { type: String },
     paymentStatus: {
       type: String,
       enum: ["UNPAID", "PAID", "FAILED"],

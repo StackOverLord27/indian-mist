@@ -5,6 +5,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { ArrowUpDown, Filter, Search } from "lucide-react";
 import { ProductCard } from "@/components/home/ProductCard";
 import { ProductCardSkeleton } from "@/components/ui/skeletons";
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -306,8 +307,8 @@ export default function ProductsClient({
 
       <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4 pb-16">
         {products.map((product) => (
+          <ScrollReveal key={product.id}>
           <ProductCard
-            key={product.id}
             product={{
               id: product.slug,
               name: product.name,
@@ -322,6 +323,7 @@ export default function ProductsClient({
               },
             }}
           />
+          </ScrollReveal>
         ))}
 
         {(hasMore || isLoading) &&

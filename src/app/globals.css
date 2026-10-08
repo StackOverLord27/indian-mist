@@ -165,6 +165,19 @@
 .hero-stagger > *:nth-child(3) { animation-delay: 0.46s; }
 .hero-stagger > *:nth-child(4) { animation-delay: 0.64s; }
 
+/* Subtle page entrance. fill-mode is `backwards` (not `forwards`) so the
+   transform is dropped afterwards and doesn't trap fixed/sticky descendants. */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+.page-enter {
+  animation: pageEnter 0.4s ease-out backwards;
+}
+
 /* ─── Reduced Motion ────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {

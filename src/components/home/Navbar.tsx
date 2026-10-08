@@ -59,7 +59,7 @@ function buildNavLinks(
           })),
         }]
       : []),
-    { name: "About", href: "/about" },
+    { name: "About Us", href: "/about" },
     { name: "Blogs", href: "/blogs" },
     { name: "Contact Us", href: "/contact" },
   ];

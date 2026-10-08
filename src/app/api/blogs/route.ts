@@ -7,8 +7,12 @@ import { Blog } from "@/models/blog.model";
 
 export const GET = withDB(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
-  const page = Math.max(1, Number(searchParams.get("page") ?? 1));
-  const limit = Math.min(20, Number(searchParams.get("limit") ?? 12));
+  const toInt = (value: string | null, fallback: number) => {
+    const n = parseInt(value ?? "", 10);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  const page = Math.min(1000, Math.max(1, toInt(searchParams.get("page"), 1)));
+  const limit = Math.min(20, Math.max(1, toInt(searchParams.get("limit"), 12)));
   const category = searchParams.get("category");
 
   const filter: Record<string, unknown> = { isPublished: true };

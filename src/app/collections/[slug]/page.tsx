@@ -47,7 +47,7 @@ export default async function CollectionPage({
   const products = (col.products || []).filter((p): p is PopulatedProduct => Boolean(p));
 
   return (
-    <div className="bg-cornsilk px-4 sm:px-6 md:px-12 lg:px-16 pt-12 pb-16 min-h-screen">
+    <div className="bg-cornsilk px-4 sm:px-6 md:px-12 lg:px-16 pt-12 pb-16 min-h-screen page-enter">
       <div className="mx-auto max-w-screen-2xl">
         <header className="mb-10 pb-8 border-b border-olive/20">
           <div className="space-y-2 max-w-prose">

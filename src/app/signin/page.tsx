@@ -8,7 +8,12 @@ import { Eye, EyeOff, Leaf, LogIn, AlertCircle, CheckCircle2 } from "lucide-reac
 export default function SignInPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const requestedUrl = searchParams.get("callbackUrl") || "/";
+  // Only allow redirects to pages on this site ("/path"), never to another website ("//evil.com", "https://...")
+  const callbackUrl =
+    requestedUrl.startsWith("/") && !requestedUrl.startsWith("//") && !requestedUrl.includes("\\")
+      ? requestedUrl
+      : "/";
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
