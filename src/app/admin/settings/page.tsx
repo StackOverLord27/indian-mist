@@ -35,7 +35,7 @@ export default function AdminSettingsPage() {
 
   const brandStory = settings.brandStorySettings || {};
 
-  const handleChange = (field: keyof SiteSettings, value: any) => {
+  const handleChange = (field: keyof SiteSettings, value: SiteSettings[keyof SiteSettings]) => {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
 

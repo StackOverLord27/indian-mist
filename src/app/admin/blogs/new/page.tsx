@@ -181,6 +181,8 @@ export default function AdminNewBlogPage() {
           <AdminCard title="Cover Image" description="Recommended: 1600 × 1000 px (16:10). Shown in full on the blog pages, so nothing important is cut off.">
             {coverPreview ? (
               <div className="relative">
+                {/* Local preview of a file that has not been uploaded yet, so it cannot use next/image */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={coverPreview}
                   alt="Cover preview"

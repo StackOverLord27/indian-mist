@@ -45,19 +45,20 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     badge: (p.badge === "" ? undefined : p.badge) as "New" | "Sale" | "Sold Out" | undefined,
     description: p.description,
     features: p.features || [],
-    images: (p.images || []).map((img: any) => img.url),
+    images: (p.images || []).map((img) => img.url),
     sizes: p.sizes || [],
     availableSizes: p.sizes || [],
     colors: (p.colors || []).map((c: string) => ({ name: c, hex: "#000" })),
     materials: p.materials || [],
-    careInstructions: ((p as any).careInstructions || []).map((c: any) =>
+    // Older products stored care instructions as plain strings
+    careInstructions: ((p.careInstructions ?? []) as unknown as (string | { text: string; icon?: string })[]).map((c) =>
       typeof c === "string" ? { text: c, icon: "droplets" } : { text: c.text, icon: c.icon || "droplets" }
     ),
     tags: p.tags || [],
     relatedProductIds: [],
     shippingInfo: {
-      standard: (p as any).shippingInfo?.standard || "3-5 business days",
-      express: (p as any).shippingInfo?.express || "1-2 business days",
+      standard: p.shippingInfo?.standard || "3-5 business days",
+      express: p.shippingInfo?.express || "1-2 business days",
     }
   };
 }

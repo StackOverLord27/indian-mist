@@ -1,5 +1,6 @@
 "use client";
 
+import { getImageSrc } from "@/lib/utils";
 import Image from "next/image";
 import {
   LockKeyhole,
@@ -86,7 +87,7 @@ export function CheckoutOrderSummary({
             >
               <div className="w-14 h-14 shrink-0 rounded-sm overflow-hidden bg-olive/10 relative">
                 {(() => {
-                  const imgSrc = typeof item.image === 'string' ? item.image : (item.image as any)?.url;
+                  const imgSrc = getImageSrc(item.image);
                   return imgSrc ? (
                     <Image
                       src={imgSrc}

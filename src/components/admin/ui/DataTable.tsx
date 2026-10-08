@@ -24,7 +24,7 @@ interface DataTableProps<T> {
   emptyMessage?: string;
 }
 
-export default function DataTable<T extends Record<string, any>>({ 
+export default function DataTable<T extends object>({ 
   columns, 
   data, 
   isLoading, 
@@ -83,7 +83,7 @@ export default function DataTable<T extends Record<string, any>>({
               <TableRow key={i} className="border-b border-olive/8 hover:bg-warm/50 transition-colors">
                 {columns.map((col) => (
                   <TableCell key={col.key} className="font-montserrat text-sm text-forest py-3 px-4">
-                    {col.render ? col.render(row) : row[col.key]}
+                    {col.render ? col.render(row) : (row as Record<string, React.ReactNode>)[col.key]}
                   </TableCell>
                 ))}
               </TableRow>

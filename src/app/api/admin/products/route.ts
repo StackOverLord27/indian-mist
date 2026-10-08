@@ -14,7 +14,7 @@ export const GET = withAdmin(async (req) => {
   const category = searchParams.get('category');
   const search = searchParams.get('search');
 
-  const filter: Record<string, any> = {};
+  const filter: Record<string, unknown> = {};
   if (category) filter.category = category;
   if (search) filter.name = { $regex: search, $options: 'i' };
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { BlogPostData } from "@/types/blog";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import dbConnect from "@/lib/db";
 import { Blog } from "@/models/blog.model";
@@ -9,7 +10,7 @@ export const revalidate = 0;
 
 async function getBlogs(category?: string) {
   await dbConnect();
-  const filter: Record<string, any> = { isPublished: true };
+  const filter: Record<string, unknown> = { isPublished: true };
   if (category) filter.category = category;
 
   const [blogs, categories] = await Promise.all([
@@ -20,7 +21,7 @@ async function getBlogs(category?: string) {
     Blog.distinct("category", { isPublished: true }),
   ]);
 
-  return { blogs: JSON.parse(JSON.stringify(blogs)), categories };
+  return { blogs: JSON.parse(JSON.stringify(blogs)) as BlogPostData[], categories };
 }
 
 export default async function BlogsPage({
@@ -196,7 +197,7 @@ export default async function BlogsPage({
             {/* Remaining posts grid */}
             {blogs.length > 1 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                {blogs.slice(1).map((blog: any) => (
+                {blogs.slice(1).map((blog) => (
                   <Link
                     key={blog._id}
                     href={`/blogs/${blog.slug}`}

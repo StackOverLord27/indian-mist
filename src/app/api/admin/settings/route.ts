@@ -15,7 +15,7 @@ export const PUT = withAdmin(async (req: NextRequest) => {
   const validationResult = SettingsSchema.safeParse(body);
   if (!validationResult.success) {
     const errors: Record<string, string> = {};
-    validationResult.error.issues.forEach((err: any) => {
+    validationResult.error.issues.forEach((err) => {
       errors[err.path.join('.')] = err.message;
     });
     return errorResponse('Validation failed', 400, errors);

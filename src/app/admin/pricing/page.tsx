@@ -23,7 +23,7 @@ import {
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import AdminFormField from "@/components/admin/ui/AdminFormField";
-import type { PromoCode } from "@/types/admin";
+import type { PromoCode, SiteSettings } from "@/types/admin";
 
 const inputClass =
   "w-full bg-warm/50 border border-olive/20 rounded-sm px-4 py-2.5 font-montserrat text-sm text-forest focus:outline-none focus:border-olive focus:ring-1 focus:ring-olive transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
@@ -43,7 +43,7 @@ function PromoCodeEditor({
 }: {
   promo: PromoCode;
   index: number;
-  onChange: (index: number, field: string, value: any) => void;
+  onChange: (index: number, field: string, value: string | number | boolean | null) => void;
   onRemove: (index: number) => void;
   onToggleActive: (index: number) => void;
   isNew?: boolean;
@@ -390,7 +390,7 @@ function PromoCodeEditor({
 export default function AdminPricingPage() {
   const { data, isLoading } = useSiteSettings();
   const updateMutation = useUpdateSettings();
-  const [settings, setSettings] = useState<any>({});
+  const [settings, setSettings] = useState<SiteSettings>({});
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
@@ -421,8 +421,8 @@ export default function AdminPricingPage() {
     updateMutation.mutate(settings);
   };
 
-  const handlePricingChange = (field: string, value: any) => {
-    setSettings((prev: any) => ({
+  const handlePricingChange = (field: string, value: string | number | boolean) => {
+    setSettings((prev) => ({
       ...prev,
       pricingSettings: {
         ...(prev.pricingSettings || {}),
@@ -432,7 +432,7 @@ export default function AdminPricingPage() {
   };
 
   const handleAddPromo = () => {
-    setSettings((prev: any) => ({
+    setSettings((prev) => ({
       ...prev,
       pricingSettings: {
         ...(prev.pricingSettings || {}),
@@ -462,7 +462,7 @@ export default function AdminPricingPage() {
       )
     )
       return;
-    setSettings((prev: any) => {
+    setSettings((prev) => {
       const promos = [...(prev.pricingSettings?.promoCodes || [])];
       promos.splice(index, 1);
       return {
@@ -475,8 +475,8 @@ export default function AdminPricingPage() {
     });
   };
 
-  const handlePromoChange = (index: number, field: string, value: any) => {
-    setSettings((prev: any) => {
+  const handlePromoChange = (index: number, field: string, value: string | number | boolean | null) => {
+    setSettings((prev) => {
       const promos = [...(prev.pricingSettings?.promoCodes || [])];
       promos[index] = { ...promos[index], [field]: value };
       return {
@@ -490,7 +490,7 @@ export default function AdminPricingPage() {
   };
 
   const handleToggleActive = (index: number) => {
-    setSettings((prev: any) => {
+    setSettings((prev) => {
       const promos = [...(prev.pricingSettings?.promoCodes || [])];
       promos[index] = { ...promos[index], isActive: !promos[index].isActive };
       return {

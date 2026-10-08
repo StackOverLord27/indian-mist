@@ -40,7 +40,7 @@ export async function POST(req: Request) {
       { message: 'Successfully subscribed to the newsletter!' },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error('Subscription error:', error);
     return NextResponse.json(
       { message: 'Internal server error. Please try again later.' },

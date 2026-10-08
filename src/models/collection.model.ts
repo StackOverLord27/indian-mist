@@ -24,7 +24,7 @@ const CollectionSchema: Schema = new Schema(
 );
 
 // Auto-generate slug from name if not provided
-CollectionSchema.pre("validate", function (this: any) {
+CollectionSchema.pre("validate", function (this: ICollection) {
   if (!this.slug && this.name) {
     this.slug = (this.name as string)
       .toLowerCase()

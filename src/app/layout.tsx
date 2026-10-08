@@ -3,6 +3,7 @@ import dbConnect from "@/lib/db";
 import SiteSettingsModel from "@/models/settings.model";
 import { Category } from "@/models/category.model";
 import { Collection } from "@/models/collection.model";
+import type { SiteSettings } from "@/types/admin";
 import { Merriweather, Montserrat } from "next/font/google";
 import "./globals.css";
 import { AnnouncementBar } from "@/components/home/AnnouncementBar";
@@ -26,7 +27,7 @@ const montserrat = Montserrat({
 export async function generateMetadata(): Promise<Metadata> {
   try {
     await dbConnect();
-    const settings = await SiteSettingsModel.findOne().lean() as any;
+    const settings = await SiteSettingsModel.findOne().lean<SiteSettings>();
     return {
       title: settings?.metaTitle || "Indian Mist | Eco-friendly Forest Gear",
       description: settings?.metaDescription || "Premium eco-friendly outdoor gear and products designed with nature in mind.",
@@ -44,19 +45,19 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  let settings = null;
+  let settings: SiteSettings | null = null;
   let navCategories: { name: string; slug: string }[] = [];
   let navCollections: { name: string; slug: string }[] = [];
   try {
     await dbConnect();
     const [rawSettings, cats, cols] = await Promise.all([
-      SiteSettingsModel.findOne().lean(),
-      Category.find({ isHidden: { $ne: true } }).sort({ order: 1, name: 1 }).select("name slug").lean(),
-      Collection.find({ isActive: true }).sort({ order: 1, name: 1 }).select("name slug").lean(),
+      SiteSettingsModel.findOne().lean<SiteSettings>(),
+      Category.find({ isHidden: { $ne: true } }).sort({ order: 1, name: 1 }).select("name slug").lean<{ name: string; slug: string }[]>(),
+      Collection.find({ isActive: true }).sort({ order: 1, name: 1 }).select("name slug").lean<{ name: string; slug: string }[]>(),
     ]);
     settings = rawSettings ? JSON.parse(JSON.stringify(rawSettings)) : null;
-    navCategories = cats.map((c: any) => ({ name: c.name, slug: c.slug }));
-    navCollections = cols.map((c: any) => ({ name: c.name, slug: c.slug }));
+    navCategories = cats.map((c) => ({ name: c.name, slug: c.slug }));
+    navCollections = cols.map((c) => ({ name: c.name, slug: c.slug }));
   } catch (e) {
     console.error("Failed to fetch settings for layout", e);
   }
@@ -71,7 +72,7 @@ export default async function RootLayout({
         <AnnouncementBar />
         <Navbar categories={navCategories} collections={navCollections} />
         <main className="flex-1 w-full">{children}</main>
-        <Footer settings={settings as any} categories={navCategories} collections={navCollections} />
+        <Footer settings={settings ?? undefined} categories={navCategories} collections={navCollections} />
       </body>
     </html>
   );

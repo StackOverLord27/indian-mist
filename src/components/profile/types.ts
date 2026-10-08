@@ -15,7 +15,7 @@ export type UserData = {
 };
 
 export type OrderItemData = {
-  productId?: { _id?: string; name?: string; slug?: string; images?: { url: string }[] } | any;
+  productId?: { _id?: string; name?: string; slug?: string; images?: { url: string }[] } | string | null;
   name?: string;
   quantity: number;
   priceAtPurchase: number;

@@ -1,8 +1,14 @@
-import { Order } from "@/models/order.model";
+import type { HydratedDocument } from "mongoose";
+import { Order, type IOrder } from "@/models/order.model";
 import { Product } from "@/models/product.model";
 
+type PendingOrder = Record<string, unknown> & {
+  userId: string;
+  promoCode?: string | null;
+};
+
 type FinalizeResult =
-  | { ok: true; order: any; alreadyProcessed: boolean }
+  | { ok: true; order: HydratedDocument<IOrder>; alreadyProcessed: boolean }
   | { ok: false; status: number; message: string };
 
 async function getRedis() {
@@ -13,7 +19,7 @@ async function getRedis() {
   return new Redis({ url, token });
 }
 
-async function decrementStock(items: { productId: any; quantity: number }[]) {
+async function decrementStock(items: IOrder["items"]) {
   for (const item of items) {
     try {
       const updated = await Product.findOneAndUpdate(
@@ -67,7 +73,7 @@ export async function finalizeOrder(opts: {
     };
   }
 
-  const pending = typeof raw === "string" ? JSON.parse(raw) : (raw as any);
+  const pending = (typeof raw === "string" ? JSON.parse(raw) : raw) as PendingOrder;
   if (userId && String(pending.userId) !== userId) {
     return { ok: false, status: 403, message: "This order belongs to another account" };
   }
@@ -80,18 +86,19 @@ export async function finalizeOrder(opts: {
     return { ok: false, status: 409, message: "Your order is being processed. Please check your orders shortly." };
   }
 
-  let order: any;
+  let order: HydratedDocument<IOrder>;
   try {
     order = await Order.create({
       ...pending,
+      promoCode: pending.promoCode ?? undefined,
       status: "PROCESSING",
       paymentStatus: "PAID",
       razorpayOrderId,
       razorpayPaymentId,
       razorpaySignature,
     });
-  } catch (error: any) {
-    if (error?.code === 11000) {
+  } catch (error) {
+    if ((error as { code?: number } | null)?.code === 11000) {
       const dup = await Order.findOne({ razorpayOrderId });
       if (dup) return { ok: true, order: dup, alreadyProcessed: true };
     }

@@ -7,7 +7,7 @@ export const GET = withAdmin(async (req: NextRequest) => {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
 
-    let query: any = { paymentStatus: 'PAID' };
+    let query: Record<string, unknown> = { paymentStatus: 'PAID' };
     if (status && status !== 'ALL') {
       query.status = status;
     }

@@ -7,7 +7,7 @@ import Carousel from '@/models/carousel.model';
 import { uploadImage, deleteImage } from '@/lib/cloudinary';
 import { CarouselSchema } from '@/schemas/admin';
 
-export const PUT = withAdmin(async (req: NextRequest, context: any) => {
+export const PUT = withAdmin(async (req: NextRequest, context) => {
   const params = await context.params;
   const item = await Carousel.findById(params.id);
   if (!item) return errorResponse('Not found', 404);
@@ -50,7 +50,7 @@ export const PUT = withAdmin(async (req: NextRequest, context: any) => {
   return successResponse({ item });
 });
 
-export const DELETE = withAdmin(async (req: NextRequest, context: any) => {
+export const DELETE = withAdmin(async (req: NextRequest, context) => {
   const params = await context.params;
   const item = await Carousel.findById(params.id);
   if (!item) return errorResponse('Not found', 404);

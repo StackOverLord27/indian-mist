@@ -1,18 +1,17 @@
 import { isAxiosError } from 'axios';
 
-export function getApiErrorMessage(error: unknown): string {
+/** Turns any thrown value (axios error, Error, or anything else) into a readable message. */
+export function getApiErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
   if (isAxiosError(error)) {
-    if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-      return error.response.data.errors.join(', ');
-    }
-    if (error.response?.data?.message) {
-      return error.response.data.message;
-    }
+    const data = error.response?.data as
+      | { errors?: unknown; message?: unknown; error?: unknown }
+      | undefined;
+    if (Array.isArray(data?.errors)) return data.errors.join(', ');
+    if (typeof data?.message === 'string' && data.message) return data.message;
+    if (typeof data?.error === 'string' && data.error) return data.error;
   }
-  
-  if (error instanceof Error) {
-    return error.message;
-  }
-  
-  return 'Something went wrong';
+
+  if (error instanceof Error && error.message) return error.message;
+
+  return fallback;
 }

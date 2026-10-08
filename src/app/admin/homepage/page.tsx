@@ -161,7 +161,7 @@ export default function AdminHomepageContentPage() {
   };
   const ecoSettings = settings.ecoCommitmentSettings || defaultEcoSettings;
 
-  const handleHeroChange = (field: keyof HeroSettings, value: any) => {
+  const handleHeroChange = (field: keyof HeroSettings, value: HeroSettings[keyof HeroSettings]) => {
     setSettings((prev) => ({
       ...prev,
       heroSettings: {
@@ -173,7 +173,7 @@ export default function AdminHomepageContentPage() {
 
   const handleEcoBadgeChange = (
     field: "text" | "subtext" | "isVisible",
-    value: any,
+    value: string | boolean,
   ) => {
     setSettings((prev) => {
       const currentHero = prev.heroSettings || defaultHeroSettings;
@@ -194,7 +194,7 @@ export default function AdminHomepageContentPage() {
 
   const handleBrandStoryChange = (
     field: keyof BrandStorySettings,
-    value: any,
+    value: BrandStorySettings[keyof BrandStorySettings],
   ) => {
     setSettings((prev) => ({
       ...prev,

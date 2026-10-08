@@ -11,7 +11,7 @@ export const GET = withDB(async (req: NextRequest) => {
   const limit = Math.min(20, Number(searchParams.get("limit") ?? 12));
   const category = searchParams.get("category");
 
-  const filter: Record<string, any> = { isPublished: true };
+  const filter: Record<string, unknown> = { isPublished: true };
   if (category) filter.category = category;
 
   const [blogs, total] = await Promise.all([

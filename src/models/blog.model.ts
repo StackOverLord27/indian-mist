@@ -42,7 +42,7 @@ const BlogSchema: Schema = new Schema(
 );
 
 // Auto-generate slug from title
-BlogSchema.pre("validate", function (this: any) {
+BlogSchema.pre("validate", function (this: IBlog) {
   if (!this.slug && this.title) {
     this.slug = (this.title as string)
       .toLowerCase()
@@ -52,14 +52,14 @@ BlogSchema.pre("validate", function (this: any) {
 });
 
 // Auto-set publishedAt when publishing
-BlogSchema.pre("save", function (this: any) {
+BlogSchema.pre("save", function (this: IBlog) {
   if (this.isPublished && !this.publishedAt) {
     this.publishedAt = new Date();
   }
 });
 
 // Auto-calculate read time from content (avg 200 words/min)
-BlogSchema.pre("save", function (this: any) {
+BlogSchema.pre("save", function (this: IBlog) {
   if (this.content) {
     const wordCount = this.content.replace(/<[^>]*>/g, "").split(/\s+/).length;
     this.readTime = Math.max(1, Math.ceil(wordCount / 200));

@@ -5,6 +5,14 @@ import { createHmac, timingSafeEqual } from "crypto";
 import dbConnect from "@/lib/db";
 import { finalizeOrder } from "@/lib/finalize-order";
 
+type RazorpayEvent = {
+  event?: string;
+  payload?: {
+    payment?: { entity?: { id?: string; order_id?: string } };
+    order?: { entity?: { id?: string } };
+  };
+};
+
 // Razorpay calls this when a payment succeeds, even if the customer closed the
 // browser before the checkout page could confirm it.
 export async function POST(req: NextRequest) {
@@ -24,7 +32,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ message: "Invalid signature" }, { status: 400 });
   }
 
-  let event: any;
+  let event: RazorpayEvent;
   try {
     event = JSON.parse(rawBody);
   } catch {

@@ -16,7 +16,7 @@ const DEFAULT_CATEGORIES = [
 
 async function getAllMergedCategories(): Promise<string[]> {
   const [saved, distinctFromBlogs] = await Promise.all([
-    BlogCategory.find().sort({ name: 1 }).lean(),
+    BlogCategory.find().sort({ name: 1 }).lean<{ name: string }[]>(),
     Blog.distinct("category"),
   ]);
 
@@ -34,9 +34,9 @@ async function getAllMergedCategories(): Promise<string[]> {
   };
 
   // Add saved custom categories
-  saved.forEach((s: any) => add(s.name));
+  saved.forEach((s) => add(s.name));
   // Add any existing categories currently on blogs
-  distinctFromBlogs.forEach((c: any) => add(c));
+  distinctFromBlogs.forEach((c) => add(String(c)));
   // Add defaults
   DEFAULT_CATEGORIES.forEach((c) => add(c));
 
@@ -79,8 +79,8 @@ export const POST = withAdmin(async (req: NextRequest) => {
       },
       201
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Failed to create blog category:", error);
-    return errorResponse(error?.message || "Failed to create category", 500);
+    return errorResponse(error instanceof Error ? error.message : "Failed to create category", 500);
   }
 });

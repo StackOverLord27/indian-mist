@@ -1,5 +1,6 @@
 export const runtime = "nodejs";
 
+import type { SiteSettings } from "@/types/admin";
 import { NextRequest } from "next/server";
 import mongoose from "mongoose";
 import { withDB, errorResponse, successResponse } from "@/lib/api-helpers";
@@ -12,11 +13,40 @@ import Razorpay from "razorpay";
 
 const MAX_QTY_PER_ITEM = 50;
 
+type CartLine = { productId?: string; quantity?: number; size?: string; color?: string };
+
+type CreateOrderBody = {
+  items?: CartLine[];
+  customerName?: string;
+  email?: string;
+  phone?: string;
+  shippingAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
+  saveAddress?: boolean;
+  promoCode?: string;
+  deliveryNotes?: string;
+};
+
+type OrderLine = {
+  productId: unknown;
+  name: string;
+  quantity: number;
+  priceAtPurchase: number;
+  image: string;
+  selectedSize?: string;
+  selectedColor?: string;
+};
+
 export const POST = withDB(async (req: NextRequest) => {
   const userId = req.headers.get("x-user-id");
   if (!userId) return errorResponse("Unauthenticated", 401);
 
-  const body = await req.json();
+  const body = (await req.json()) as CreateOrderBody;
   const {
     items,
     customerName,
@@ -40,7 +70,7 @@ export const POST = withDB(async (req: NextRequest) => {
     return errorResponse("Complete shipping address is required", 400);
 
   // ─── Prices come from the database, never from the browser ──────────────
-  const requestedIds: string[] = items.map((i: any) => String(i?.productId ?? ""));
+  const requestedIds: string[] = items.map((i) => String(i?.productId ?? ""));
   if (requestedIds.some((id) => !id)) return errorResponse("Invalid cart item", 400);
 
   const objectIds = requestedIds.filter((id) => mongoose.isValidObjectId(id));
@@ -48,13 +78,13 @@ export const POST = withDB(async (req: NextRequest) => {
     $or: [{ _id: { $in: objectIds } }, { slug: { $in: requestedIds } }],
   }).lean();
 
-  const productByKey = new Map<string, any>();
-  for (const p of products as any[]) {
+  const productByKey = new Map<string, (typeof products)[number]>();
+  for (const p of products) {
     productByKey.set(String(p._id), p);
     productByKey.set(p.slug, p);
   }
 
-  const orderItems: any[] = [];
+  const orderItems: OrderLine[] = [];
   const requestedQty = new Map<string, number>();
   let subtotal = 0;
 
@@ -104,7 +134,7 @@ export const POST = withDB(async (req: NextRequest) => {
   }
 
   // ─── Settings: shipping rates and promo codes ────────────────────────────
-  const settings = (await Settings.findOne().lean()) as any;
+  const settings = await Settings.findOne().lean<SiteSettings>();
   const shippingRate = settings?.pricingSettings?.shippingCost ?? SHIPPING_COST;
   const freeThreshold = settings?.pricingSettings?.freeShippingThreshold ?? SHIPPING_THRESHOLD;
 
@@ -116,7 +146,7 @@ export const POST = withDB(async (req: NextRequest) => {
     const promoCodes = settings?.pricingSettings?.promoCodes || [];
     const normalizedCode = promoCode.trim().toUpperCase();
     const promo = promoCodes.find(
-      (p: any) => p.code.toUpperCase() === normalizedCode,
+      (p) => p.code.toUpperCase() === normalizedCode,
     );
 
     if (!promo || !promo.isActive) {

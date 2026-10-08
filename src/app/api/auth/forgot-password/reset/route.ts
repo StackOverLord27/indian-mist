@@ -91,7 +91,7 @@ export async function POST(req: Request) {
 
     setTokenCookies(response, accessToken, rawRefreshToken);
     return response;
-  } catch (error: any) {
+  } catch (error) {
     console.error("Password reset error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

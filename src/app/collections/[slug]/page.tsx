@@ -4,12 +4,10 @@ import dbConnect from "@/lib/db";
 import { Collection } from "@/models/collection.model";
 import { Product as ProductModel } from "@/models/product.model";
 import { ProductCard } from "@/components/home/ProductCard";
-import type { Product } from "@/lib/homepage-data";
+import { toCardProduct, type PopulatedCollection, type PopulatedProduct } from "@/lib/collection-products";
 import type { Metadata } from "next";
 
 export const revalidate = 0;
-
-const formatPrice = (price: number) => `₹${price.toLocaleString("en-IN")}`;
 
 export async function generateMetadata({
   params,
@@ -20,13 +18,13 @@ export async function generateMetadata({
   await dbConnect();
   const collection = await Collection.findOne({ slug, isActive: true })
     .select("name description")
-    .lean();
+    .lean<Pick<PopulatedCollection, "name" | "description">>();
 
   if (!collection) return { title: "Collection Not Found" };
 
   return {
-    title: `${(collection as any).name} | Indian Mist`,
-    description: (collection as any).description || undefined,
+    title: `${collection.name} | Indian Mist`,
+    description: collection.description || undefined,
   };
 }
 
@@ -41,12 +39,12 @@ export default async function CollectionPage({
 
   const collection = await Collection.findOne({ slug, isActive: true })
     .populate("products")
-    .lean();
+    .lean<PopulatedCollection>();
 
   if (!collection) notFound();
 
-  const col = collection as any;
-  const products = (col.products || []).filter(Boolean);
+  const col = collection;
+  const products = (col.products || []).filter((p): p is PopulatedProduct => Boolean(p));
 
   return (
     <div className="bg-cornsilk px-4 sm:px-6 md:px-12 lg:px-16 pt-12 pb-16 min-h-screen">
@@ -75,25 +73,9 @@ export default async function CollectionPage({
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-5 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map((p: any) => {
-              const formattedProduct: Product = {
-                id: p.slug || p._id.toString(),
-                name: p.name,
-                category: p.category,
-                price: formatPrice(p.price),
-                badge: p.badge,
-                sizes: Array.isArray(p.sizes) && p.sizes.length > 0 ? p.sizes : undefined,
-                image: {
-                  src: p.images?.[0]?.url || undefined,
-                  alt: p.images?.[0]?.alt || p.name,
-                  fallbackClassName: "bg-olive-leaf/20",
-                },
-              };
-
-              return (
-                <ProductCard key={p._id.toString()} product={formattedProduct} />
-              );
-            })}
+            {products.map((p) => (
+              <ProductCard key={p._id.toString()} product={toCardProduct(p)} />
+            ))}
           </div>
         )}
 

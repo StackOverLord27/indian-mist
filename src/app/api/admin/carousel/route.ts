@@ -38,13 +38,13 @@ export const POST = withAdmin(async (req: NextRequest) => {
     folder: 'indian-mist/carousel',
   });
   
-  const last = await Carousel.findOne().sort({ order: -1 }).lean();
+  const last = await Carousel.findOne().sort({ order: -1 }).lean<{ order?: number } | null>();
   
   const item = await Carousel.create({
     url: result.url,
     publicId: result.publicId,
     alt: validationResult.data.alt?.trim() ?? '',
-    order: ((last as any)?.order ?? -1) + 1,
+    order: (last?.order ?? -1) + 1,
     isActive: validationResult.data.isActive,
   });
   

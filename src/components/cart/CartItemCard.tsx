@@ -1,5 +1,6 @@
 "use client";
 
+import { getImageSrc } from "@/lib/utils";
 import { useState, useRef } from "react";
 import Image from "next/image";
 import { Minus, Plus, X } from "lucide-react";
@@ -69,10 +70,7 @@ export function CartItemCard({
         )}
       >
         {(() => {
-          const imgSrc =
-            typeof item.image === "string"
-              ? item.image
-              : (item.image as any)?.url;
+          const imgSrc = getImageSrc(item.image);
           return imgSrc ? (
             <Image
               src={imgSrc}

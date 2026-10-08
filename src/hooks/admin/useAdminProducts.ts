@@ -71,10 +71,11 @@ export const useReorderProducts = () => {
       
       // We don't have a reliable single previous state because there could be multiple queries matching the key,
       // so we rely on invalidation for rollback, which is safer here.
-      queryClient.setQueriesData({ queryKey: ['admin-products'] }, (old: any) => {
+      queryClient.setQueriesData({ queryKey: ['admin-products'] }, (old: { products?: { _id: string }[] } | undefined) => {
         if (!old?.products) return old;
+        const products = old.products;
         const ordered = orderedIds
-          .map(id => old.products.find((p: any) => p._id === id))
+          .map(id => products.find((p) => p._id === id))
           .filter(Boolean);
         return { ...old, products: ordered };
       });

@@ -67,10 +67,11 @@ export const useReorderCategories = () => {
     onMutate: async (orderedIds: string[]) => {
       await queryClient.cancelQueries({ queryKey: ['admin-categories'] });
       
-      queryClient.setQueriesData({ queryKey: ['admin-categories'] }, (old: any) => {
+      queryClient.setQueriesData({ queryKey: ['admin-categories'] }, (old: { categories?: { _id: string }[] } | undefined) => {
         if (!old?.categories) return old;
+        const categories = old.categories;
         const ordered = orderedIds
-          .map(id => old.categories.find((c: any) => c._id === id))
+          .map(id => categories.find((c) => c._id === id))
           .filter(Boolean);
         return { ...old, categories: ordered };
       });

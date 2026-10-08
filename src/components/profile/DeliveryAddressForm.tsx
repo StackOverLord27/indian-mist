@@ -2,6 +2,14 @@ import { useState, useEffect } from "react";
 import { Pencil, X } from "lucide-react";
 import type { UserData, ShippingAddress } from "./types";
 
+const ADDRESS_FIELDS: { label: string; key: keyof ShippingAddress }[] = [
+  { label: "Street", key: "street" },
+  { label: "City", key: "city" },
+  { label: "State", key: "state" },
+  { label: "ZIP Code", key: "zipCode" },
+  { label: "Country", key: "country" },
+];
+
 export function DeliveryAddressForm({
   user,
   onUpdate,
@@ -42,8 +50,8 @@ export function DeliveryAddressForm({
       setIsEditing(false);
       setGlobalSuccess("Address updated successfully.");
       setTimeout(() => setGlobalSuccess(null), 3000);
-    } catch (err: any) {
-      setGlobalError(err.message);
+    } catch (err) {
+      setGlobalError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setSaving(false);
     }
@@ -69,13 +77,7 @@ export function DeliveryAddressForm({
 
       {isEditing ? (
         <form onSubmit={handleSave} className="divide-y divide-olive-leaf/10">
-          {[
-            { label: "Street", key: "street" },
-            { label: "City", key: "city" },
-            { label: "State", key: "state" },
-            { label: "ZIP Code", key: "zipCode" },
-            { label: "Country", key: "country" },
-          ].map(({ label, key }) => (
+          {ADDRESS_FIELDS.map(({ label, key }) => (
             <div key={key} className="px-6 py-3">
               <label className="block font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/80 mb-1">
                 {label}
@@ -83,7 +85,7 @@ export function DeliveryAddressForm({
               <input
                 type="text"
                 required
-                value={(form as any)[key]}
+                value={form[key]}
                 onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
                 className="w-full bg-transparent font-montserrat text-sm text-black-forest outline-none placeholder:text-olive-leaf/30 border-b border-olive-leaf/25 pb-1 focus:border-olive-leaf transition-colors"
               />

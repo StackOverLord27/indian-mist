@@ -30,7 +30,7 @@ const CategorySchema: Schema = new Schema(
   { timestamps: true }
 );
 
-CategorySchema.pre("validate", async function (this: any) {
+CategorySchema.pre("validate", async function (this: ICategory) {
   if (!this.slug && this.name) {
     this.slug = (this.name as string)
       .toLowerCase()

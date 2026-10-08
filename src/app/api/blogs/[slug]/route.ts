@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { withDB, successResponse, errorResponse } from "@/lib/api-helpers";
 import { Blog } from "@/models/blog.model";
 
-export const GET = withDB(async (req: NextRequest, context: any) => {
+export const GET = withDB(async (req: NextRequest, context) => {
   const params = await context.params;
   const blog = await Blog.findOne({
     slug: params.slug,

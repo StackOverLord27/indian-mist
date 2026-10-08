@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { SiteSettings } from "@/types/admin";
 import { z } from "zod";
 import dbConnect from "@/lib/db";
 import SiteSettingsModel from "@/models/settings.model";
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
     }
 
     await dbConnect();
-    const settings = (await SiteSettingsModel.findOne().lean()) as any;
+    const settings = await SiteSettingsModel.findOne().lean<SiteSettings>();
     const to =
       settings?.contactPageSettings?.email ||
       process.env.SUPER_ADMIN_EMAIL ||

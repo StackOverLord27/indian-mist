@@ -6,6 +6,7 @@ import { useAdminBlogs, useDeleteBlog } from '@/hooks/admin/useAdminBlogs';
 import { AdminBlog } from '@/types/admin';
 import { Plus, Pencil, Trash2, Eye, FileText } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 
 export default function AdminBlogsPage() {
@@ -106,12 +107,14 @@ export default function AdminBlogsPage() {
                 className="flex items-center gap-4 py-4 first:pt-0 last:pb-0 group"
               >
                 {/* Cover thumbnail */}
-                <div className="w-20 h-14 flex-shrink-0 rounded-sm overflow-hidden bg-olive/10">
+                <div className="relative w-20 h-14 flex-shrink-0 rounded-sm overflow-hidden bg-olive/10">
                   {blog.coverImage?.url ? (
-                    <img
+                    <Image
                       src={blog.coverImage.url}
                       alt={blog.coverImage.alt || blog.title}
-                      className="w-full h-full object-cover"
+                      fill
+                      sizes="80px"
+                      className="object-cover"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">

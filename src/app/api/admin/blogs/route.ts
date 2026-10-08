@@ -20,7 +20,7 @@ export const GET = withAdmin(async (req) => {
   const category = searchParams.get("category");
   const status = searchParams.get("status"); // "published" | "draft"
 
-  const filter: Record<string, any> = {};
+  const filter: Record<string, unknown> = {};
   if (category) filter.category = category;
   if (status === "published") filter.isPublished = true;
   if (status === "draft") filter.isPublished = false;

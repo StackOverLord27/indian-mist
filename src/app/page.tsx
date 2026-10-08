@@ -11,6 +11,7 @@ import {
   heroImage,
   storyImage,
   Product as UIProduct,
+  type ProductBadge,
   Arrival as UIArrival,
   Category as UICategory,
 } from "@/lib/homepage-data";
@@ -19,9 +20,38 @@ import { Product } from "@/models/product.model";
 import { Category as CategoryModel } from "@/models/category.model";
 import SiteSettingsModel from "@/models/settings.model";
 import CarouselModel from "@/models/carousel.model";
-import { CarouselImage } from "@/types/admin";
+import { CarouselImage, SiteSettings } from "@/types/admin";
 
 export const revalidate = 60;
+
+type ProductDoc = {
+  slug: string;
+  name: string;
+  category: string;
+  description?: string;
+  price: number;
+  badge?: ProductBadge;
+  sizes?: string[];
+  images?: { url?: string }[];
+};
+
+type CategoryDoc = {
+  slug: string;
+  name: string;
+  count: number;
+  isFeatured?: boolean;
+  image?: { url?: string; alt?: string };
+};
+
+type CarouselDoc = {
+  _id: string;
+  url: string;
+  alt?: string;
+  altText?: string;
+  publicId?: string;
+  order?: number;
+  isActive?: boolean;
+};
 
 const formatPrice = (price: number) => `₹${price.toLocaleString("en-IN")}`;
 
@@ -77,7 +107,9 @@ export default async function Home() {
       .lean(),
   ]);
 
-  const [featuredDocs, arrivalDocs, categoryDocs, settingsDoc, carouselDocs] = JSON.parse(JSON.stringify(results));
+  const [featuredDocs, arrivalDocs, categoryDocs, settingsDoc, carouselDocs] = JSON.parse(
+    JSON.stringify(results),
+  ) as [ProductDoc[], ProductDoc[], CategoryDoc[], SiteSettings | null, CarouselDoc[]];
 
   // ─── Map DB results to UI types (no placeholder fallback)
 
@@ -86,7 +118,7 @@ export default async function Home() {
   let mappedCategories: UICategory[] = [];
 
   if (featuredDocs.length > 0) {
-    mappedFeatured = featuredDocs.map((p: any) => ({
+    mappedFeatured = featuredDocs.map((p) => ({
       id: p.slug,
       name: p.name,
       category: p.category,
@@ -102,11 +134,11 @@ export default async function Home() {
   }
 
   if (arrivalDocs.length > 0) {
-    mappedArrivals = arrivalDocs.map((p: any) => ({
+    mappedArrivals = arrivalDocs.map((p) => ({
       id: p.slug,
       name: p.name,
       category: p.category,
-      description: p.description,
+      description: p.description ?? "",
       price: formatPrice(p.price),
       badge: p.badge,
       sizes: Array.isArray(p.sizes) && p.sizes.length > 0 ? p.sizes : undefined,
@@ -119,7 +151,7 @@ export default async function Home() {
   }
 
   if (categoryDocs.length > 0) {
-    mappedCategories = categoryDocs.map((cat: any) => ({
+    mappedCategories = categoryDocs.map((cat) => ({
       id: cat.slug,
       name: cat.name,
       productCount: `${cat.count} product${cat.count !== 1 ? "s" : ""}`,
@@ -132,7 +164,7 @@ export default async function Home() {
     }));
   }
 
-  const mappedSlides: CarouselImage[] = (carouselDocs || []).map((c: any) => ({
+  const mappedSlides: CarouselImage[] = (carouselDocs || []).map((c) => ({
     _id: c._id.toString(),
     url: c.url,
     alt: c.alt || c.altText || "",
@@ -145,18 +177,18 @@ export default async function Home() {
   return (
     <div className="w-full bg-cornsilk">
       <HeroSection
-        settings={(settingsDoc as any)?.heroSettings}
+        settings={settingsDoc?.heroSettings}
         slides={mappedSlides}
         fallbackImage={heroImage}
       />
-      <TrustStrip items={(settingsDoc as any)?.trustStripSettings?.items} />
+      <TrustStrip items={settingsDoc?.trustStripSettings?.items} />
       <ScrollReveal>
         <FeaturedProducts products={mappedFeatured} />
       </ScrollReveal>
       <ScrollReveal>
         <BrandStorySection
           image={storyImage}
-          settings={(settingsDoc as any)?.brandStorySettings}
+          settings={settingsDoc?.brandStorySettings}
         />
       </ScrollReveal>
       <ScrollReveal>
@@ -166,7 +198,7 @@ export default async function Home() {
         <NewestArrivals arrivals={mappedArrivals} />
       </ScrollReveal>
       <ScrollReveal>
-        <EcoCommitmentSection settings={(settingsDoc as any)?.ecoCommitmentSettings} />
+        <EcoCommitmentSection settings={settingsDoc?.ecoCommitmentSettings} />
       </ScrollReveal>
       <NewsletterBar />
     </div>

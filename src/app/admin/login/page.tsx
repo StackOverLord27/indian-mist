@@ -1,5 +1,6 @@
 'use client';
 
+import { getApiErrorMessage } from '@/lib/admin-error';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -36,8 +37,8 @@ export default function AdminLoginPage() {
 
       toast.success('Signed in successfully!');
       router.push('/admin');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || err.response?.data?.message || 'Failed to sign in');
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to sign in'));
     }
   };
 

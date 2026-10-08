@@ -1,6 +1,8 @@
 import { sanitizeRichText } from "@/lib/sanitize";
+import type { BlogPostData } from "@/types/blog";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import dbConnect from "@/lib/db";
 import { Blog } from "@/models/blog.model";
@@ -25,8 +27,8 @@ async function getBlogBySlug(slug: string) {
     .lean();
 
   return {
-    blog: JSON.parse(JSON.stringify(blog)),
-    related: JSON.parse(JSON.stringify(related)),
+    blog: JSON.parse(JSON.stringify(blog)) as BlogPostData,
+    related: JSON.parse(JSON.stringify(related)) as BlogPostData[],
   };
 }
 
@@ -39,13 +41,13 @@ export async function generateMetadata({
   await dbConnect();
   const blog = await Blog.findOne({ slug, isPublished: true })
     .select("title excerpt")
-    .lean();
+    .lean<{ title: string; excerpt: string }>();
 
   if (!blog) return { title: "Blog Post Not Found | Indian Mist" };
 
   return {
-    title: `${(blog as any).title} | Indian Mist Blog`,
-    description: (blog as any).excerpt,
+    title: `${blog.title} | Indian Mist Blog`,
+    description: blog.excerpt,
   };
 }
 
@@ -96,11 +98,14 @@ export default async function BlogPostPage({
             {blog.coverImage?.url ? (
               <div className="bg-card/90 backdrop-blur-xs border-2 border-olive/20 rounded-md p-3 sm:p-3.5 shadow-sm hover:shadow-md transition-shadow">
                 {/* Gallery frame matting & border */}
-                <div className="bg-warm/30 border border-olive/15 rounded-xs p-2.5 sm:p-3 flex items-center justify-center h-55 sm:h-60 md:h-65 overflow-hidden">
-                  <img
+                <div className="relative bg-warm/30 border border-olive/15 rounded-xs h-55 sm:h-60 md:h-65 overflow-hidden">
+                  <Image
                     src={blog.coverImage.url}
                     alt={blog.coverImage.alt || blog.title}
-                    className="w-full h-full max-h-60 object-contain rounded-xs transition-transform duration-300 hover:scale-[1.01]"
+                    fill
+                    priority
+                    sizes="(max-width: 1024px) 100vw, 33vw"
+                    className="object-contain p-2.5 sm:p-3 rounded-xs transition-transform duration-300 hover:scale-[1.01]"
                   />
                 </div>
 
@@ -172,9 +177,9 @@ export default async function BlogPostPage({
               </div>
 
               {/* Tags */}
-              {blog.tags?.length > 0 && (
+              {blog.tags && blog.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-4">
-                  {blog.tags.map((tag: string) => (
+                  {blog.tags.map((tag) => (
                     <span
                       key={tag}
                       className="font-montserrat text-[10px] text-muted-text bg-olive/5 border border-olive/15 rounded-sm px-2.5 py-0.5 font-medium"
@@ -226,19 +231,21 @@ export default async function BlogPostPage({
               More from {blog.category}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {related.map((post: any) => (
+              {related.map((post) => (
                 <Link
                   key={post._id}
                   href={`/blogs/${post.slug}`}
                   className="group block"
                 >
                   <article className="bg-card-bg rounded-md overflow-hidden border border-olive/8 hover:border-olive/20 transition-all duration-300 hover:shadow-sm">
-                    <div className="aspect-16/10 overflow-hidden">
+                    <div className="relative aspect-16/10 overflow-hidden">
                       {post.coverImage?.url ? (
-                        <img
+                        <Image
                           src={post.coverImage.url}
                           alt={post.coverImage.alt || post.title}
-                          className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                          fill
+                          sizes="(max-width: 640px) 100vw, 33vw"
+                          className="object-cover group-hover:scale-[1.03] transition-transform duration-500"
                         />
                       ) : (
                         <div className="w-full h-full bg-olive/10 flex items-center justify-center">

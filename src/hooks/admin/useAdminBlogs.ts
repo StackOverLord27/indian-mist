@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getApiErrorMessage } from '@/lib/admin-error';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import * as api from '@/lib/admin-api/blogs';
@@ -29,8 +30,8 @@ export const useCreateBlog = () => {
       toast.success('Blog post created successfully');
       router.push('/admin/blogs');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create blog post');
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Failed to create blog post'));
     },
   });
 };
@@ -47,8 +48,8 @@ export const useUpdateBlog = (id: string) => {
       toast.success('Blog post updated');
       router.push('/admin/blogs');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update blog post');
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update blog post'));
     },
   });
 };
@@ -62,8 +63,8 @@ export const useDeleteBlog = () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-blogs'] });
       toast.success('Blog post deleted');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete blog post');
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete blog post'));
     },
   });
 };
@@ -85,8 +86,8 @@ export const useCreateBlogCategory = () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-blog-categories'] });
       toast.success(`Category "${data.category}" created`);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create category');
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Failed to create category'));
     },
   });
 };

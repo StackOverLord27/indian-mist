@@ -3,10 +3,21 @@ import dbConnect from './db';
 import type { NextRequest } from 'next/server';
 import mongoose from 'mongoose';
 
-type AdminContext = {
-  params: any;
+export type RouteContext = {
+  params: Promise<Record<string, string>>;
+};
+
+type AdminContext = RouteContext & {
   userId: string;
   email: string;
+};
+
+export type UploadedFile = {
+  fieldname: string;
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+  size: number;
 };
 
 type AdminHandler = (
@@ -42,8 +53,9 @@ export function handleApiError(error: unknown): Response {
     });
     return errorResponse('Validation failed', 400, errors);
   }
-  if ((error as any)?.code === 11000) {
-    const field = Object.keys((error as any).keyValue ?? {})[0];
+  const mongoError = error as { code?: number; keyValue?: Record<string, unknown> } | null;
+  if (mongoError?.code === 11000) {
+    const field = Object.keys(mongoError.keyValue ?? {})[0];
     return errorResponse(`${field ?? 'Field'} already exists`, 409);
   }
   return errorResponse('Internal server error', 500);
@@ -52,7 +64,7 @@ export function handleApiError(error: unknown): Response {
 export function withAdmin(handler: AdminHandler) {
   return async (
     req: NextRequest,
-    context: { params: Promise<Record<string, string>> | Record<string, string> | any }
+    context: RouteContext
   ): Promise<Response> => {
     try {
       const role = req.headers.get('x-user-role');
@@ -81,11 +93,11 @@ export function withAdmin(handler: AdminHandler) {
 }
 
 export function withDB(
-  handler: (req: NextRequest, context: any) => Promise<Response>
+  handler: (req: NextRequest, context: RouteContext) => Promise<Response>
 ) {
   return async (
     req: NextRequest, 
-    context: { params: Promise<Record<string, string>> | Record<string, string> | any }
+    context: RouteContext
   ): Promise<Response> => {
     try {
       await dbConnect();
@@ -98,17 +110,11 @@ export function withDB(
 
 export async function parseFormData(req: NextRequest): Promise<{
   fields: Record<string, string>;
-  files: {
-    fieldname: string;
-    buffer: Buffer;
-    mimetype: string;
-    originalname: string;
-    size: number;
-  }[];
+  files: UploadedFile[];
 }> {
   const formData = await req.formData();
   const fields: Record<string, string> = {};
-  const files: any[] = [];
+  const files: UploadedFile[] = [];
 
   for (const [key, value] of formData.entries()) {
     if (value instanceof File) {

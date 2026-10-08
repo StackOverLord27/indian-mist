@@ -1,4 +1,5 @@
 import dbConnect from "@/lib/db";
+import { imageUrls, type ProductFacetResult } from "@/types/product-facets";
 import { Product } from "@/models/product.model";
 import ProductsClient from "@/components/products/ProductsClient";
 
@@ -59,27 +60,27 @@ export default async function ProductsPage({
     }
   ]);
 
-  const facetResult = result[0];
+  const facetResult: ProductFacetResult = result[0] ?? {};
 
-  const formattedProducts = facetResult.data.map((p: any) => ({
-    id: p._id.toString(),
-    slug: p.slug,
-    name: p.name,
-    category: p.category,
-    price: formatPrice(p.price),
-    images: (p.images || []).map((img: any) => typeof img === 'string' ? img : img?.url).filter(Boolean),
-    badge: p.badge,
+  const formattedProducts = (facetResult.data ?? []).map((p) => ({
+    id: p._id?.toString() ?? "",
+    slug: p.slug ?? "",
+    name: p.name ?? "",
+    category: p.category ?? "",
+    price: formatPrice(p.price ?? 0),
+    images: imageUrls(p.images),
+    badge: p.badge || undefined,
     hasSizes: Array.isArray(p.sizes) && p.sizes.length > 0,
     sizes: Array.isArray(p.sizes) && p.sizes.length > 0 ? p.sizes : undefined,
   }));
 
-  const total = facetResult.totalCount[0]?.count || 0;
+  const total = facetResult.totalCount?.[0]?.count || 0;
 
   const initialFacets = {
-    categories: facetResult.categories.map((c: any) => ({ name: c._id, value: c._id, count: c.count })),
-    badges: facetResult.badges
-      .filter((b: any) => b._id)
-      .map((b: any) => ({ name: b._id, value: b._id, count: b.count })),
+    categories: (facetResult.categories ?? []).map((c) => ({ name: c._id, value: c._id, count: c.count })),
+    badges: (facetResult.badges ?? [])
+      .filter((b): b is { _id: string; count: number } => Boolean(b._id))
+      .map((b) => ({ name: b._id, value: b._id, count: b.count })),
   };
 
   return <ProductsClient

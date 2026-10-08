@@ -1,5 +1,6 @@
 'use client';
 
+import type { CarouselImage } from '@/types/admin';
 import AdminProtectedRoute from '@/components/admin/AdminProtectedRoute';
 import ImageUploadZone from '@/components/admin/ui/ImageUploadZone';
 import { useCarousel, useAddCarouselImage, useDeleteCarouselImage, useReorderCarousel, useUpdateCarouselItem } from '@/hooks/admin/useAdminCarousel';
@@ -56,14 +57,14 @@ export default function AdminCarouselPage() {
     reorderMutation.mutate(newOrder.map(item => item._id));
   };
 
-  const handleToggleVisibility = (item: any) => {
+  const handleToggleVisibility = (item: CarouselImage) => {
     updateMutation.mutate({
       id: item._id,
       isActive: !item.isActive,
     });
   };
 
-  const startEditAlt = (item: any) => {
+  const startEditAlt = (item: CarouselImage) => {
     setEditingId(item._id);
     setEditingAlt(item.alt || item.altText || '');
   };

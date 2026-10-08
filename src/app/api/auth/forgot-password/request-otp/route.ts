@@ -58,7 +58,7 @@ export async function POST(req: Request) {
       { message: "OTP sent successfully." },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Forgot password request error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

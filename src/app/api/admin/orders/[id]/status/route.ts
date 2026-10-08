@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { withAdmin, errorResponse, successResponse } from '@/lib/api-helpers';
 import { Order } from '@/models/order.model';
 
-export const PATCH = withAdmin(async (req: NextRequest, context: any) => {
+export const PATCH = withAdmin(async (req: NextRequest, context) => {
   try {
     const resolvedParams = await Promise.resolve(context?.params);
     const id = resolvedParams?.id;

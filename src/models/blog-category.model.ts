@@ -15,7 +15,7 @@ const BlogCategorySchema: Schema = new Schema(
   { timestamps: true }
 );
 
-BlogCategorySchema.pre("validate", function (this: any) {
+BlogCategorySchema.pre("validate", function (this: IBlogCategory) {
   if (!this.slug && this.name) {
     const generated = (this.name as string)
       .toLowerCase()

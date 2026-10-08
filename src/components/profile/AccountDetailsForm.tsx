@@ -38,8 +38,8 @@ export function AccountDetailsForm({
       setIsEditing(false);
       setGlobalSuccess("Account details updated successfully.");
       setTimeout(() => setGlobalSuccess(null), 3000);
-    } catch (err: any) {
-      setGlobalError(err.message);
+    } catch (err) {
+      setGlobalError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setSaving(false);
     }

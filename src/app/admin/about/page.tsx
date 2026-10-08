@@ -120,7 +120,7 @@ export default function AdminAboutPage() {
     }));
   };
 
-  const updateCustomSection = (idx: number, field: string, val: any) => {
+  const updateCustomSection = (idx: number, field: string, val: string | number) => {
     setContent(prev => {
       const newSections = [...(prev.customSections || [])];
       newSections[idx] = { ...newSections[idx], [field]: val };

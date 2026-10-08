@@ -2,6 +2,7 @@
  
 'use client';
 
+import type { Resolver } from 'react-hook-form';
 import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -109,7 +110,7 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
   }, [product]);
 
   const { register, control, handleSubmit, formState: { errors, isDirty }, setValue, watch } = useForm<ProductFormData>({
-    resolver: zodResolver(productSchema) as any,
+    resolver: zodResolver(productSchema) as Resolver<ProductFormData>,
     defaultValues: {
       name: product?.name || '',
       category: product?.category || '',
@@ -286,7 +287,7 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
               <input type="number" step="0.01" {...register('originalPrice', { valueAsNumber: true })} className={inputClass} />
             </AdminFormField>
             <AdminFormField label="Badge" error={errors.badge?.message}>
-              <Select onValueChange={(val: any) => setValue('badge', val)} defaultValue={product?.badge || ''}>
+              <Select onValueChange={(val) => setValue('badge', (val ?? '') as ProductFormData['badge'])} defaultValue={product?.badge || ''}>
                 <SelectTrigger className={inputClass}>
                   <SelectValue placeholder="None" />
                 </SelectTrigger>

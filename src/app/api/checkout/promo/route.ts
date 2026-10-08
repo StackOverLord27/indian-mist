@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import type { SiteSettings } from "@/types/admin";
 import { withDB, errorResponse, successResponse } from "@/lib/api-helpers";
 import Settings from "@/models/settings.model";
 import { Order } from "@/models/order.model";
@@ -20,10 +21,10 @@ export const POST = withDB(async (req: NextRequest) => {
 
     const normalizedCode = code.trim().toUpperCase();
 
-    const settings = await Settings.findOne().lean();
+    const settings = await Settings.findOne().lean<SiteSettings>();
     const promoCodes = settings?.pricingSettings?.promoCodes || [];
     const promo = promoCodes.find(
-      (p: any) => p.code.toUpperCase() === normalizedCode,
+      (p) => p.code.toUpperCase() === normalizedCode,
     );
 
     if (!promo) {

@@ -232,3 +232,39 @@ export interface AdminBlog {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface AdminOrderItem {
+  name: string;
+  quantity: number;
+  priceAtPurchase: number;
+  image?: string;
+  selectedSize?: string;
+  selectedColor?: string;
+}
+
+export interface AdminOrder {
+  _id: string;
+  createdAt: string;
+  status: 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  paymentStatus: 'UNPAID' | 'PAID' | 'FAILED';
+  customerName: string;
+  email: string;
+  phone: string;
+  items: AdminOrderItem[];
+  subtotal: number;
+  shippingCost: number;
+  taxAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  promoCode?: string;
+  deliveryNotes?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  shippingAddress: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
+}

@@ -13,3 +13,9 @@ export function formatPrice(price: number) {
     maximumFractionDigits: 0,
   }).format(price);
 }
+
+/** Older saved carts and wishlists stored the image as { url } instead of a plain string. */
+export function getImageSrc(image: string | { url?: string } | null | undefined): string {
+  if (typeof image === "string") return image;
+  return image?.url ?? "";
+}

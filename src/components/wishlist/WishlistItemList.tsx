@@ -1,5 +1,6 @@
 "use client";
 
+import { getImageSrc } from "@/lib/utils";
 import toast from "react-hot-toast";
 import Image from "next/image";
 import Link from "next/link";
@@ -76,10 +77,7 @@ function WishlistItemCard({
           )}
         >
           {(() => {
-            const imgSrc =
-              typeof item.image === "string"
-                ? item.image
-                : (item.image as any)?.url;
+            const imgSrc = getImageSrc(item.image);
             return imgSrc ? (
               <Image
                 src={imgSrc}

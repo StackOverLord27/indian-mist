@@ -82,7 +82,7 @@ function DesktopNavLink({
         href={link.href}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "font-sans text-sm font-medium uppercase tracking-widest transition-all",
+          "font-sans text-sm font-normal uppercase tracking-widest transition-all",
           isActive
             ? "text-olive-leaf underline underline-offset-8 decoration-2 decoration-olive-leaf"
             : "text-black-forest/85 hover:opacity-100 hover:text-black-forest"
@@ -99,7 +99,7 @@ function DesktopNavLink({
         href={link.href}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "inline-flex items-center gap-1 font-sans text-sm font-medium uppercase tracking-widest transition-all",
+          "inline-flex items-center gap-1 font-sans text-sm font-normal uppercase tracking-widest transition-all",
           isActive
             ? "text-olive-leaf underline underline-offset-8 decoration-2 decoration-olive-leaf"
             : "text-black-forest/85 hover:opacity-100 hover:text-black-forest"
@@ -113,7 +113,7 @@ function DesktopNavLink({
         <div className="min-w-48 rounded-home-card border border-olive-leaf/15 bg-cornsilk p-2 shadow-lg">
           <Link
             href={link.href}
-            className="block rounded-sm px-4 py-2.5 font-sans text-sm font-medium uppercase tracking-widest text-olive-leaf transition-colors hover:bg-warm-mist"
+            className="block rounded-sm px-4 py-2.5 font-sans text-sm font-normal uppercase tracking-widest text-olive-leaf transition-colors hover:bg-warm-mist"
           >
             All {link.name}
           </Link>
@@ -147,7 +147,7 @@ function MobileNavItem({
   const hasChildren = Boolean(link.children?.length);
 
   const linkClass = cn(
-    "flex w-full items-center px-5 py-3.5 font-sans text-base font-medium uppercase tracking-widest transition-colors",
+    "flex w-full items-center px-5 py-3.5 font-sans text-base font-normal uppercase tracking-widest transition-colors",
     isActive
       ? "text-olive-leaf"
       : "text-black-forest/80 hover:text-black-forest"
@@ -169,7 +169,7 @@ function MobileNavItem({
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
         className={cn(
-          "flex w-full items-center justify-between px-5 py-3.5 font-sans text-base font-medium uppercase tracking-widest transition-colors",
+          "flex w-full items-center justify-between px-5 py-3.5 font-sans text-base font-normal uppercase tracking-widest transition-colors",
           isActive
             ? "text-olive-leaf"
             : "text-black-forest/80 hover:text-black-forest"
@@ -198,7 +198,7 @@ function MobileNavItem({
             <Link
               href={link.href}
               onClick={onClose}
-              className="flex w-full items-center gap-2 px-4 py-2.5 font-sans text-sm font-medium uppercase tracking-widest text-olive-leaf transition-colors hover:text-black-forest"
+              className="flex w-full items-center gap-2 px-4 py-2.5 font-sans text-sm font-normal uppercase tracking-widest text-olive-leaf transition-colors hover:text-black-forest"
             >
               All {link.name}
             </Link>

@@ -1,4 +1,5 @@
 import dbConnect from "@/lib/db";
+import type { ContactPageSettings, SiteSettings } from "@/types/admin";
 import SiteSettingsModel from "@/models/settings.model";
 import { ContactForm } from "@/components/contact/ContactForm";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -7,24 +8,25 @@ import { FaInstagram, FaFacebook, FaXTwitter, FaYoutube, FaWhatsapp } from "reac
 
 export const revalidate = 60;
 
+const DEFAULT_CONTACT: Required<ContactPageSettings> = {
+  title: "Contact Us",
+  subtitle:
+    "Questions about an order, a product, or just want to say hello? Send us a message and a real person will get back to you.",
+  address: "123 Forest Lane, Nature Valley, Earth 456789",
+  phone: "+91 98765 43210",
+  whatsapp: "+91 98765 43210",
+  email: "hello@indianmist.com",
+  businessHours: "Mon–Fri, 9:00 AM – 6:00 PM",
+  faqs: [],
+};
+
 export default async function ContactPage() {
   await dbConnect();
-  const settings = (await SiteSettingsModel.findOne().lean()) as any;
+  const settings = await SiteSettingsModel.findOne().lean<SiteSettings>();
 
-  const c = settings?.contactPageSettings || {
-    title: "Contact Us",
-    subtitle:
-      "Questions about an order, a product, or just want to say hello? Send us a message and a real person will get back to you.",
-    address: "123 Forest Lane, Nature Valley, Earth 456789",
-    phone: "+91 98765 43210",
-    whatsapp: "+91 98765 43210",
-    email: "hello@indianmist.com",
-    businessHours: "Mon–Fri, 9:00 AM – 6:00 PM",
-  };
+  const c: Required<ContactPageSettings> = { ...DEFAULT_CONTACT, ...settings?.contactPageSettings };
 
-  const faqs: { question: string; answer: string }[] = (c.faqs ?? []).filter(
-    (f: { question?: string; answer?: string }) => f.question?.trim() && f.answer?.trim()
-  );
+  const faqs = (c.faqs ?? []).filter((f) => f.question?.trim() && f.answer?.trim());
 
   const socialLinks = settings?.socialLinks || {};
   const socials = [

@@ -6,27 +6,30 @@ import { Product } from '@/models/product.model';
 import { uploadImage, deleteManyImages } from '@/lib/cloudinary';
 import { ProductSchema } from '@/schemas/admin';
 
-export const GET = withAdmin(async (req, context: any) => {
+export const GET = withAdmin(async (req, context) => {
   const params = await context.params;
   const product = await Product.findById(params.id).lean();
   if (!product) return errorResponse('Product not found', 404);
   return successResponse({ product });
 });
 
-export const PUT = withAdmin(async (req, context: any) => {
+type StoredImage = { url: string; publicId: string; alt: string; isPrimary: boolean };
+
+export const PUT = withAdmin(async (req, context) => {
   const params = await context.params;
   const product = await Product.findById(params.id);
   if (!product) return errorResponse('Product not found', 404);
 
   const { fields, files } = await parseFormData(req);
 
+  // Work on a plain copy of the images, then save it back once at the end
+  let images: StoredImage[] = product.toObject().images;
+
   // Step 1: Remove images by publicId
   const removeIds: string[] = JSON.parse(fields.removeImageIds ?? '[]');
   if (removeIds.length) {
     await deleteManyImages(removeIds);
-    product.images = (product.images as any).filter(
-      (img: any) => !removeIds.includes(img.publicId)
-    );
+    images = images.filter((img) => !removeIds.includes(img.publicId));
   }
 
   // Step 2: Upload new images
@@ -38,7 +41,7 @@ export const PUT = withAdmin(async (req, context: any) => {
     const result = await uploadImage(file.buffer, {
       folder: 'indian-mist/products',
     });
-    product.images.push({
+    images.push({
       url: result.url,
       publicId: result.publicId,
       alt: fields[`newImageAlt_${i}`] ?? '',
@@ -46,7 +49,7 @@ export const PUT = withAdmin(async (req, context: any) => {
     });
   }
 
-  if (product.images.length === 0) {
+  if (images.length === 0) {
     return errorResponse('Product must have at least one image', 400);
   }
 
@@ -54,7 +57,7 @@ export const PUT = withAdmin(async (req, context: any) => {
   if (fields.imageOrder) {
     try {
       const order: string[] = JSON.parse(fields.imageOrder);
-      product.images.sort((a: any, b: any) => {
+      images.sort((a, b) => {
         const ai = order.indexOf(a.publicId);
         const bi = order.indexOf(b.publicId);
         if (ai === -1) return 1;
@@ -62,24 +65,23 @@ export const PUT = withAdmin(async (req, context: any) => {
         return ai - bi;
       });
       // First image is primary
-      product.images = (product.images as any).map((img: any, idx: number) => ({
-        ...img.toObject?.() ?? img,
-        isPrimary: idx === 0,
-      }));
+      images = images.map((img, idx) => ({ ...img, isPrimary: idx === 0 }));
     } catch (e) {
       console.error('Failed to parse imageOrder', e);
     }
   } else if (fields.primaryImagePublicId) {
-    product.images = (product.images as any).map((img: any) => ({
-      ...img.toObject?.() ?? img,
+    images = images.map((img) => ({
+      ...img,
       isPrimary: img.publicId === fields.primaryImagePublicId,
     }));
   }
 
+  product.images = images;
+
   // Step 4: Update category cover image
   if (fields.categoryCoverImagePublicId) {
-    const cover = (product.images as any).find(
-      (img: any) => img.publicId === fields.categoryCoverImagePublicId
+    const cover = images.find(
+      (img) => img.publicId === fields.categoryCoverImagePublicId
     );
     if (cover) product.categoryCoverImage = cover.url;
   }
@@ -101,17 +103,17 @@ export const PUT = withAdmin(async (req, context: any) => {
     sizes: fields.sizes ? parseJSON(fields.sizes, []) : product.sizes,
     features: fields.features ? parseJSON(fields.features, []) : product.features,
     materials: fields.materials ? parseJSON(fields.materials, []) : product.materials,
-    careInstructions: fields.careInstructions ? parseJSON(fields.careInstructions, []) : (product as any).careInstructions,
-    shippingInfo: fields.shippingInfo ? parseJSON(fields.shippingInfo, undefined) : (product as any).shippingInfo,
+    careInstructions: fields.careInstructions ? parseJSON(fields.careInstructions, []) : product.careInstructions,
+    shippingInfo: fields.shippingInfo ? parseJSON(fields.shippingInfo, undefined) : product.shippingInfo,
     isFeatured: fields.isFeatured !== undefined ? fields.isFeatured === 'true' : product.isFeatured,
-    trackInventory: fields.trackInventory !== undefined ? fields.trackInventory === 'true' : ((product as any).trackInventory ?? false),
-    stockQuantity: fields.stockQuantity !== undefined ? Math.max(0, Math.floor(Number(fields.stockQuantity) || 0)) : ((product as any).stockQuantity ?? 0),
+    trackInventory: fields.trackInventory !== undefined ? fields.trackInventory === 'true' : (product.trackInventory ?? false),
+    stockQuantity: fields.stockQuantity !== undefined ? Math.max(0, Math.floor(Number(fields.stockQuantity) || 0)) : (product.stockQuantity ?? 0),
   };
 
   const validationResult = ProductSchema.safeParse(parsedFields);
   if (!validationResult.success) {
     const errors: Record<string, string> = {};
-    validationResult.error.issues.forEach((err: any) => {
+    validationResult.error.issues.forEach((err) => {
       errors[err.path.join('.')] = err.message;
     });
     return errorResponse('Validation failed', 400, errors);
@@ -123,12 +125,12 @@ export const PUT = withAdmin(async (req, context: any) => {
   return successResponse({ product });
 });
 
-export const DELETE = withAdmin(async (req, context: any) => {
+export const DELETE = withAdmin(async (req, context) => {
   const params = await context.params;
   const product = await Product.findById(params.id);
   if (!product) return errorResponse('Product not found', 404);
 
-  const publicIds = (product.images as any[])
+  const publicIds = product.images
     .map(img => img.publicId)
     .filter(Boolean);
   await deleteManyImages(publicIds);

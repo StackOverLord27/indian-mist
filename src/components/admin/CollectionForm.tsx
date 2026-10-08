@@ -1,5 +1,6 @@
 'use client';
 
+import type { Resolver } from 'react-hook-form';
 import AdminProtectedRoute from '@/components/admin/AdminProtectedRoute';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,12 +29,12 @@ export default function CollectionForm({ initialData }: CollectionFormProps) {
 
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>(
     isEditing 
-      ? (initialData.products as any[]).map(p => typeof p === 'string' ? p : p._id)
+      ? (initialData.products as (string | { _id: string })[]).map((p) => (typeof p === 'string' ? p : p._id))
       : []
   );
 
   const { register, handleSubmit, formState: { errors } } = useForm<CollectionFormData>({
-    resolver: zodResolver(CollectionSchema) as any,
+    resolver: zodResolver(CollectionSchema) as Resolver<CollectionFormData>,
     defaultValues: {
       name: initialData?.name || '',
       description: initialData?.description || '',

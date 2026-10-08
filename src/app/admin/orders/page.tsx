@@ -1,7 +1,9 @@
 "use client";
 
+import type { AdminOrder } from "@/types/admin";
+import { getApiErrorMessage } from "@/lib/admin-error";
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type UseMutationResult } from "@tanstack/react-query";
 import { adminAxios } from "@/lib/admin-axios";
 import { toast } from "react-hot-toast";
 import {
@@ -22,7 +24,17 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight, Package, MapPin, CreditCard } from "lucide-react";
 import Image from "next/image";
 
-function OrderRow({ order, updateStatus, getStatusColor }: any) {
+type StatusUpdater = UseMutationResult<unknown, Error, { id: string; status: string }>;
+
+function OrderRow({
+  order,
+  updateStatus,
+  getStatusColor,
+}: {
+  order: AdminOrder;
+  updateStatus: StatusUpdater;
+  getStatusColor: (status: string) => string;
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -159,7 +171,7 @@ function OrderRow({ order, updateStatus, getStatusColor }: any) {
                   Ordered Items
                 </div>
                 <div className="space-y-3 max-h-62.5 overflow-y-auto pr-2 custom-scrollbar">
-                  {order.items.map((item: any, idx: number) => (
+                  {order.items.map((item, idx) => (
                     <div key={idx} className="flex gap-3 bg-white p-2 border border-olive/10 rounded-sm">
                       {item.image && (
                         <div className="relative w-12 h-16 bg-warm/50 shrink-0">
@@ -239,7 +251,7 @@ export default function AdminOrdersPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "orders", filter],
-    queryFn: async () => {
+    queryFn: async (): Promise<AdminOrder[]> => {
       const res = await adminAxios.get(`/api/admin/orders?status=${filter}`);
       return res.data.orders;
     },
@@ -254,8 +266,8 @@ export default function AdminOrdersPage() {
       toast.success("Order status updated");
       queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Failed to update status");
+    onError: (err) => {
+      toast.error(getApiErrorMessage(err, "Failed to update status"));
     },
   });
 
@@ -353,7 +365,7 @@ export default function AdminOrdersPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((order: any) => (
+              data.map((order) => (
                 <OrderRow key={order._id} order={order} updateStatus={updateStatus} getStatusColor={getStatusColor} />
               ))
             )}

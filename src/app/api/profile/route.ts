@@ -32,7 +32,7 @@ export const PUT = withDB(async (req: NextRequest) => {
     const body = await req.json();
     const { shippingAddress, phone, name } = body;
 
-    const updateFields: any = {};
+    const updateFields: Record<string, unknown> = {};
     if (shippingAddress !== undefined) updateFields.shippingAddress = shippingAddress;
     if (phone !== undefined) updateFields.phone = phone;
     if (name !== undefined) updateFields.name = name;
@@ -48,7 +48,7 @@ export const PUT = withDB(async (req: NextRequest) => {
     }
 
     return successResponse({ user: updatedUser });
-  } catch (error: any) {
-    return errorResponse(error.message || "Failed to update profile", 500);
+  } catch (error) {
+    return errorResponse(error instanceof Error ? error.message : "Failed to update profile", 500);
   }
 });

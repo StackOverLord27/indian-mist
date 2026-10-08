@@ -12,14 +12,14 @@ import { Blog } from "@/models/blog.model";
 import { uploadImage, deleteImage } from "@/lib/cloudinary";
 import { BlogSchema } from "@/schemas/blog";
 
-export const GET = withAdmin(async (req, context: any) => {
+export const GET = withAdmin(async (req, context) => {
   const params = await context.params;
   const blog = await Blog.findById(params.id).lean();
   if (!blog) return errorResponse("Blog not found", 404);
   return successResponse({ blog });
 });
 
-export const PUT = withAdmin(async (req, context: any) => {
+export const PUT = withAdmin(async (req, context) => {
   const params = await context.params;
   const blog = await Blog.findById(params.id);
   if (!blog) return errorResponse("Blog not found", 404);
@@ -59,7 +59,7 @@ export const PUT = withAdmin(async (req, context: any) => {
     blog.coverImage = {
       ...blog.coverImage,
       alt: fields.coverImageAlt,
-    } as any;
+    };
   }
 
   // Update fields
@@ -79,7 +79,7 @@ export const PUT = withAdmin(async (req, context: any) => {
   const validationResult = BlogSchema.safeParse(parsedFields);
   if (!validationResult.success) {
     const errors: Record<string, string> = {};
-    validationResult.error.issues.forEach((err: any) => {
+    validationResult.error.issues.forEach((err) => {
       errors[err.path.join(".")] = err.message;
     });
     return errorResponse("Validation failed", 400, errors);
@@ -96,7 +96,7 @@ export const PUT = withAdmin(async (req, context: any) => {
   return successResponse({ blog });
 });
 
-export const DELETE = withAdmin(async (req, context: any) => {
+export const DELETE = withAdmin(async (req, context) => {
   const params = await context.params;
   const blog = await Blog.findById(params.id);
   if (!blog) return errorResponse("Blog not found", 404);

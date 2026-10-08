@@ -14,7 +14,7 @@ export const GET = withAdmin(async () => {
 
 export const PUT = withAdmin(async (req: NextRequest) => {
   const contentType = req.headers.get('content-type') ?? '';
-  const update: Record<string, any> = {};
+  const update: Record<string, unknown> = {};
 
   if (contentType.includes('multipart/form-data')) {
     const { fields, files } = await parseFormData(req);
@@ -25,7 +25,7 @@ export const PUT = withAdmin(async (req: NextRequest) => {
 
     if (files.length) {
       // Delete old team photo from Cloudinary if exists
-      const existing = await About.findOne().select('teamPhoto').lean() as any;
+      const existing = await About.findOne().select('teamPhoto').lean<{ teamPhoto?: { publicId?: string } } | null>();
       if (existing?.teamPhoto?.publicId) {
         await deleteImage(existing.teamPhoto.publicId);
       }
@@ -45,7 +45,7 @@ export const PUT = withAdmin(async (req: NextRequest) => {
   const validationResult = AboutSchema.safeParse(update);
   if (!validationResult.success) {
     const errors: Record<string, string> = {};
-    validationResult.error.issues.forEach((err: any) => {
+    validationResult.error.issues.forEach((err) => {
       errors[err.path.join('.')] = err.message;
     });
     return errorResponse('Validation failed', 400, errors);

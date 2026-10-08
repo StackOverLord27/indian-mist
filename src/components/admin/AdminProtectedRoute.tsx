@@ -24,9 +24,9 @@ export default function AdminProtectedRoute({ children }: { children: React.Reac
             router.push('/admin/login');
           }
         }
-      } catch (err: any) {
+      } catch (err) {
         // If 401, attempt silent token refresh using the refresh token cookie
-        if (err.response?.status === 401) {
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
           try {
             await axios.post('/api/auth/refresh');
             const retryRes = await axios.get('/api/auth/me');
@@ -37,7 +37,7 @@ export default function AdminProtectedRoute({ children }: { children: React.Reac
           } catch {
             // Refresh failed, token is genuinely invalid
           }
-        } else if (err.response?.status === 429) {
+        } else if (axios.isAxiosError(err) && err.response?.status === 429) {
           // If rate limited, don't boot an admin if localStorage confirms their session
           const adminUser = localStorage.getItem('im_admin_user');
           if (adminUser) {

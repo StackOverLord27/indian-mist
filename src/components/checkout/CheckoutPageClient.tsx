@@ -1,5 +1,7 @@
 "use client";
 
+import type { UserData } from "@/components/profile/types";
+import { getApiErrorMessage } from "@/lib/admin-error";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -18,9 +20,20 @@ import { ShippingForm } from "@/components/checkout/ShippingForm";
 import { CheckoutOrderSummary } from "@/components/checkout/CheckoutOrderSummary";
 import { CheckoutSuccess } from "@/components/checkout/CheckoutSuccess";
 
+type RazorpaySuccessResponse = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+type RazorpayFailureResponse = { error?: { description?: string } };
+type RazorpayCheckout = {
+  open: () => void;
+  on: (event: "payment.failed", handler: (response: RazorpayFailureResponse) => void) => void;
+};
+
 declare global {
   interface Window {
-    Razorpay: any;
+    Razorpay: new (options: Record<string, unknown>) => RazorpayCheckout;
   }
 }
 
@@ -72,7 +85,7 @@ export function CheckoutPageClient() {
 
   // Auth and Profile state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [storedProfile, setStoredProfile] = useState<any>(null);
+  const [storedProfile, setStoredProfile] = useState<UserData | null>(null);
 
   // Fetch user profile on mount — auto-fill ALL fields
   useEffect(() => {
@@ -196,8 +209,8 @@ export function CheckoutPageClient() {
       toast.success(
         `Coupon applied! You save ${formatPrice(data.discountAmount)}`,
       );
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || "Invalid coupon code";
+    } catch (err) {
+      const errorMessage = getApiErrorMessage(err, "Invalid coupon code");
       setCoupon((prev) => ({ ...prev, loading: false, error: errorMessage }));
     }
   };
@@ -275,7 +288,7 @@ export function CheckoutPageClient() {
           color: "#283618",
           backdrop_color: "rgba(40, 54, 24, 0.75)",
         },
-        handler: async (response: any) => {
+        handler: async (response: RazorpaySuccessResponse) => {
           try {
             // Step 3: Verify payment
             const { data: verifyRes } = await axios.post(
@@ -310,18 +323,15 @@ export function CheckoutPageClient() {
       };
 
       const razorpay = new window.Razorpay(options);
-      razorpay.on("payment.failed", (response: any) => {
+      razorpay.on("payment.failed", (response) => {
         toast.error(
           response.error?.description || "Payment failed. Please try again.",
         );
         setIsLoading(false);
       });
       razorpay.open();
-    } catch (err: any) {
-      toast.error(
-        err.response?.data?.message ||
-          "Something went wrong. Please try again.",
-      );
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Something went wrong. Please try again."));
       setIsLoading(false);
     }
   };

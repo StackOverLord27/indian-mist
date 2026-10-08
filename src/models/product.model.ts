@@ -74,7 +74,7 @@ ProductSchema.index({ isFeatured: 1, createdAt: -1 });
 ProductSchema.index({ category: 1, order: 1, createdAt: -1 });
 ProductSchema.index({ createdAt: -1 });
 
-ProductSchema.pre("validate", function (this: any) {
+ProductSchema.pre("validate", function (this: IProduct) {
   if (!this.slug && this.name) {
     this.slug = (this.name as string)
       .toLowerCase()

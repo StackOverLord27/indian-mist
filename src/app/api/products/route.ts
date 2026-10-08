@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { imageUrls, type ProductFacetResult } from "@/types/product-facets";
 import dbConnect from "@/lib/db";
 import { Product } from "@/models/product.model";
 
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     // Sorting
     const sortParam = searchParams.get("sort") || "featured";
-    let sortStage: any = { order: 1, createdAt: -1 }; // Default (Featured)
+    let sortStage: Record<string, 1 | -1> = { order: 1, createdAt: -1 }; // Default (Featured)
     
     if (sortParam === "newest") {
       sortStage = { createdAt: -1 };
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Filtering
-    const matchStage: any = {};
+    const matchStage: Record<string, unknown> = {};
     const searchParam = searchParams.get("q");
     if (searchParam) {
       // Escape regex characters so user input is searched as plain text
@@ -118,16 +119,16 @@ export async function GET(request: NextRequest) {
       }
     ]);
 
-    const facetResult = result[0] || {};
+    const facetResult: ProductFacetResult = result[0] || {};
     
     const data = facetResult.data || [];
-    const products = data.map((p: any) => ({
+    const products = data.map((p) => ({
       id: p._id?.toString() || "",
       slug: p.slug || "",
       name: p.name || "",
       category: p.category || "",
       price: p.price ? `₹${p.price.toLocaleString("en-IN")}` : "₹0",
-      images: (p.images || []).map((img: any) => typeof img === 'string' ? img : img?.url).filter(Boolean),
+      images: imageUrls(p.images),
       badge: p.badge,
       hasSizes: Array.isArray(p.sizes) && p.sizes.length > 0,
       sizes: Array.isArray(p.sizes) && p.sizes.length > 0 ? p.sizes : undefined,
@@ -140,10 +141,10 @@ export async function GET(request: NextRequest) {
     const badgeArr = facetResult.badges || [];
 
     const facets = {
-      categories: catArr.map((c: any) => ({ name: c.name, value: c._id, count: c.count })),
+      categories: catArr.map((c) => ({ name: c.name, value: c._id, count: c.count })),
       badges: badgeArr
-        .filter((b: any) => b._id) // remove null/undefined badges
-        .map((b: any) => ({ name: b._id, value: b._id, count: b.count })),
+        .filter((b): b is { _id: string; count: number } => Boolean(b._id)) // remove null/undefined badges
+        .map((b) => ({ name: b._id, value: b._id, count: b.count })),
     };
 
     return NextResponse.json({
