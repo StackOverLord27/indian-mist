@@ -81,8 +81,9 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
   };
 
   return (
-    <div>
-      {/* Table header row */}
+    <div className="w-full overflow-x-auto">
+      <div className="min-w-[600px]">
+        {/* Table header row */}
       <div className="grid grid-cols-[1fr_auto_auto_auto_auto] border-b border-olive-leaf/15 bg-warm-mist px-6 py-4 gap-4 items-center">
         <p className="font-montserrat text-xs font-bold uppercase tracking-widest text-olive-leaf">Order</p>
         <p className="font-montserrat text-xs font-bold uppercase tracking-widest text-olive-leaf w-28 text-center">Date</p>
@@ -97,7 +98,7 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
             <Package className="size-6" />
           </div>
           <p className="font-merriweather text-lg font-normal text-olive-leaf">No orders placed yet</p>
-          <p className="font-montserrat text-xs text-olive-leaf/60 max-w-sm">
+          <p className="font-montserrat text-xs text-olive-leaf/80 max-w-sm">
             Your verified orders will appear here once payment is completed.
           </p>
           <Link
@@ -124,7 +125,7 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      className="text-olive-leaf/60 hover:text-black-forest transition-colors p-0.5"
+                      className="text-olive-leaf/80 hover:text-black-forest transition-colors p-0.5"
                       aria-label={isExpanded ? "Collapse order" : "Expand order"}
                     >
                       {isExpanded ? (
@@ -137,7 +138,7 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                       <p className="font-merriweather text-sm md:text-base font-bold text-black-forest">
                         #{order._id.slice(-6).toUpperCase()}
                       </p>
-                      <p className="font-montserrat text-[10px] text-olive-leaf/60 md:hidden">
+                      <p className="font-montserrat text-[10px] text-olive-leaf/80 md:hidden">
                         {new Date(order.createdAt).toLocaleDateString("en-IN", {
                           day: "numeric",
                           month: "short",
@@ -147,7 +148,7 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                   </div>
 
                   {/* Date */}
-                  <p className="w-28 text-center font-montserrat text-xs font-medium text-olive-leaf/70">
+                  <p className="w-28 text-center font-montserrat text-xs font-medium text-olive-leaf/85">
                     {new Date(order.createdAt).toLocaleDateString("en-IN", {
                       day: "numeric",
                       month: "short",
@@ -228,7 +229,7 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                                       sizes="56px"
                                     />
                                   ) : (
-                                    <Package className="size-6 text-olive-leaf/40" />
+                                    <Package className="size-6 text-olive-leaf/70" />
                                   )}
                                 </div>
                                 <div className="min-w-0">
@@ -245,7 +246,7 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                                     )}
                                   </div>
                                   <div className="mt-1 flex items-center gap-1.5">
-                                    <span className="font-montserrat text-[10px] text-forest/70 font-medium">
+                                    <span className="font-montserrat text-[10px] text-forest/80 font-medium">
                                       Status:
                                     </span>
                                     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-montserrat text-[9px] font-bold uppercase tracking-wider ${statusConfig.badgeClass}`}>
@@ -349,6 +350,7 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -77,7 +77,7 @@ export function DeliveryAddressForm({
             { label: "Country", key: "country" },
           ].map(({ label, key }) => (
             <div key={key} className="px-6 py-3">
-              <label className="block font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/60 mb-1">
+              <label className="block font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/80 mb-1">
                 {label}
               </label>
               <input
@@ -103,7 +103,7 @@ export function DeliveryAddressForm({
                 setIsEditing(false);
                 setForm(user.shippingAddress ?? { street: "", city: "", state: "", zipCode: "", country: "" });
               }}
-              className="flex items-center justify-center px-5 py-3.5 text-olive-leaf/50 transition-colors hover:bg-olive-leaf/10 hover:text-olive-leaf"
+              className="flex items-center justify-center px-5 py-3.5 text-olive-leaf/70 transition-colors hover:bg-olive-leaf/10 hover:text-olive-leaf"
             >
               <X className="size-4" />
             </button>
@@ -119,14 +119,14 @@ export function DeliveryAddressForm({
             { label: "Country", val: user.shippingAddress.country },
           ].map(({ label, val }) => (
             <div key={label} className="px-6 py-3">
-              <p className="font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/60 mb-0.5">{label}</p>
+              <p className="font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/80 mb-0.5">{label}</p>
               <p className="font-montserrat text-sm font-medium text-black-forest">{val}</p>
             </div>
           ))}
         </div>
       ) : (
         <div className="px-6 py-8 text-center">
-          <p className="font-montserrat text-xs text-olive-leaf/50 italic mb-3">No address saved.</p>
+          <p className="font-montserrat text-xs text-olive-leaf/70 italic mb-3">No address saved.</p>
           <button
             onClick={() => setIsEditing(true)}
             className="font-montserrat text-xs uppercase tracking-widest text-olive-leaf hover:text-copperwood transition-colors underline underline-offset-4"

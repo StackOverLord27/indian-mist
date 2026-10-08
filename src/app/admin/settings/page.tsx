@@ -22,7 +22,7 @@ export default function AdminSettingsPage() {
     pricingSettings: {
       shippingCost: 99,
       freeShippingThreshold: 999,
-      gstRate: 18,
+      gstRate: 0, // GST disabled — no registration yet
       showPricesInclusiveOfGst: false,
     },
   });

@@ -1,5 +1,6 @@
 "use client";
 
+import toast from "react-hot-toast";
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, ShoppingBag, X } from "lucide-react";
@@ -15,7 +16,13 @@ const placeholderColors = [
   "bg-[#fefae0]",
 ];
 
-function WishlistItemCard({ item, index }: { item: WishlistItem; index: number }) {
+function WishlistItemCard({
+  item,
+  index,
+}: {
+  item: WishlistItem;
+  index: number;
+}) {
   const { removeItem } = useWishlistStore();
   const { addItem, items: cartItems } = useCartStore();
   const [removing, setRemoving] = useState(false);
@@ -49,13 +56,14 @@ function WishlistItemCard({ item, index }: { item: WishlistItem; index: number }
       quantity: 1,
     });
     setAddedToCart(true);
+    toast.success(`${item.name} added to bag`);
   };
 
   return (
     <div
       className={cn(
         "bg-card border border-olive/10 rounded-md p-4 flex gap-4 items-start hover:border-olive/20 transition-all duration-200",
-        removing && "opacity-0 -translate-x-2"
+        removing && "opacity-0 -translate-x-2",
       )}
     >
       {/* Image */}
@@ -64,11 +72,14 @@ function WishlistItemCard({ item, index }: { item: WishlistItem; index: number }
           className={cn(
             "w-20 h-20 md:w-24 md:h-24 relative rounded-sm overflow-hidden",
             placeholder,
-            isSoldOut && "opacity-60 grayscale"
+            isSoldOut && "opacity-60 grayscale",
           )}
         >
           {(() => {
-            const imgSrc = typeof item.image === 'string' ? item.image : (item.image as any)?.url;
+            const imgSrc =
+              typeof item.image === "string"
+                ? item.image
+                : (item.image as any)?.url;
             return imgSrc ? (
               <Image
                 src={imgSrc}
@@ -110,8 +121,8 @@ function WishlistItemCard({ item, index }: { item: WishlistItem; index: number }
                     item.badge === "Sold Out"
                       ? "bg-muted-text/80 text-cornsilk"
                       : item.badge === "Sale"
-                      ? "bg-warm text-copper"
-                      : "bg-forest/10 text-forest"
+                        ? "bg-warm text-copper"
+                        : "bg-forest/10 text-forest",
                   )}
                 >
                   {item.badge}
@@ -125,7 +136,7 @@ function WishlistItemCard({ item, index }: { item: WishlistItem; index: number }
             type="button"
             onClick={handleRemove}
             aria-label={`Remove ${item.name} from wishlist`}
-            className="text-muted-text/50 hover:text-copper transition-colors flex-shrink-0 p-0.5 min-h-[44px] min-w-[44px] flex items-start justify-end"
+            className="text-muted-text hover:text-copper transition-colors flex-shrink-0 p-0.5 min-h-[44px] min-w-[44px] flex items-start justify-end"
           >
             <X className="size-[14px]" />
           </button>
@@ -139,13 +150,13 @@ function WishlistItemCard({ item, index }: { item: WishlistItem; index: number }
             disabled={inCart || addedToCart || isSoldOut}
             className={cn(
               "flex items-center gap-1.5 font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2.5 rounded-sm transition-all min-h-[44px]",
-              (inCart || addedToCart || isSoldOut)
+              inCart || addedToCart || isSoldOut
                 ? "bg-olive/80 text-cornsilk cursor-not-allowed"
-                : "bg-forest text-cornsilk hover:bg-olive active:scale-[0.98]"
+                : "bg-forest text-cornsilk hover:bg-olive active:scale-[0.98]",
             )}
           >
             {isSoldOut ? (
-               "Sold Out"
+              "Sold Out"
             ) : (
               <>
                 <ShoppingBag className="size-[12px]" />
@@ -157,7 +168,7 @@ function WishlistItemCard({ item, index }: { item: WishlistItem; index: number }
           <button
             type="button"
             onClick={handleRemove}
-            className="flex items-center gap-1.5 font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2.5 rounded-sm border border-olive/20 text-forest/70 hover:border-olive hover:text-forest hover:bg-warm transition-all min-h-[44px]"
+            className="flex items-center gap-1.5 font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2.5 rounded-sm border border-olive/20 text-forest/80 hover:border-olive hover:text-forest hover:bg-warm transition-all min-h-[44px]"
           >
             <Heart className="size-[12px]" />
             Remove

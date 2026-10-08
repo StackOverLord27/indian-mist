@@ -251,7 +251,7 @@ export default function SignUpPage() {
                 <div className="space-y-1.5">
                   <label
                     htmlFor="signup-name"
-                    className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/70"
+                    className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/80"
                   >
                     Full name
                   </label>
@@ -264,7 +264,7 @@ export default function SignUpPage() {
                     onChange={handleChange}
                     placeholder="Arjun Sharma"
                     disabled={isLoading}
-                    className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/40 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
+                    className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/70 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
                   />
                 </div>
 
@@ -272,7 +272,7 @@ export default function SignUpPage() {
                 <div className="space-y-1.5">
                   <label
                     htmlFor="signup-email"
-                    className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/70"
+                    className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/80"
                   >
                     Email address
                   </label>
@@ -285,7 +285,7 @@ export default function SignUpPage() {
                     onChange={handleChange}
                     placeholder="you@example.com"
                     disabled={isLoading}
-                    className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/40 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
+                    className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/70 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
                   />
                 </div>
 
@@ -293,7 +293,7 @@ export default function SignUpPage() {
                 <div className="space-y-1.5">
                   <label
                     htmlFor="signup-password"
-                    className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/70"
+                    className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/80"
                   >
                     Password
                   </label>
@@ -307,13 +307,13 @@ export default function SignUpPage() {
                       onChange={handleChange}
                       placeholder="Min. 8 characters"
                       disabled={isLoading}
-                      className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 pr-11 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/40 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
+                      className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 pr-11 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/70 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
                     />
                     <button
                       type="button"
                       aria-label={showPassword ? "Hide password" : "Show password"}
                       onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-olive-leaf/60 hover:text-olive-leaf transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-olive-leaf/80 hover:text-olive-leaf transition-colors"
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -355,7 +355,7 @@ export default function SignUpPage() {
                 <div className="space-y-1.5">
                   <label
                     htmlFor="signup-confirm-password"
-                    className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/70"
+                    className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/80"
                   >
                     Confirm password
                   </label>
@@ -369,7 +369,7 @@ export default function SignUpPage() {
                       onChange={handleChange}
                       placeholder="Repeat your password"
                       disabled={isLoading}
-                      className={`w-full rounded-sm border bg-cornsilk px-4 py-3 pr-11 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/40 outline-none transition focus:ring-1 disabled:opacity-60 ${
+                      className={`w-full rounded-sm border bg-cornsilk px-4 py-3 pr-11 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/70 outline-none transition focus:ring-1 disabled:opacity-60 ${
                         form.confirmPassword && form.password !== form.confirmPassword
                           ? "border-red-300 focus:border-red-400 focus:ring-red-200"
                           : "border-olive-leaf/25 focus:border-olive-leaf focus:ring-olive-leaf/30"
@@ -379,7 +379,7 @@ export default function SignUpPage() {
                       type="button"
                       aria-label={showConfirm ? "Hide password" : "Show password"}
                       onClick={() => setShowConfirm((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-olive-leaf/60 hover:text-olive-leaf transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-olive-leaf/80 hover:text-olive-leaf transition-colors"
                     >
                       {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -419,7 +419,7 @@ export default function SignUpPage() {
                 <div className="space-y-1.5">
                   <label
                     htmlFor="signup-otp"
-                    className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/70"
+                    className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/80"
                   >
                     One-time password (OTP)
                   </label>

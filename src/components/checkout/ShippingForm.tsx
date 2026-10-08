@@ -34,7 +34,7 @@ export function ShippingForm({
           <div className="sm:col-span-2">
             <label
               htmlFor="checkout-name"
-              className="block font-montserrat text-xs uppercase tracking-wider text-forest/60 font-semibold mb-1.5"
+              className="block font-montserrat text-xs uppercase tracking-wider text-forest/75 font-semibold mb-1.5"
             >
               Full Name *
             </label>
@@ -54,7 +54,7 @@ export function ShippingForm({
           <div>
             <label
               htmlFor="checkout-email"
-              className="block font-montserrat text-xs uppercase tracking-wider text-forest/60 font-semibold mb-1.5"
+              className="block font-montserrat text-xs uppercase tracking-wider text-forest/75 font-semibold mb-1.5"
             >
               Email *
             </label>
@@ -74,7 +74,7 @@ export function ShippingForm({
           <div>
             <label
               htmlFor="checkout-phone"
-              className="block font-montserrat text-xs uppercase tracking-wider text-forest/60 font-semibold mb-1.5"
+              className="block font-montserrat text-xs uppercase tracking-wider text-forest/75 font-semibold mb-1.5"
             >
               Phone *
             </label>
@@ -94,7 +94,7 @@ export function ShippingForm({
           <div className="sm:col-span-2">
             <label
               htmlFor="checkout-street"
-              className="block font-montserrat text-xs uppercase tracking-wider text-forest/60 font-semibold mb-1.5"
+              className="block font-montserrat text-xs uppercase tracking-wider text-forest/75 font-semibold mb-1.5"
             >
               Street Address *
             </label>
@@ -114,7 +114,7 @@ export function ShippingForm({
           <div>
             <label
               htmlFor="checkout-city"
-              className="block font-montserrat text-xs uppercase tracking-wider text-forest/60 font-semibold mb-1.5"
+              className="block font-montserrat text-xs uppercase tracking-wider text-forest/75 font-semibold mb-1.5"
             >
               City *
             </label>
@@ -134,7 +134,7 @@ export function ShippingForm({
           <div>
             <label
               htmlFor="checkout-state"
-              className="block font-montserrat text-xs uppercase tracking-wider text-forest/60 font-semibold mb-1.5"
+              className="block font-montserrat text-xs uppercase tracking-wider text-forest/75 font-semibold mb-1.5"
             >
               State *
             </label>
@@ -154,7 +154,7 @@ export function ShippingForm({
           <div>
             <label
               htmlFor="checkout-zip"
-              className="block font-montserrat text-xs uppercase tracking-wider text-forest/60 font-semibold mb-1.5"
+              className="block font-montserrat text-xs uppercase tracking-wider text-forest/75 font-semibold mb-1.5"
             >
               PIN Code *
             </label>
@@ -175,7 +175,7 @@ export function ShippingForm({
           <div>
             <label
               htmlFor="checkout-country"
-              className="block font-montserrat text-xs uppercase tracking-wider text-forest/60 font-semibold mb-1.5"
+              className="block font-montserrat text-xs uppercase tracking-wider text-forest/75 font-semibold mb-1.5"
             >
               Country
             </label>
@@ -197,7 +197,7 @@ export function ShippingForm({
           <h2 className="font-merriweather text-lg font-normal text-forest">
             Delivery Notes
           </h2>
-          <span className="font-montserrat text-[10px] uppercase tracking-wider text-muted-text/60 ml-1">
+          <span className="font-montserrat text-[10px] uppercase tracking-wider text-muted-text ml-1">
             Optional
           </span>
         </div>
@@ -215,7 +215,7 @@ export function ShippingForm({
           {errors.deliveryNotes ? (
             <p className="text-red-500 text-xs font-montserrat">{errors.deliveryNotes.message}</p>
           ) : <div/>}
-          <p className="font-montserrat text-[10px] text-muted-text/50 text-right">
+          <p className="font-montserrat text-[10px] text-muted-text text-right">
             {deliveryNotesLength}/300
           </p>
         </div>

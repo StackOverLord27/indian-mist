@@ -101,7 +101,11 @@ export const PUT = withAdmin(async (req, context: any) => {
     sizes: fields.sizes ? parseJSON(fields.sizes, []) : product.sizes,
     features: fields.features ? parseJSON(fields.features, []) : product.features,
     materials: fields.materials ? parseJSON(fields.materials, []) : product.materials,
+    careInstructions: fields.careInstructions ? parseJSON(fields.careInstructions, []) : (product as any).careInstructions,
+    shippingInfo: fields.shippingInfo ? parseJSON(fields.shippingInfo, undefined) : (product as any).shippingInfo,
     isFeatured: fields.isFeatured !== undefined ? fields.isFeatured === 'true' : product.isFeatured,
+    trackInventory: fields.trackInventory !== undefined ? fields.trackInventory === 'true' : ((product as any).trackInventory ?? false),
+    stockQuantity: fields.stockQuantity !== undefined ? Math.max(0, Math.floor(Number(fields.stockQuantity) || 0)) : ((product as any).stockQuantity ?? 0),
   };
 
   const validationResult = ProductSchema.safeParse(parsedFields);

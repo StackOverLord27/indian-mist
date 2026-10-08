@@ -17,7 +17,7 @@ export function ProfileHeader({
           </span>
         </div>
         <div>
-          <p className="font-montserrat text-xs font-semibold uppercase tracking-widest text-olive-leaf/70">My Profile</p>
+          <p className="font-montserrat text-xs font-semibold uppercase tracking-widest text-olive-leaf/85">My Profile</p>
           <h1 className="font-merriweather text-2xl md:text-3xl font-normal text-forest mt-1">{user.name}</h1>
           <p className="font-montserrat text-xs text-muted-text font-normal mt-0.5">{user.email}</p>
         </div>

@@ -70,7 +70,7 @@ const OrderSchema: Schema = new Schema(
       enum: ["UNPAID", "PAID", "FAILED"],
       default: "UNPAID",
     },
-    razorpayOrderId: { type: String, index: true },
+    razorpayOrderId: { type: String, unique: true, sparse: true },
     razorpayPaymentId: { type: String },
     razorpaySignature: { type: String },
     customerName: { type: String, required: true },
@@ -89,6 +89,7 @@ const OrderSchema: Schema = new Schema(
 
 // Add compound index to make promo code validation instantaneous
 OrderSchema.index({ userId: 1, promoCode: 1 });
+OrderSchema.index({ userId: 1, createdAt: -1 });
 
 if (process.env.NODE_ENV === "development") {
   delete (mongoose.models as any).Order;

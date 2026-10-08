@@ -1,8 +1,14 @@
 "use client";
 
+import toast from "react-hot-toast";
 import { useState } from "react";
 import { Check } from "lucide-react";
-import { Star, Minus, Plus, ShoppingBag, Zap, Truck, RefreshCw, Leaf, ShieldCheck } from "lucide-react";
+import {
+  Minus,
+  Plus,
+  ShoppingBag,
+  Zap,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/cart-store";
@@ -22,23 +28,23 @@ import type { Product } from "@/lib/get-product";
 export function ProductInfo({ product }: { product: Product }) {
   const router = useRouter();
   const [selectedSize, setSelectedSize] = useState<string>(
-    product.availableSizes?.[0] || ""
+    product.availableSizes?.[0] || "",
   );
   const [selectedColor, setSelectedColor] = useState<string>(
-    product.colors?.[0]?.name || ""
+    product.colors?.[0]?.name || "",
   );
   const [quantity, setQuantity] = useState(1);
   const { items, addItem, setBuyNowItem } = useCartStore();
   const [showMergeDialog, setShowMergeDialog] = useState(false);
-  
+
   // Check if the exact currently selected variant is in the cart
   const currentVariantInCart = items.find(
-    (i) => 
-      i.id === product.id && 
-      i.size === (selectedSize || undefined) && 
-      i.color === (selectedColor || undefined)
+    (i) =>
+      i.id === product.id &&
+      i.size === (selectedSize || undefined) &&
+      i.color === (selectedColor || undefined),
   );
-  
+
   const isAdded = !!currentVariantInCart;
   const isSoldOut = product.badge === "Sold Out";
 
@@ -66,6 +72,7 @@ export function ProductInfo({ product }: { product: Product }) {
       color: selectedColor || undefined,
       quantity,
     });
+    toast.success(`${product.name} added to bag`);
   };
 
   const productItemForCheckout = {
@@ -113,24 +120,6 @@ export function ProductInfo({ product }: { product: Product }) {
         <h1 className="font-merriweather text-2xl sm:text-3xl lg:text-3xl font-medium text-forest leading-tight mb-3">
           {product.name}
         </h1>
-        <div className="flex items-center gap-2">
-          <div className="flex gap-0.5">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <Star
-                key={star}
-                className={cn(
-                  "size-3.5",
-                  star <= Math.round(product.rating)
-                    ? "fill-clay text-clay"
-                    : "text-muted-text/30"
-                )}
-              />
-            ))}
-          </div>
-          <span className="font-montserrat text-xs text-muted-text hover:text-olive cursor-pointer underline">
-            ({product.reviewCount} reviews)
-          </span>
-        </div>
 
         <div className="mt-4 flex items-center">
           {product.originalPrice ? (
@@ -183,10 +172,15 @@ export function ProductInfo({ product }: { product: Product }) {
                     disabled={!isAvailable || isSoldOut}
                     className={cn(
                       "min-w-11 h-10 px-3 border rounded-sm font-montserrat text-sm transition-colors",
-                      (!isAvailable || isSoldOut) && "opacity-40 cursor-not-allowed pointer-events-none",
+                      (!isAvailable || isSoldOut) &&
+                        "opacity-40 cursor-not-allowed pointer-events-none",
                       !isAvailable && "line-through",
-                      isAvailable && !isSelected && !isSoldOut && "border-olive/25 text-forest/75 bg-card hover:border-olive hover:bg-warm cursor-pointer",
-                      isSelected && "border-forest bg-forest text-cornsilk cursor-pointer"
+                      isAvailable &&
+                        !isSelected &&
+                        !isSoldOut &&
+                        "border-olive/25 text-forest/85 bg-card hover:border-olive hover:bg-warm cursor-pointer",
+                      isSelected &&
+                        "border-forest bg-forest text-cornsilk cursor-pointer",
                     )}
                   >
                     {size}
@@ -215,15 +209,17 @@ export function ProductInfo({ product }: { product: Product }) {
                     key={color.name}
                     type="button"
                     onClick={() => {
-                        setSelectedColor(color.name);
-                      }}
+                      setSelectedColor(color.name);
+                    }}
                     disabled={isSoldOut}
                     className={cn(
                       "w-8 h-8 rounded-full border-2 transition-all",
-                      isSoldOut ? "opacity-40 cursor-not-allowed" : "cursor-pointer",
+                      isSoldOut
+                        ? "opacity-40 cursor-not-allowed"
+                        : "cursor-pointer",
                       isSelected
                         ? "border-forest ring-2 ring-forest ring-offset-2 ring-offset-cornsilk"
-                        : "border-transparent hover:border-olive/50"
+                        : "border-transparent hover:border-olive/50",
                     )}
                     style={{ backgroundColor: color.hex }}
                     aria-label={`Select color ${color.name}`}
@@ -264,15 +260,15 @@ export function ProductInfo({ product }: { product: Product }) {
       </div>
 
       {/* CTA buttons */}
-      <div className="mt-6 flex flex-col sm:flex-row gap-3 fixed sm:static bottom-0 left-0 right-0 p-4 sm:p-0 bg-cornsilk sm:bg-transparent border-t border-olive/15 sm:border-0 z-50 sm:z-auto">
+      <div className="mt-6 flex flex-col sm:flex-row gap-3 fixed sm:static bottom-0 left-0 right-0 p-4 sm:p-0 bg-cornsilk/90 backdrop-blur-md sm:bg-transparent sm:backdrop-blur-none border-t border-olive/15 sm:border-0 z-50 sm:z-auto shadow-[0_-2px_10px_rgba(0,0,0,0.06)] sm:shadow-none">
         <Button
           onClick={handleAddToCart}
           disabled={isAdded || isSoldOut}
           className={cn(
             "w-full sm:flex-1 font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto transition-all duration-200",
-            (isAdded || isSoldOut)
+            isAdded || isSoldOut
               ? "bg-olive/80 text-cornsilk cursor-not-allowed"
-              : "bg-forest text-cornsilk hover:bg-olive active:scale-[0.98]"
+              : "bg-forest text-cornsilk hover:bg-olive active:scale-[0.98]",
           )}
         >
           {isSoldOut ? (
@@ -290,44 +286,17 @@ export function ProductInfo({ product }: { product: Product }) {
           )}
         </Button>
         {/* Buy Now — desktop full label, mobile icon+label */}
-        <Button
-          variant="outline"
+        <button
+          type="button"
           disabled={isSoldOut}
           onClick={handleBuyNowClick}
-          className="w-full sm:w-auto border-olive/30 text-forest/80 hover:border-olive hover:text-forest hover:bg-warm font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto bg-transparent flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full sm:w-auto border border-olive-leaf/40 text-forest bg-olive-leaf/10 hover:bg-olive-leaf/20 hover:border-olive-leaf/60 font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <Zap className="mr-2 size-3.5" />
           Buy Now
-        </Button>
+        </button>
       </div>
 
-      {/* Trust signals */}
-      <div className="mt-5 flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <Truck className="text-olive size-3.5" />
-          <span className="font-montserrat text-xs text-muted-text font-normal">
-            Free shipping on orders above ₹599
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <RefreshCw className="text-olive size-3.5" />
-          <span className="font-montserrat text-xs text-muted-text font-normal">
-            7-day hassle-free returns
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Leaf className="text-olive size-3.5" />
-          <span className="font-montserrat text-xs text-muted-text font-normal">
-            1 tree planted with this order
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="text-olive size-3.5" />
-          <span className="font-montserrat text-xs text-muted-text font-normal">
-            Secure checkout · Encrypted payment
-          </span>
-        </div>
-      </div>
 
       {/* Material tags */}
       {product.tags && product.tags.length > 0 && (
@@ -351,16 +320,26 @@ export function ProductInfo({ product }: { product: Product }) {
       <AlertDialog open={showMergeDialog} onOpenChange={setShowMergeDialog}>
         <AlertDialogContent className="bg-cornsilk border-olive/20 max-w-md w-[90vw]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-merriweather text-forest">You have items in your bag</AlertDialogTitle>
+            <AlertDialogTitle className="font-merriweather text-forest">
+              You have items in your bag
+            </AlertDialogTitle>
             <AlertDialogDescription className="font-montserrat text-muted-text">
-              You already have {items.length} item{items.length !== 1 ? 's' : ''} in your bag. Would you like to buy them together with this item?
+              You already have {items.length} item
+              {items.length !== 1 ? "s" : ""} in your bag. Would you like to buy
+              them together with this item?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-4">
-            <AlertDialogCancel onClick={handleMergeNo} className="border-olive/30 text-forest hover:bg-olive/10 mt-0">
+            <AlertDialogCancel
+              onClick={handleMergeNo}
+              className="border-olive/30 text-forest hover:bg-olive/10 mt-0"
+            >
               No, only buy this
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleMergeYes} className="bg-forest text-cornsilk hover:bg-olive">
+            <AlertDialogAction
+              onClick={handleMergeYes}
+              className="bg-forest text-cornsilk hover:bg-olive"
+            >
               Yes, buy together
             </AlertDialogAction>
           </AlertDialogFooter>

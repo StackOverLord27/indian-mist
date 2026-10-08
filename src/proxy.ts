@@ -31,6 +31,9 @@ const PUBLIC_API_PREFIXES = [
   "/api/products",
   "/api/blogs",
   "/api/settings",
+  "/api/contact",
+  "/api/subscribe",
+  "/api/webhooks/razorpay",
 ];
 
 const PUBLIC_PAGE_PATHS = ["/admin/login"];
@@ -86,6 +89,13 @@ export async function proxy(req: NextRequest) {
     }
   }
 
+  // Never trust identity headers sent by the client: only this proxy may set them.
+  const cleanHeaders = new Headers(req.headers);
+  cleanHeaders.delete("x-user-id");
+  cleanHeaders.delete("x-user-email");
+  cleanHeaders.delete("x-user-role");
+  const passThrough = () => NextResponse.next({ request: { headers: cleanHeaders } });
+
   // 2. Routing Logic for Pages vs APIs
   const isApiRoute = pathname.startsWith("/api/");
   
@@ -93,20 +103,20 @@ export async function proxy(req: NextRequest) {
     // API Routes: Default deny, except PUBLIC_API_PREFIXES
     const isPublicApi = PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p));
     if (isPublicApi) {
-      return NextResponse.next();
+      return passThrough();
     }
   } else {
     // Page Routes: Default allow, except PROTECTED_PAGE_PATHS
     const isPublicPage = PUBLIC_PAGE_PATHS.some((p) => pathname === p);
     if (isPublicPage) {
-      return NextResponse.next();
+      return passThrough();
     }
 
     const isProtectedPage = PROTECTED_PAGE_PATHS.some(
       (p) => pathname === p || pathname.startsWith(p + "/")
     );
     if (!isProtectedPage) {
-      return NextResponse.next();
+      return passThrough();
     }
   }
 
@@ -130,7 +140,7 @@ export async function proxy(req: NextRequest) {
     // so client components (like AdminProtectedRoute) can silently refresh without redirecting!
     const refreshToken = req.cookies.get("refresh_token")?.value;
     if (refreshToken) {
-      return NextResponse.next();
+      return passThrough();
     }
 
     // Page route — redirect to appropriate login page when no tokens exist.
@@ -146,7 +156,7 @@ export async function proxy(req: NextRequest) {
 
   // Token valid — forward identity to server components via request headers.
   // Server components can read these without re-verifying the JWT.
-  const requestHeaders = new Headers(req.headers);
+  const requestHeaders = new Headers(cleanHeaders);
   requestHeaders.set("x-user-id", payload.userId);
   requestHeaders.set("x-user-email", payload.email);
   requestHeaders.set("x-user-role", payload.role);
@@ -164,6 +174,6 @@ export const config = {
      *   - /_next/image   (image optimisation)
      *   - Favicon, robots, sitemaps, and common static file extensions
      */
-    "/((?!_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap.*|(?!api/).*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
   ],
 };

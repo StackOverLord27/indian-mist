@@ -29,12 +29,12 @@ export function BrandStorySection({ image, settings }: BrandStorySectionProps) {
 
   return (
     <section className="grid w-full grid-cols-1 lg:grid-cols-2">
-      <div className="relative min-h-90 overflow-hidden bg-olive-leaf">
+      <div className="relative aspect-3/2 overflow-hidden bg-olive-leaf lg:aspect-auto lg:min-h-[33.34vw]">
         <ImageSlot image={displayImage} sizes="(max-width: 1024px) 100vw, 50vw" />
         <div className="absolute inset-0 bg-gradient-to-t from-black-forest/75 to-black-forest/10" />
       </div>
 
-      <div className="bg-warm-mist px-6 py-14 md:px-13 lg:px-14">
+      <div className="bg-warm-mist px-6 py-14 md:px-13 lg:flex lg:flex-col lg:items-start lg:justify-center lg:px-14">
         <p className="font-sans text-2xs font-medium uppercase tracking-widest text-copperwood">
           {subtitle}
         </p>

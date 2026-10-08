@@ -32,9 +32,9 @@ export function CartItemList() {
 
       {/* Promo hint */}
       <div className="mt-6 pt-6 border-t border-olive/10">
-        <div className="flex items-center gap-2 text-olive/60">
+        <div className="flex items-center gap-2 text-olive/80">
           <Tag className="size-3.5" />
-          <span className="font-montserrat text-xs text-olive/60">
+          <span className="font-montserrat text-xs text-olive/80">
             Have a promo code? You can apply it at checkout.
           </span>
         </div>

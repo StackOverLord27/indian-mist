@@ -16,6 +16,58 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+export async function sendContactMessageEmail(input: {
+  to: string;
+  name: string;
+  email: string;
+  phone?: string;
+  topic: string;
+  message: string;
+}) {
+  const name = escapeHtml(input.name);
+  const email = escapeHtml(input.email);
+  const phone = input.phone ? escapeHtml(input.phone) : "—";
+  const topic = escapeHtml(input.topic);
+  const message = escapeHtml(input.message).replace(/\n/g, "<br/>");
+
+  const html = `
+<div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#283618;">
+  <h2 style="font-family:Georgia,serif;font-weight:normal;margin:0 0 16px;">New enquiry: ${topic}</h2>
+  <table cellpadding="0" cellspacing="0" style="font-size:14px;line-height:1.7;margin-bottom:20px;">
+    <tr><td style="padding-right:16px;color:#7a7a5a;">Name</td><td>${name}</td></tr>
+    <tr><td style="padding-right:16px;color:#7a7a5a;">Email</td><td><a href="mailto:${email}" style="color:#606c38;">${email}</a></td></tr>
+    <tr><td style="padding-right:16px;color:#7a7a5a;">Phone</td><td>${phone}</td></tr>
+  </table>
+  <div style="background:#fdf6e3;border:1px solid #e8dfc8;border-radius:8px;padding:16px;font-size:14px;line-height:1.7;">${message}</div>
+  <p style="font-size:12px;color:#9e9e8e;margin-top:20px;">Reply directly to this email to respond to the customer.</p>
+</div>`;
+
+  const text = `New enquiry: ${input.topic}\n\nName: ${input.name}\nEmail: ${input.email}\nPhone: ${input.phone || "—"}\n\n${input.message}`;
+
+  try {
+    await transporter.sendMail({
+      from: `"Indian Mist Website" <${SMTP_FROM}>`,
+      to: input.to,
+      replyTo: input.email,
+      subject: `[Contact] ${input.topic} — ${input.name}`.replace(/[\r\n]+/g, " "),
+      text,
+      html,
+    });
+    return true;
+  } catch (error) {
+    console.error("[MAILER] Error sending contact message:", error);
+    return false;
+  }
+}
+
 export async function sendOTPVerificationEmail(email: string, otp: string) {
   // Render OTP as a single styled block
   const digits = `<span style="display:inline-block;padding:12px 24px;text-align:center;letter-spacing:6px;font-size:32px;font-weight:700;font-family:'Georgia',serif;color:#3b4a2f;background:#f7f3e8;border:2px solid #c8b89a;border-radius:8px;">${otp}</span>`;

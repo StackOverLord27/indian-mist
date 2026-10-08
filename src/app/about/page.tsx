@@ -2,48 +2,52 @@ import Link from "next/link";
 import Image from "next/image";
 import { IconMap, type IconName } from "@/lib/icon-map";
 import { AboutContent } from "@/types/admin";
+import dbConnect from "@/lib/db";
+import { sanitizeRichText } from "@/lib/sanitize";
+import About from "@/models/about.model";
+
+export const revalidate = 60;
+
+const DEFAULT_ABOUT: AboutContent = {
+  mission: {
+    heading: "Our Mission",
+    body: "<p>We believe that exploring nature shouldn't come at its expense. Indian Mist is dedicated to providing premium, sustainably sourced gear for the mindful adventurer.</p>"
+  },
+  drivesUs: {
+    heading: "What Drives Us",
+    cards: [
+      { icon: "Globe2", title: "Global Impact", body: "We partner with communities worldwide to ensure fair trade practices." },
+      { icon: "RefreshCw", title: "Circular Economy", body: "From recycled packaging to gear repair programs, we're committed to minimizing waste." },
+      { icon: "HeartHandshake", title: "Community First", body: "We foster a community of outdoor enthusiasts who share our passion for adventure." }
+    ]
+  },
+  cta: {
+    heading: "Join the Movement",
+    subtext: "Discover our collection of sustainable gear and start your next adventure with peace of mind.",
+    primaryButtonLabel: "Shop Now",
+    secondaryButtonLabel: "Our Story"
+  },
+  customSections: []
+};
 
 export default async function AboutPage() {
-  let about: AboutContent | null = null;
-  
+  let saved: Partial<AboutContent> | null = null;
+
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-    const res = await fetch(`${baseUrl}/api/admin/about`, { 
-      next: { revalidate: 300 } 
-    });
-    if (res.ok) {
-      const data = await res.json();
-      about = data.about || data; // Handle depending on exact API response shape
-    }
+    await dbConnect();
+    const doc = await About.findOne().lean();
+    saved = doc ? JSON.parse(JSON.stringify(doc)) : null;
   } catch (error) {
-    console.error("Failed to fetch about content:", error);
+    console.error("Failed to load about content:", error);
   }
 
-  // Fallback content if API fails
-  if (!about || !about.mission) {
-    about = {
-      mission: {
-        heading: "Our Mission",
-        body: "<p>We believe that exploring nature shouldn't come at its expense. Indian Mist is dedicated to providing premium, sustainably sourced gear for the mindful adventurer.</p>"
-      },
-      drivesUs: {
-        heading: "What Drives Us",
-        cards: [
-          { icon: "Globe2", title: "Global Impact", body: "We partner with communities worldwide to ensure fair trade practices." },
-          { icon: "RefreshCw", title: "Circular Economy", body: "From recycled packaging to gear repair programs, we're committed to minimizing waste." },
-          { icon: "HeartHandshake", title: "Community First", body: "We foster a community of outdoor enthusiasts who share our passion for adventure." }
-        ]
-      },
-      cta: {
-        heading: "Join the Movement",
-        subtext: "Discover our collection of sustainable gear and start your next adventure with peace of mind.",
-        primaryButtonLabel: "Shop Now",
-        secondaryButtonLabel: "Our Story"
-      },
-      customSections: []
-    };
-  }
-
+  // Each section falls back to the default text if it has not been filled in yet
+  const about: AboutContent = {
+    mission: saved?.mission?.heading ? saved.mission : DEFAULT_ABOUT.mission,
+    drivesUs: saved?.drivesUs?.heading && saved.drivesUs.cards?.length ? saved.drivesUs : DEFAULT_ABOUT.drivesUs,
+    cta: saved?.cta?.heading ? saved.cta : DEFAULT_ABOUT.cta,
+    customSections: saved?.customSections ?? [],
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -59,7 +63,7 @@ export default async function AboutPage() {
           {/* Note: TipTap HTML output is sanitized by default on the client, but for Server Components injecting HTML, ensure the backend doesn't accept malicious inputs. */}
           <div 
             className="font-montserrat text-base font-light text-muted-text leading-relaxed max-w-lg mx-auto mt-4 prose prose-sm prose-olive text-center"
-            dangerouslySetInnerHTML={{ __html: about.mission.body }} 
+            dangerouslySetInnerHTML={{ __html: sanitizeRichText(about.mission.body) }} 
           />
         </div>
       </section>
@@ -70,7 +74,7 @@ export default async function AboutPage() {
           {about.customSections.sort((a, b) => a.order - b.order).map((section, idx) => (
             <div key={idx} className={`flex flex-col ${section.imageAlignment === 'right' ? 'md:flex-row-reverse' : 'md:flex-row'} items-stretch min-h-[500px]`}>
               {/* Image Half */}
-              <div className="w-full md:w-1/2 relative min-h-[300px] md:min-h-full">
+              <div className="w-full md:w-1/2 relative aspect-4/3 md:aspect-auto md:min-h-[37.5vw]">
                 {section.imageUrl ? (
                   <Image 
                     src={section.imageUrl} 
@@ -80,7 +84,7 @@ export default async function AboutPage() {
                   />
                 ) : (
                   <div className="absolute inset-0 bg-warm-mist flex items-center justify-center">
-                    <span className="font-montserrat text-sm text-forest/40">No image uploaded</span>
+                    <span className="font-montserrat text-sm text-forest/60">No image uploaded</span>
                   </div>
                 )}
               </div>
@@ -132,7 +136,7 @@ export default async function AboutPage() {
           <h2 className="font-merriweather text-3xl md:text-4xl font-normal text-cornsilk">
             {about.cta.heading}
           </h2>
-          <p className="font-montserrat text-sm font-light text-cornsilk/60 mt-4 leading-relaxed max-w-md mx-auto">
+          <p className="font-montserrat text-sm font-light text-cornsilk/75 mt-4 leading-relaxed max-w-md mx-auto">
             {about.cta.subtext}
           </p>
           <div className="flex gap-3 justify-center mt-8 flex-wrap">

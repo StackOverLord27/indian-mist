@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Leaf } from "lucide-react";
 import { HeroCarouselClient } from "@/components/home/HeroCarouselClient";
+import { HeroTextReveal } from "@/components/home/HeroTextReveal";
 import type { HeroSettings, CarouselImage } from "@/types/admin";
 import type { HomeImage } from "@/lib/homepage-data";
 
@@ -33,7 +34,7 @@ export function HeroSection({ settings, slides = [], fallbackImage }: HeroSectio
       subtitle: 'text-sunlit-clay before:bg-sunlit-clay',
       title: 'text-cornsilk',
       accent: 'text-sunlit-clay',
-      description: 'text-cornsilk/65',
+      description: 'text-cornsilk/80',
       primaryBtn: 'bg-sunlit-clay text-black-forest hover:bg-copperwood',
       secondaryBtn: 'border-cornsilk/60 text-cornsilk hover:border-cornsilk',
     },
@@ -53,7 +54,7 @@ export function HeroSection({ settings, slides = [], fallbackImage }: HeroSectio
       subtitle: 'text-cornsilk before:bg-cornsilk',
       title: 'text-cornsilk',
       accent: 'text-warm-mist',
-      description: 'text-cornsilk/70',
+      description: 'text-cornsilk/80',
       primaryBtn: 'bg-cornsilk text-copperwood hover:bg-warm-mist',
       secondaryBtn: 'border-cornsilk/60 text-cornsilk hover:border-cornsilk',
     }
@@ -69,38 +70,40 @@ export function HeroSection({ settings, slides = [], fallbackImage }: HeroSectio
     <section className="grid min-h-120 w-full grid-cols-1 lg:grid-cols-2">
       {/* Text panel */}
       <div className={`flex min-h-[min(60vw,30rem)] flex-col justify-center px-6 py-12 md:min-h-120 md:px-12 transition-colors duration-500 ${currentTheme.bg}`}>
-        <p className={`flex items-center gap-4 font-sans text-2xs font-medium uppercase tracking-widest before:block before:h-px before:w-7 before:content-[''] ${currentTheme.subtitle}`}>
-          {subtitle}
-        </p>
-        <h1 className={`mt-7 max-w-xl font-serif text-3xl font-light leading-tight md:text-hero ${currentTheme.title}`}>
-          {titleLine1}
-          <br />
-          <em className={`font-light italic ${currentTheme.accent}`}>
-            {titleLine2}
-          </em>
-        </h1>
-        <p className={`mt-6 max-w-md font-sans text-sm font-light leading-6 ${currentTheme.description}`}>
-          {description}
-        </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            href={primaryButtonLink}
-            className={`inline-flex h-11 items-center justify-center rounded-full px-6 font-sans text-xs font-medium uppercase tracking-wide transition-opacity hover:opacity-85 ${currentTheme.primaryBtn}`}
-          >
-            {primaryButtonText}
-          </Link>
-          <Link
-            href={secondaryButtonLink}
-            className={`inline-flex h-11 items-center justify-center rounded-full border px-6 font-sans text-xs font-medium uppercase tracking-wide transition-opacity hover:opacity-75 ${currentTheme.secondaryBtn}`}
-          >
-            {secondaryButtonText}
-          </Link>
-        </div>
+        <HeroTextReveal>
+          <p className={`flex items-center gap-4 font-sans text-2xs font-medium uppercase tracking-widest before:block before:h-px before:w-7 before:content-[''] ${currentTheme.subtitle}`}>
+            {subtitle}
+          </p>
+          <h1 className={`mt-7 max-w-xl font-serif text-3xl font-light leading-tight md:text-hero ${currentTheme.title}`}>
+            {titleLine1}
+            <br />
+            <em className={`font-light italic ${currentTheme.accent}`}>
+              {titleLine2}
+            </em>
+          </h1>
+          <p className={`mt-6 max-w-md font-sans text-sm font-light leading-6 ${currentTheme.description}`}>
+            {description}
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              href={primaryButtonLink}
+              className={`inline-flex h-11 items-center justify-center rounded-full px-6 font-sans text-xs font-medium uppercase tracking-wide transition-opacity hover:opacity-85 ${currentTheme.primaryBtn}`}
+            >
+              {primaryButtonText}
+            </Link>
+            <Link
+              href={secondaryButtonLink}
+              className={`inline-flex h-11 items-center justify-center rounded-full border px-6 font-sans text-xs font-medium uppercase tracking-wide transition-opacity hover:opacity-75 ${currentTheme.secondaryBtn}`}
+            >
+              {secondaryButtonText}
+            </Link>
+          </div>
+        </HeroTextReveal>
       </div>
 
       {/* Carousel panel */}
       <div
-        className="relative min-h-[min(75vw,30rem)] overflow-hidden bg-olive-leaf lg:min-h-120"
+        className="relative aspect-3/2 overflow-hidden bg-olive-leaf lg:aspect-auto lg:min-h-[max(30rem,33.34vw)]"
         style={{
           backgroundImage:
             "radial-gradient(circle at 30% 18%, rgba(254, 250, 224, 0.18), transparent 34%), radial-gradient(circle at 75% 80%, rgba(221, 161, 94, 0.18), transparent 30%)",
@@ -109,7 +112,7 @@ export function HeroSection({ settings, slides = [], fallbackImage }: HeroSectio
         <HeroCarouselClient 
           slides={effectiveSlides} 
           className="w-full h-full relative group"
-          itemClassName="relative w-full h-full min-h-[min(75vw,30rem)] lg:min-h-120 overflow-hidden"
+          itemClassName="relative w-full h-full aspect-3/2 lg:aspect-auto lg:min-h-[max(30rem,33.34vw)] overflow-hidden"
         />
 
         {/* Eco badge — compact on mobile */}
@@ -122,7 +125,7 @@ export function HeroSection({ settings, slides = [], fallbackImage }: HeroSectio
               <p className="font-serif text-2xl font-bold leading-none text-olive-leaf sm:text-3xl">
                 {ecoBadgeText}
               </p>
-              <p className="mt-1 font-sans text-2xs font-medium uppercase tracking-widest text-black-forest/70">
+              <p className="mt-1 font-sans text-2xs font-medium uppercase tracking-widest text-black-forest/80">
                 {ecoBadgeSubtext}
               </p>
             </div>

@@ -42,7 +42,8 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
   if (!products || products.length === 0) return null;
 
   return (
-    <section className="bg-cornsilk px-6 py-16 md:px-12">
+    <section className="bg-cornsilk px-4 py-16 sm:px-6 md:px-12">
+      <div className="mx-auto max-w-screen-2xl">
       <div className="mb-8 flex items-end justify-between gap-6">
         <h2 className="font-serif text-2xl font-light text-black-forest md:text-3xl">
           Featured products
@@ -55,9 +56,9 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
         {visible.map((product) => (
-          <ProductCard key={product.id} product={product} />
+          <ProductCard key={product.id} product={product} hideNewBadge />
         ))}
 
         {/* Skeleton placeholders for upcoming batch */}
@@ -69,6 +70,7 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
 
       {/* Scroll sentinel */}
       {hasMore && <div ref={sentinelRef} className="h-1" aria-hidden="true" />}
+      </div>
     </section>
   );
 }

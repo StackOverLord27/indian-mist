@@ -13,7 +13,7 @@ export default function AdminTopBar() {
     const userStr = localStorage.getItem('im_admin_user');
     if (userStr) {
       try {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+         
         setUser(JSON.parse(userStr));
       } catch {
         // Handle error silently

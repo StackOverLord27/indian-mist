@@ -62,7 +62,7 @@ export function StepProgress({ currentStep }: StepProgressProps) {
                     ? "text-forest"
                     : isCompleted
                     ? "text-olive"
-                    : "text-muted-text/60"
+                    : "text-muted-text"
                 }`}
               >
                 {step.label}

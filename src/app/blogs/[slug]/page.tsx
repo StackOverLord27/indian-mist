@@ -1,3 +1,4 @@
+import { sanitizeRichText } from "@/lib/sanitize";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -156,14 +157,14 @@ export default async function BlogPostPage({
                 <div className="h-6 w-px bg-olive/10 hidden sm:block" />
 
                 <div className="flex items-center gap-1.5 text-muted-text">
-                  <Calendar className="size-3.5 text-olive/60" />
+                  <Calendar className="size-3.5 text-olive/80" />
                   <span className="font-montserrat text-xs">
                     {formatDate(blog.publishedAt || blog.createdAt)}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-1.5 text-muted-text">
-                  <Clock className="size-3.5 text-olive/60" />
+                  <Clock className="size-3.5 text-olive/80" />
                   <span className="font-montserrat text-xs">
                     {blog.readTime} min read
                   </span>
@@ -200,7 +201,7 @@ export default async function BlogPostPage({
                 prose-blockquote:border-l-2 prose-blockquote:border-olive prose-blockquote:bg-olive/5 prose-blockquote:p-4 prose-blockquote:rounded-r-sm prose-blockquote:text-forest/80 prose-blockquote:font-merriweather prose-blockquote:not-italic
                 prose-img:rounded-md prose-img:shadow-sm prose-img:border prose-img:border-olive/10
                 pb-12"
-              dangerouslySetInnerHTML={{ __html: blog.content }}
+              dangerouslySetInnerHTML={{ __html: sanitizeRichText(blog.content) }}
             />
 
             {/* Back link */}

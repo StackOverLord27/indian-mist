@@ -37,12 +37,12 @@ export function NewsletterBar() {
 
   return (
     <section className="bg-sunlit-clay px-6 py-13 md:px-12">
-      <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-center">
+      <div className="mx-auto max-w-screen-2xl flex flex-col justify-between gap-8 lg:flex-row lg:items-center">
         <div className="flex-1">
           <h2 className="font-serif text-2xl font-normal text-black-forest">
             Notes from the forest
           </h2>
-          <p className="mt-2 max-w-xl font-sans text-xs font-light leading-5 text-black-forest/75">
+          <p className="mt-2 max-w-xl font-sans text-xs font-light leading-5 text-black-forest/85">
             New gear, seasonal drops, field notes, and a little proof that
             slower shopping can still feel exciting.
           </p>
@@ -63,7 +63,7 @@ export function NewsletterBar() {
             onChange={(e) => setEmail(e.target.value)}
             disabled={isLoading}
             placeholder="Email address"
-            className="flex-1 rounded-full bg-cornsilk px-5 py-3.5 font-sans text-sm text-black-forest outline-none placeholder:text-black-forest/50 ring-1 ring-black-forest/10 sm:rounded-none sm:bg-transparent sm:py-2 sm:ring-0 disabled:opacity-50"
+            className="flex-1 rounded-full bg-cornsilk px-5 py-3.5 font-sans text-sm text-black-forest outline-none placeholder:text-black-forest/65 ring-1 ring-black-forest/10 sm:rounded-none sm:bg-transparent sm:py-2 sm:ring-0 disabled:opacity-50"
           />
           <button
             type="submit"

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import dbConnect from './db';
 import type { NextRequest } from 'next/server';
 import mongoose from 'mongoose';

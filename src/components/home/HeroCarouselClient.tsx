@@ -23,16 +23,28 @@ export function HeroCarouselClient({
   const [canScrollPrev, setCanScrollPrev] = React.useState(true);
   const [canScrollNext, setCanScrollNext] = React.useState(true);
 
-  // Auto-rotate with 5s interval
   React.useEffect(() => {
     if (!emblaApi) return;
     if (slides.length <= 1) return;
 
-    const interval = setInterval(() => {
-      emblaApi.scrollNext();
-    }, 5000);
+    let interval: ReturnType<typeof setInterval>;
 
-    return () => clearInterval(interval);
+    const start = () => {
+      interval = setInterval(() => emblaApi.scrollNext(), 5000);
+    };
+    const stop = () => clearInterval(interval);
+
+    const onVisibility = () => {
+      if (document.hidden) stop(); else start();
+    };
+
+    start();
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [emblaApi, slides.length]);
 
   // Update scroll state on select

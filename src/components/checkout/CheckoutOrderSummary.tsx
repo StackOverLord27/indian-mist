@@ -146,7 +146,7 @@ export function CheckoutOrderSummary({
               <button
                 type="button"
                 onClick={onRemoveCoupon}
-                className="text-muted-text/50 hover:text-copper transition-colors p-0.5"
+                className="text-muted-text hover:text-copper transition-colors p-0.5"
                 aria-label="Remove coupon"
               >
                 <X className="size-3.5" />
@@ -227,6 +227,7 @@ export function CheckoutOrderSummary({
             )}
           </div>
 
+          {/* GST disabled — no GST registration yet
           <div className="flex justify-between items-center">
             <span className="font-montserrat text-sm text-muted-text">
               GST ({gstPercent}%)
@@ -235,6 +236,7 @@ export function CheckoutOrderSummary({
               {formatPrice(taxAmount)}
             </span>
           </div>
+          */}
         </div>
 
         {/* Total */}
@@ -245,7 +247,7 @@ export function CheckoutOrderSummary({
           <div className="text-right">
             {coupon.applied && coupon.discount > 0 && (
               <span className="font-montserrat text-xs text-muted-text line-through block mb-0.5">
-                {formatPrice(subtotal + shippingCost + Math.round((subtotal + shippingCost) * gstRate))}
+                {formatPrice(subtotal + shippingCost)}
               </span>
             )}
             <span className="font-merriweather text-2xl font-bold text-forest">
@@ -278,14 +280,14 @@ export function CheckoutOrderSummary({
         {/* Trust signals */}
         <div className="mt-4 space-y-2">
           <div className="flex items-center justify-center gap-1.5">
-            <LockKeyhole className="text-olive/60 size-3" />
-            <span className="font-montserrat text-[10px] text-muted-text/70">
+            <LockKeyhole className="text-olive/80 size-3" />
+            <span className="font-montserrat text-[10px] text-muted-text">
               Secured by Razorpay · 256-bit SSL encryption
             </span>
           </div>
           <div className="flex items-center justify-center gap-1.5">
-            <ShieldCheck className="text-olive/60 size-3" />
-            <span className="font-montserrat text-[10px] text-muted-text/70">
+            <ShieldCheck className="text-olive/80 size-3" />
+            <span className="font-montserrat text-[10px] text-muted-text">
               PCI DSS compliant payment processing
             </span>
           </div>
@@ -293,7 +295,7 @@ export function CheckoutOrderSummary({
 
         {/* Payment methods */}
         <div className="mt-5 pt-4 border-t border-olive/10">
-          <p className="font-montserrat text-[10px] uppercase tracking-wider text-muted-text/50 text-center mb-2">
+          <p className="font-montserrat text-[10px] uppercase tracking-wider text-muted-text text-center mb-2">
             We accept
           </p>
           <div className="flex justify-center gap-2 flex-wrap">

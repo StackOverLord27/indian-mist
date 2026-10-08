@@ -85,6 +85,7 @@ export default function AdminCarouselPage() {
         <h3 className="font-montserrat text-xs uppercase tracking-wider text-forest mb-3 font-semibold">Upload New Image</h3>
         <ImageUploadZone 
           key={uploadKey}
+          hint="Recommended: 1800 × 1200 px (3:2). Keep the subject in the centre; the edges may be trimmed on wide screens."
           multiple={false} 
           onFilesSelected={handleFileSelect} 
         />

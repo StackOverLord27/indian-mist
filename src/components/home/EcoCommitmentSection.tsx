@@ -53,6 +53,7 @@ export function EcoCommitmentSection({ settings }: EcoCommitmentProps) {
 
   return (
     <section className="bg-black-forest px-6 py-16 md:px-12">
+      <div className="mx-auto max-w-screen-2xl">
       <div className="mx-auto max-w-3xl text-center">
         <p className="font-sans text-2xs font-medium uppercase tracking-widest text-sunlit-clay">
           {subtitle}
@@ -79,12 +80,13 @@ export function EcoCommitmentSection({ settings }: EcoCommitmentProps) {
               <h3 className="mt-3 font-sans text-xs font-medium uppercase tracking-wide text-cornsilk">
                 {stat.label}
               </h3>
-              <p className="mt-2 font-sans text-xs font-light leading-5 text-cornsilk/55">
+              <p className="mt-2 font-sans text-xs font-light leading-5 text-cornsilk/75">
                 {stat.description}
               </p>
             </article>
           );
         })}
+      </div>
       </div>
     </section>
   );

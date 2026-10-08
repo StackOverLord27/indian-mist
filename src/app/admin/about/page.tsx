@@ -296,6 +296,7 @@ export default function AdminAboutPage() {
 
                   <AdminFormField label="Section Image">
                     <ImageUploadZone 
+                      hint="Recommended: 1600 × 1200 px (4:3). Keep the subject in the centre."
                       multiple={false}
                       maxFiles={1}
                       currentImages={section.imageUrl ? [{ url: section.imageUrl, publicId: section.imagePublicId || section.imageUrl, isPrimary: true }] : []}

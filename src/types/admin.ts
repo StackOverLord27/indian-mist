@@ -25,9 +25,16 @@ export interface AdminProduct {
   tags: string[];
   badge?: 'New' | 'Sale' | '';
   materials: string[];
+  careInstructions?: { text: string; icon: string }[];
+  shippingInfo?: {
+    standard?: string;
+    express?: string;
+  };
   images: ProductImage[];
   isActive?: boolean;
   isFeatured?: boolean;
+  trackInventory?: boolean;
+  stockQuantity?: number;
 }
 
 export interface Announcement {
@@ -137,6 +144,17 @@ export interface PricingSettings {
   promoCodes?: PromoCode[];
 }
 
+export interface ContactPageSettings {
+  title?: string;
+  subtitle?: string;
+  address?: string;
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  businessHours?: string;
+  faqs?: { question: string; answer: string }[];
+}
+
 export interface SiteSettings {
   _id?: string;
   tagline?: string;
@@ -171,6 +189,7 @@ export interface SiteSettings {
     }[];
   };
   pricingSettings?: PricingSettings;
+  contactPageSettings?: ContactPageSettings;
 }
 
 export interface AdminCategory {

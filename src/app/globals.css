@@ -1,14 +1,14 @@
 @import "tailwindcss";
-@import "tw-animate-css";
+@import "tw-animate-css"; /* trigger reload */
 @import "shadcn/tailwind.css";
-
-@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-montserrat);
+  --font-serif: var(--font-merriweather);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-weight-light: 400;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -46,7 +46,6 @@
   --color-copperwood: var(--copperwood);
   --color-warm-mist: var(--warm-mist);
   --color-card-bg: var(--card-bg);
-  /* Added tokens */
   --color-olive: var(--olive-leaf);
   --color-forest: var(--black-forest);
   --color-clay: var(--sunlit-clay);
@@ -79,21 +78,21 @@
 :root {
   --olive-leaf: #606c38;
   --black-forest: #283618;
-  --cornsilk: #fefae0;
+  --cornsilk: #FFF8E8;
   --sunlit-clay: #dda15e;
   --copperwood: #bc6c25;
   --warm-mist: #faedcd;
   --card-bg: #fdf6e3;
   --card-surface: #fdf6e3;
-  --muted-text: #7a7a5a;
-  --background: #fefae0;
+  --muted-text: #5f5f44;
+  --background: #FFF8E8;
   --foreground: #283618;
-  --card: #fefae0;
+  --card: #FFF8E8;
   --card-foreground: #283618;
-  --popover: #fefae0;
+  --popover: #FFF8E8;
   --popover-foreground: #283618;
   --primary: #606c38;
-  --primary-foreground: #fefae0;
+  --primary-foreground: #FFF8E8;
   --secondary: #dda15e;
   --secondary-foreground: #283618;
   --muted: #e9edc9;
@@ -110,48 +109,14 @@
   --chart-4: #bc6c25;
   --chart-5: #e9edc9;
   --radius: 0.75rem;
-  --sidebar: #fefae0;
+  --sidebar: #FFF4D7;
   --sidebar-foreground: #283618;
   --sidebar-primary: #606c38;
-  --sidebar-primary-foreground: #fefae0;
+  --sidebar-primary-foreground: #FFF4D7;
   --sidebar-accent: #dda15e;
   --sidebar-accent-foreground: #283618;
   --sidebar-border: #dda15e;
   --sidebar-ring: #606c38;
-}
-
-.dark {
-  --background: #283618;
-  --foreground: #fefae0;
-  --card: #283618;
-  --card-foreground: #fefae0;
-  --popover: #283618;
-  --popover-foreground: #fefae0;
-  --primary: #dda15e;
-  --primary-foreground: #283618;
-  --secondary: #606c38;
-  --secondary-foreground: #fefae0;
-  --muted: #4a5d23;
-  --muted-foreground: #fefae0;
-  --accent: #bc6c25;
-  --accent-foreground: #fefae0;
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: #606c38;
-  --input: #606c38;
-  --ring: #dda15e;
-  --chart-1: #dda15e;
-  --chart-2: #bc6c25;
-  --chart-3: #606c38;
-  --chart-4: #fefae0;
-  --chart-5: #e9edc9;
-  --sidebar: #283618;
-  --sidebar-foreground: #fefae0;
-  --sidebar-primary: #dda15e;
-  --sidebar-primary-foreground: #283618;
-  --sidebar-accent: #606c38;
-  --sidebar-accent-foreground: #fefae0;
-  --sidebar-border: #606c38;
-  --sidebar-ring: #dda15e;
 }
 
 @layer base {
@@ -165,6 +130,12 @@
 
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--olive-leaf);
+    outline-offset: 2px;
   }
 }
 
@@ -178,6 +149,36 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+.hero-stagger-hidden > * {
+  opacity: 0;
+}
+
+.hero-stagger > * {
+  opacity: 0;
+  animation: fadeInUp 0.7s ease-out forwards;
+}
+.hero-stagger > *:nth-child(1) { animation-delay: 0.1s; }
+.hero-stagger > *:nth-child(2) { animation-delay: 0.28s; }
+.hero-stagger > *:nth-child(3) { animation-delay: 0.46s; }
+.hero-stagger > *:nth-child(4) { animation-delay: 0.64s; }
+
+/* ─── Reduced Motion ────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

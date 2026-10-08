@@ -1,11 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Droplets, Sun, Wind, ShieldCheck, Star } from "lucide-react";
+import {
+  Check, Droplets, Sun, Wind, Truck, Thermometer,
+  Ban, Hand, Shirt, Sparkles, RotateCcw, ShieldCheck, Info,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Product } from "@/lib/get-product";
 
-const TABS = ["Description", "Materials & Care", "Shipping", "Reviews"];
+const CARE_ICON_MAP: Record<string, LucideIcon> = {
+  droplets: Droplets,
+  sun: Sun,
+  wind: Wind,
+  thermometer: Thermometer,
+  ban: Ban,
+  hand: Hand,
+  shirt: Shirt,
+  sparkles: Sparkles,
+  iron: Thermometer,
+  "rotate-ccw": RotateCcw,
+  "shield-check": ShieldCheck,
+  info: Info,
+};
+
+const TABS = ["Description", "Materials & Care", "Shipping"];
 
 export function ProductTabs({ product }: { product: Product }) {
   const [activeTab, setActiveTab] = useState(TABS[0]);
@@ -23,7 +42,7 @@ export function ProductTabs({ product }: { product: Product }) {
               "font-montserrat text-xs font-semibold uppercase tracking-wider pb-3 px-1 mr-8 border-b-2 transition-colors flex-shrink-0 whitespace-nowrap",
               activeTab === tab
                 ? "border-forest text-forest"
-                : "border-transparent text-muted-text/70 hover:text-forest hover:border-olive/30"
+                : "border-transparent text-muted-text hover:text-forest hover:border-olive/30"
             )}
           >
             {tab}
@@ -74,21 +93,17 @@ export function ProductTabs({ product }: { product: Product }) {
               <h3 className="font-merriweather text-base font-medium text-forest mb-4">
                 Care Instructions
               </h3>
-              {product.careInstructions.map((instruction, idx) => (
-                <div key={idx} className="flex items-start gap-2 mb-3">
-                  {/* Just cycle through a few icons for visual variety */}
-                  {idx % 3 === 0 ? (
-                    <Droplets className="text-olive size-[14px] flex-shrink-0 mt-0.5" />
-                  ) : idx % 3 === 1 ? (
-                    <Sun className="text-olive size-[14px] flex-shrink-0 mt-0.5" />
-                  ) : (
-                    <Wind className="text-olive size-[14px] flex-shrink-0 mt-0.5" />
-                  )}
-                  <span className="font-montserrat text-xs text-muted-text font-normal">
-                    {instruction}
-                  </span>
-                </div>
-              ))}
+              {product.careInstructions.map((instruction, idx) => {
+                const IconComp = CARE_ICON_MAP[instruction.icon] || Droplets;
+                return (
+                  <div key={idx} className="flex items-start gap-2 mb-3">
+                    <IconComp className="text-olive size-[14px] flex-shrink-0 mt-0.5" />
+                    <span className="font-montserrat text-xs text-muted-text font-normal">
+                      {instruction.text}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -96,18 +111,17 @@ export function ProductTabs({ product }: { product: Product }) {
         {activeTab === "Shipping" && (
           <div className="max-w-xl space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <div className="flex items-start gap-4 p-4 bg-card-surface border border-olive/10 rounded-sm">
-              <ShieldCheck className="text-olive size-[18px] flex-shrink-0 mt-0.5" />
+              <Truck className="text-olive size-[18px] flex-shrink-0 mt-0.5" />
               <div>
                 <h4 className="font-montserrat text-sm font-semibold text-forest mb-1">
                   Standard Delivery
                 </h4>
                 <p className="font-montserrat text-xs text-muted-text font-normal leading-relaxed">
-                  Arrives in {product.shippingInfo.standard}.{" "}
-                  {product.shippingInfo.free ? "Free on this order." : "Shipping calculated at checkout."}
+                  {product.shippingInfo.standard}. Shipping calculated at checkout.
                 </p>
               </div>
             </div>
-            <div className="flex items-start gap-4 p-4 bg-card-surface border border-olive/10 rounded-sm">
+            {/* <div className="flex items-start gap-4 p-4 bg-card-surface border border-olive/10 rounded-sm">
               <Wind className="text-olive size-[18px] flex-shrink-0 mt-0.5" />
               <div>
                 <h4 className="font-montserrat text-sm font-semibold text-forest mb-1">
@@ -117,43 +131,10 @@ export function ProductTabs({ product }: { product: Product }) {
                   Arrives in {product.shippingInfo.express} for an additional fee.
                 </p>
               </div>
-            </div>
+            </div> */}
           </div>
         )}
 
-        {activeTab === "Reviews" && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <div className="flex items-center gap-6 mb-8">
-              <div className="font-merriweather text-5xl text-forest font-medium">
-                {product.rating.toFixed(1)}
-              </div>
-              <div>
-                <div className="flex gap-1 text-clay mb-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={cn(
-                        "size-4",
-                        star <= Math.round(product.rating)
-                          ? "fill-clay text-clay"
-                          : "text-muted-text/30"
-                      )}
-                    />
-                  ))}
-                </div>
-                <div className="font-montserrat text-sm text-muted-text">
-                  ({product.reviewCount} reviews)
-                </div>
-              </div>
-            </div>
-            {/* Reviews State */}
-            <div className="py-8 text-center border-t border-olive/10">
-              <p className="font-montserrat text-sm text-muted-text">
-                No reviews yet. Be the first to review this product!
-              </p>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

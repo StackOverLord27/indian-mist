@@ -56,7 +56,7 @@ export default async function BlogsPage({
           <h1 className="font-merriweather text-3xl md:text-5xl font-normal text-cornsilk leading-tight">
             From the Trail
           </h1>
-          <p className="font-montserrat text-sm font-light text-cornsilk/70 mt-3 max-w-lg">
+          <p className="font-montserrat text-sm font-light text-cornsilk/80 mt-3 max-w-lg">
             Stories, guides, and notes from the Indian Mist community — exploring the
             outdoors responsibly.
           </p>
@@ -81,7 +81,7 @@ export default async function BlogsPage({
               className={`font-montserrat text-xs font-medium uppercase tracking-wider px-4 py-2 rounded-sm transition-all duration-200 ${
                 !category
                   ? "bg-forest text-cornsilk shadow-sm"
-                  : "bg-olive/8 text-forest/60 hover:bg-olive/15 hover:text-forest"
+                  : "bg-olive/8 text-forest/75 hover:bg-olive/15 hover:text-forest"
               }`}
             >
               All Posts
@@ -93,7 +93,7 @@ export default async function BlogsPage({
                 className={`font-montserrat text-xs font-medium uppercase tracking-wider px-4 py-2 rounded-sm transition-all duration-200 ${
                   category === cat
                     ? "bg-forest text-cornsilk shadow-sm"
-                    : "bg-olive/8 text-forest/60 hover:bg-olive/15 hover:text-forest"
+                    : "bg-olive/8 text-forest/75 hover:bg-olive/15 hover:text-forest"
                 }`}
               >
                 {cat}
@@ -106,7 +106,7 @@ export default async function BlogsPage({
         {blogs.length === 0 ? (
           <div className="py-24 text-center">
             <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-olive/10 flex items-center justify-center">
-              <Clock className="size-7 text-olive/40" />
+              <Clock className="size-7 text-olive/70" />
             </div>
             <p className="font-merriweather text-xl text-forest mb-2">
               {category ? `No posts in "${category}" yet` : "Coming soon"}
@@ -172,13 +172,13 @@ export default async function BlogsPage({
                     )}
                     <div className="flex items-center gap-4 mt-5">
                       <div className="flex items-center gap-1.5">
-                        <Calendar className="size-3.5 text-olive/50" />
+                        <Calendar className="size-3.5 text-olive/70" />
                         <span className="font-montserrat text-xs text-muted-text">
                           {formatDate(blogs[0].publishedAt || blogs[0].createdAt)}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <Clock className="size-3.5 text-olive/50" />
+                        <Clock className="size-3.5 text-olive/70" />
                         <span className="font-montserrat text-xs text-muted-text">
                           {blogs[0].readTime} min read
                         </span>
@@ -238,7 +238,7 @@ export default async function BlogsPage({
                           {blog.excerpt}
                         </p>
                         <div className="flex items-center gap-1.5 mt-4 pt-4 border-t border-olive/8">
-                          <Calendar className="size-3 text-olive/40" />
+                          <Calendar className="size-3 text-olive/70" />
                           <span className="font-montserrat text-[10px] text-muted-text">
                             {formatDate(blog.publishedAt || blog.createdAt)}
                           </span>

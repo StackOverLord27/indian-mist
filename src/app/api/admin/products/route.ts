@@ -53,7 +53,11 @@ export const POST = withAdmin(async (req) => {
     sizes: parseJSON(fields.sizes, []),
     features: parseJSON(fields.features, []),
     materials: parseJSON(fields.materials, []),
+    careInstructions: parseJSON(fields.careInstructions, []),
+    shippingInfo: parseJSON(fields.shippingInfo, undefined),
     isFeatured: fields.isFeatured === 'true',
+    trackInventory: fields.trackInventory === 'true',
+    stockQuantity: Math.max(0, Math.floor(Number(fields.stockQuantity) || 0)),
   };
 
   const validationResult = ProductSchema.safeParse(parsedFields);

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IProduct extends Document {
@@ -14,11 +14,17 @@ export interface IProduct extends Document {
   colors: string[];
   features?: string[];
   materials?: string[];
+  careInstructions?: { text: string; icon: string }[];
   tags?: string[];
   stockQuantity: number;
+  trackInventory?: boolean;
   badge?: "New" | "Sale" | "Sold Out" | "";
   isFeatured?: boolean;
   isCategoryFeatured?: boolean;
+  shippingInfo?: {
+    standard: string;
+    express: string;
+  };
   order?: number;
   createdAt: Date;
   updatedAt: Date;
@@ -45,8 +51,17 @@ const ProductSchema: Schema = new Schema(
     colors: [{ type: String }],
     features: [{ type: String }],
     materials: [{ type: String }],
+    careInstructions: [{
+      text: { type: String, required: true },
+      icon: { type: String, default: "droplets" },
+    }],
     tags: [{ type: String }],
+    shippingInfo: {
+      standard: { type: String, default: "3-5 business days" },
+      express: { type: String, default: "1-2 business days" },
+    },
     stockQuantity: { type: Number, default: 0 },
+    trackInventory: { type: Boolean, default: false },
     badge: { type: String, enum: ["New", "Sale", "Sold Out", ""] },
     isFeatured: { type: Boolean, default: false },
     isCategoryFeatured: { type: Boolean, default: false },
@@ -54,6 +69,10 @@ const ProductSchema: Schema = new Schema(
   },
   { timestamps: true }
 );
+
+ProductSchema.index({ isFeatured: 1, createdAt: -1 });
+ProductSchema.index({ category: 1, order: 1, createdAt: -1 });
+ProductSchema.index({ createdAt: -1 });
 
 ProductSchema.pre("validate", function (this: any) {
   if (!this.slug && this.name) {

@@ -150,7 +150,7 @@ export default function ForgotPasswordPage() {
               /* Step 1 Form */
               <form onSubmit={handleRequestOtp} noValidate className="space-y-5">
                 <div className="space-y-1.5">
-                  <label htmlFor="reset-email" className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/70">
+                  <label htmlFor="reset-email" className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/80">
                     Email address
                   </label>
                   <input
@@ -163,7 +163,7 @@ export default function ForgotPasswordPage() {
                     }}
                     placeholder="you@example.com"
                     disabled={isLoading || !!success}
-                    className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/40 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
+                    className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/70 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
                   />
                 </div>
 
@@ -185,7 +185,7 @@ export default function ForgotPasswordPage() {
               /* Step 2 Form */
               <form onSubmit={handleResetPassword} noValidate className="space-y-5">
                 <div className="space-y-1.5">
-                  <label htmlFor="reset-otp" className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/70">
+                  <label htmlFor="reset-otp" className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/80">
                     Verification Code
                   </label>
                   <input
@@ -199,12 +199,12 @@ export default function ForgotPasswordPage() {
                     }}
                     placeholder="123456"
                     disabled={isLoading || !!success}
-                    className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/40 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60 tracking-[0.3em] text-center"
+                    className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/70 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60 tracking-[0.3em] text-center"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="reset-new-password" className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/70">
+                  <label htmlFor="reset-new-password" className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/80">
                     New Password
                   </label>
                   <div className="relative">
@@ -218,12 +218,12 @@ export default function ForgotPasswordPage() {
                       }}
                       placeholder="At least 8 characters"
                       disabled={isLoading || !!success}
-                      className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 pr-11 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/40 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
+                      className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 pr-11 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/70 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-olive-leaf/60 hover:text-olive-leaf transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-olive-leaf/80 hover:text-olive-leaf transition-colors"
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -231,7 +231,7 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="reset-confirm-password" className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/70">
+                  <label htmlFor="reset-confirm-password" className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/80">
                     Confirm Password
                   </label>
                   <div className="relative">
@@ -245,12 +245,12 @@ export default function ForgotPasswordPage() {
                       }}
                       placeholder="Repeat new password"
                       disabled={isLoading || !!success}
-                      className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 pr-11 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/40 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
+                      className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 pr-11 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/70 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-olive-leaf/60 hover:text-olive-leaf transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-olive-leaf/80 hover:text-olive-leaf transition-colors"
                     >
                       {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>

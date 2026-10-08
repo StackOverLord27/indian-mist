@@ -21,30 +21,33 @@ const defaultTrustItems: TrustStripItemProps[] = [
 export function TrustStrip({ items = defaultTrustItems }: TrustStripProps) {
   const displayItems = items && items.length > 0 ? items : defaultTrustItems;
 
+  if (displayItems.length === 0) return null;
+
   return (
     <section className="bg-warm-mist">
-      <div className="flex flex-col sm:flex-row flex-wrap justify-center divide-y divide-olive-leaf/20 sm:divide-y-0 sm:divide-x">
-        {displayItems.map((item, index) => {
-          // Fallback to Leaf if icon not found
-          const IconComponent = IconMap[item.icon as IconName] || IconMap.Leaf;
-          
-          return (
-            <div
-              key={index}
-              className="flex-1 flex items-center gap-3 px-6 py-5 min-w-[200px] max-w-sm justify-center"
-            >
-              <IconComponent className="size-5 shrink-0 text-olive-leaf" aria-hidden="true" />
-              <div>
-                <h2 className="font-sans text-xs font-semibold text-black-forest">
-                  {item.title}
-                </h2>
-                <p className="mt-1 font-sans text-xs font-light text-black-forest/60">
-                  {item.subtitle}
-                </p>
+      <div className="mx-auto max-w-screen-2xl overflow-x-auto sm:overflow-x-visible hide-scrollbar">
+        <div className="flex min-w-max sm:min-w-0 sm:flex-wrap sm:justify-center divide-x divide-olive-leaf/20">
+          {displayItems.map((item, index) => {
+            const IconComponent = IconMap[item.icon as IconName] || IconMap.Leaf;
+
+            return (
+              <div
+                key={index}
+                className="flex items-center gap-2.5 px-5 py-4 sm:px-6 sm:py-5 sm:flex-1 sm:min-w-[180px] sm:max-w-sm sm:justify-center whitespace-nowrap sm:whitespace-normal"
+              >
+                <IconComponent className="size-4 sm:size-5 shrink-0 text-olive-leaf" aria-hidden="true" />
+                <div>
+                  <h2 className="font-sans text-[11px] sm:text-xs font-semibold text-black-forest">
+                    {item.title}
+                  </h2>
+                  <p className="mt-0.5 font-sans text-[10px] sm:text-xs font-light text-black-forest/75">
+                    {item.subtitle}
+                  </p>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </section>
   );

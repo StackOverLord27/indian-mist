@@ -76,7 +76,7 @@ const SettingsSchema = new mongoose.Schema({
   pricingSettings: {
     shippingCost: { type: Number, default: 99 },
     freeShippingThreshold: { type: Number, default: 999 },
-    gstRate: { type: Number, default: 18 },
+    gstRate: { type: Number, default: 0 },
     showPricesInclusiveOfGst: { type: Boolean, default: false },
     promoCodes: {
       type: [{
@@ -92,8 +92,21 @@ const SettingsSchema = new mongoose.Schema({
         createdAt: { type: Date, default: Date.now },
       }],
       default: []
-    }
+    },
   },
+  contactPageSettings: {
+    title: { type: String, default: 'Contact Us' },
+    subtitle: { type: String, default: 'We would love to hear from you. Get in touch with us for any queries.' },
+    address: { type: String, default: '123 Forest Lane, Nature Valley, Earth 456789' },
+    phone: { type: String, default: '+91 98765 43210' },
+    whatsapp: { type: String, default: '+91 98765 43210' },
+    email: { type: String, default: 'hello@indianmist.com' },
+    businessHours: { type: String, default: 'Mon-Fri, 9:00 AM - 6:00 PM' },
+    faqs: {
+      type: [{ question: { type: String, required: true }, answer: { type: String, required: true } }],
+      default: [],
+    },
+  }
 }, { collection: 'sitesettings', timestamps: true });
 
 export default mongoose.models.SiteSettings ??

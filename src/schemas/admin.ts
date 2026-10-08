@@ -11,7 +11,17 @@ export const ProductSchema = z.object({
   sizes: z.array(z.string()).optional(),
   features: z.array(z.string()).optional(),
   materials: z.array(z.string()).optional(),
+  careInstructions: z.array(z.object({
+    text: z.string(),
+    icon: z.string(),
+  })).optional(),
+  shippingInfo: z.object({
+    standard: z.string().optional(),
+    express: z.string().optional(),
+  }).optional(),
   isFeatured: z.boolean().optional().default(false),
+  trackInventory: z.boolean().optional().default(false),
+  stockQuantity: z.number().int().min(0).optional().default(0),
 });
 
 export const AnnouncementSchema = z.object({

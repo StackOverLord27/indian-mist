@@ -6,6 +6,7 @@ import { HeroSection } from "@/components/home/HeroSection";
 import { NewsletterBar } from "@/components/home/NewsletterBar";
 import { NewestArrivals } from "@/components/home/NewestArrivals";
 import { TrustStrip } from "@/components/home/TrustStrip";
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import {
   heroImage,
   storyImage,
@@ -20,8 +21,7 @@ import SiteSettingsModel from "@/models/settings.model";
 import CarouselModel from "@/models/carousel.model";
 import { CarouselImage } from "@/types/admin";
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 60;
 
 const formatPrice = (price: number) => `₹${price.toLocaleString("en-IN")}`;
 
@@ -35,13 +35,14 @@ export default async function Home() {
     // 1. Featured products: products marked with isFeatured
     Product.find({ isFeatured: true })
       .sort({ createdAt: -1 })
-      .select("slug name category price badge images")
+      .select("slug name category price badge images sizes")
       .lean(),
 
     // 2. Newest arrivals: all products with description
     Product.find({})
       .sort({ createdAt: -1 })
-      .select("slug name category description price badge images")
+      .limit(24)
+      .select("slug name category description price badge images sizes")
       .lean(),
 
     // 3. Category counts & images via actual Category collection
@@ -91,6 +92,7 @@ export default async function Home() {
       category: p.category,
       price: formatPrice(p.price),
       badge: p.badge,
+      sizes: Array.isArray(p.sizes) && p.sizes.length > 0 ? p.sizes : undefined,
       image: {
         src: p.images?.[0]?.url || undefined,
         alt: p.name,
@@ -107,6 +109,7 @@ export default async function Home() {
       description: p.description,
       price: formatPrice(p.price),
       badge: p.badge,
+      sizes: Array.isArray(p.sizes) && p.sizes.length > 0 ? p.sizes : undefined,
       image: {
         src: p.images?.[0]?.url || undefined,
         alt: p.name,
@@ -141,20 +144,30 @@ export default async function Home() {
 
   return (
     <div className="w-full bg-cornsilk">
-      <HeroSection 
-        settings={(settingsDoc as any)?.heroSettings} 
+      <HeroSection
+        settings={(settingsDoc as any)?.heroSettings}
         slides={mappedSlides}
         fallbackImage={heroImage}
       />
       <TrustStrip items={(settingsDoc as any)?.trustStripSettings?.items} />
-      <FeaturedProducts products={mappedFeatured} />
-      <BrandStorySection 
-        image={storyImage} 
-        settings={(settingsDoc as any)?.brandStorySettings}
-      />
-      <CategoryGrid categories={mappedCategories} />
-      <NewestArrivals arrivals={mappedArrivals} />
-      <EcoCommitmentSection settings={(settingsDoc as any)?.ecoCommitmentSettings} />
+      <ScrollReveal>
+        <FeaturedProducts products={mappedFeatured} />
+      </ScrollReveal>
+      <ScrollReveal>
+        <BrandStorySection
+          image={storyImage}
+          settings={(settingsDoc as any)?.brandStorySettings}
+        />
+      </ScrollReveal>
+      <ScrollReveal>
+        <CategoryGrid categories={mappedCategories} />
+      </ScrollReveal>
+      <ScrollReveal>
+        <NewestArrivals arrivals={mappedArrivals} />
+      </ScrollReveal>
+      <ScrollReveal>
+        <EcoCommitmentSection settings={(settingsDoc as any)?.ecoCommitmentSettings} />
+      </ScrollReveal>
       <NewsletterBar />
     </div>
   );

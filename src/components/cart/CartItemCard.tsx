@@ -13,7 +13,13 @@ const placeholderColors = [
   "bg-[#fefae0]",
 ];
 
-export function CartItemCard({ item, index }: { item: CartItem; index: number }) {
+export function CartItemCard({
+  item,
+  index,
+}: {
+  item: CartItem;
+  index: number;
+}) {
   const { removeItem, updateQuantity } = useCartStore();
   const [removing, setRemoving] = useState(false);
   const [priceFlash, setPriceFlash] = useState(false);
@@ -52,18 +58,21 @@ export function CartItemCard({ item, index }: { item: CartItem; index: number })
     <div
       className={cn(
         "bg-card border border-olive/10 rounded-md p-4 flex gap-4 items-start hover:border-olive/20 transition-all duration-200",
-        removing && "opacity-0 -translate-x-2"
+        removing && "opacity-0 -translate-x-2",
       )}
     >
       {/* Image */}
       <div
         className={cn(
           "w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 flex-shrink-0 relative rounded-sm overflow-hidden",
-          placeholder
+          placeholder,
         )}
       >
         {(() => {
-          const imgSrc = typeof item.image === 'string' ? item.image : (item.image as any)?.url;
+          const imgSrc =
+            typeof item.image === "string"
+              ? item.image
+              : (item.image as any)?.url;
           return imgSrc ? (
             <Image
               src={imgSrc}
@@ -92,7 +101,7 @@ export function CartItemCard({ item, index }: { item: CartItem; index: number })
             type="button"
             onClick={handleRemove}
             aria-label={`Remove ${item.name}`}
-            className="text-muted-text/50 hover:text-copper transition-colors ml-2 flex-shrink-0 p-0.5 mt-0.5 min-h-[44px] min-w-[44px] flex items-start justify-end"
+            className="text-muted-text hover:text-copper transition-colors ml-2 flex-shrink-0 p-0.5 mt-0.5 min-h-[44px] min-w-[44px] flex items-start justify-end"
           >
             <X className="size-[14px]" />
           </button>
@@ -144,7 +153,7 @@ export function CartItemCard({ item, index }: { item: CartItem; index: number })
             <span
               className={cn(
                 "font-merriweather text-base font-bold text-forest inline-block transition-transform duration-100",
-                priceFlash && "scale-105"
+                priceFlash && "scale-105",
               )}
             >
               {formatPrice(item.price * item.quantity)}

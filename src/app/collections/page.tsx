@@ -20,7 +20,7 @@ export default async function CollectionsPage() {
     .lean();
 
   return (
-    <div className="bg-cornsilk px-6 md:px-12 lg:px-16 pt-12 pb-16 min-h-screen">
+    <div className="bg-cornsilk px-4 sm:px-6 md:px-12 lg:px-16 pt-12 pb-16 min-h-screen">
       {/* Page header with a thin green accent */}
       <header className="mb-14 pb-8 border-b border-olive/20">
         <div className="space-y-2 max-w-prose">
@@ -54,7 +54,7 @@ export default async function CollectionsPage() {
             return (
               <section
                 key={collection._id.toString()}
-                className={`py-12 ${isEven ? "" : "bg-warm-mist/40"} -mx-6 px-6 md:-mx-12 md:px-12 lg:-mx-16 lg:px-16`}
+                className={`py-12 ${isEven ? "" : "bg-warm-mist/40"} -mx-4 px-4 sm:-mx-6 sm:px-6 md:-mx-12 md:px-12 lg:-mx-16 lg:px-16`}
               >
                 <div className="mb-6 flex items-baseline gap-4">
                   {/* Faint index number in forest green */}
@@ -66,14 +66,14 @@ export default async function CollectionsPage() {
                       {collection.name}
                     </h2>
                     {collection.description && (
-                      <p className="font-montserrat text-sm font-light text-forest/70 max-w-prose leading-relaxed">
+                      <p className="font-montserrat text-sm font-light text-forest/80 max-w-prose leading-relaxed">
                         {collection.description}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
                   {collection.products.map((p: any) => {
                     const formattedProduct: Product = {
                       id: p.slug || p._id.toString(),
@@ -81,6 +81,7 @@ export default async function CollectionsPage() {
                       category: p.category,
                       price: formatPrice(p.price),
                       badge: p.badge,
+                      sizes: Array.isArray(p.sizes) && p.sizes.length > 0 ? p.sizes : undefined,
                       image: {
                         src: p.images?.[0]?.url || undefined,
                         alt: p.images?.[0]?.alt || p.name,

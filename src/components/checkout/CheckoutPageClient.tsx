@@ -129,9 +129,11 @@ export function CheckoutPageClient() {
   const shippingFree = subtotal >= pricing.shippingThreshold;
   const shippingCost = shippingFree ? 0 : pricing.shippingCost;
   const discountedSubtotal = Math.max(subtotal - coupon.discount, 0);
-  const taxAmount = Math.round(
-    (discountedSubtotal + shippingCost) * pricing.gstRate,
-  );
+  // GST disabled — no GST registration yet
+  // const taxAmount = Math.round(
+  //   (discountedSubtotal + shippingCost) * pricing.gstRate,
+  // );
+  const taxAmount = 0;
   const totalAmount = discountedSubtotal + shippingCost + taxAmount;
 
   // Mount animation
@@ -262,7 +264,7 @@ export function CheckoutPageClient() {
         amount: dataRes.amount,
         currency: dataRes.currency,
         name: "Indian Mist",
-        description: `Order #${dataRes.orderId}`,
+        description: "Indian Mist order",
         order_id: dataRes.razorpayOrderId,
         prefill: {
           name: data.customerName.trim(),
@@ -352,7 +354,7 @@ export function CheckoutPageClient() {
           <div className="flex items-center gap-3 mt-2 mb-6">
             <Link
               href="/cart"
-              className="p-2 text-forest/60 hover:text-forest hover:bg-olive/10 rounded-sm transition-colors"
+              className="p-2 text-forest/75 hover:text-forest hover:bg-olive/10 rounded-sm transition-colors"
             >
               <ArrowLeft className="size-5" />
             </Link>

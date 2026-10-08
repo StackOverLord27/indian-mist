@@ -31,11 +31,6 @@ export default function ProductDetailLoading() {
               <Skeleton className="h-7 w-3/4" />
               <Skeleton className="h-7 w-1/2" />
             </div>
-            <div className="flex gap-1">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="size-4 rounded" />
-              ))}
-            </div>
             <Skeleton className="h-8 w-28" />
             <hr className="border-olive-leaf/10" />
             <div className="space-y-3">

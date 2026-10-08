@@ -66,7 +66,7 @@ export function AccountDetailsForm({
       {isEditing ? (
         <form onSubmit={handleSave} className="divide-y divide-olive-leaf/10 border-b border-olive-leaf/15">
           <div className="px-6 py-3">
-            <label className="block font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/60 mb-1">
+            <label className="block font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/80 mb-1">
               Name
             </label>
             <input
@@ -78,7 +78,7 @@ export function AccountDetailsForm({
             />
           </div>
           <div className="px-6 py-3">
-            <label className="block font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/60 mb-1">
+            <label className="block font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/80 mb-1">
               Phone Number
             </label>
             <input
@@ -89,7 +89,7 @@ export function AccountDetailsForm({
             />
           </div>
           <div className="px-6 py-3 opacity-50 cursor-not-allowed">
-            <label className="block font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/60 mb-1">
+            <label className="block font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/80 mb-1">
               Email
             </label>
             <input
@@ -113,7 +113,7 @@ export function AccountDetailsForm({
                 setIsEditing(false);
                 setForm({ name: user.name || "", phone: user.phone || "" });
               }}
-              className="flex items-center justify-center px-5 py-3.5 text-olive-leaf/50 transition-colors hover:bg-olive-leaf/10 hover:text-olive-leaf"
+              className="flex items-center justify-center px-5 py-3.5 text-olive-leaf/70 transition-colors hover:bg-olive-leaf/10 hover:text-olive-leaf"
             >
               <X className="size-4" />
             </button>
@@ -122,16 +122,16 @@ export function AccountDetailsForm({
       ) : (
         <div className="grid grid-cols-1 divide-y divide-olive-leaf/10 border-b border-olive-leaf/15">
           <div className="px-6 py-4">
-            <p className="font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/60 mb-1">Name</p>
+            <p className="font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/80 mb-1">Name</p>
             <p className="font-montserrat text-sm font-semibold text-black-forest">{user.name}</p>
           </div>
           <div className="px-6 py-4">
-            <p className="font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/60 mb-1">Email</p>
+            <p className="font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/80 mb-1">Email</p>
             <p className="font-montserrat text-sm font-medium text-black-forest">{user.email}</p>
           </div>
           <div className="px-6 py-4">
-            <p className="font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/60 mb-1">Phone</p>
-            <p className="font-montserrat text-sm font-medium text-black-forest">{user.phone || <span className="text-olive-leaf/50 italic">Not set</span>}</p>
+            <p className="font-montserrat text-3xs font-semibold uppercase tracking-widest text-olive-leaf/80 mb-1">Phone</p>
+            <p className="font-montserrat text-sm font-medium text-black-forest">{user.phone || <span className="text-olive-leaf/70 italic">Not set</span>}</p>
           </div>
         </div>
       )}

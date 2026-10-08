@@ -29,6 +29,7 @@ export const PUT = withAdmin(async (req: NextRequest) => {
   
   revalidatePath('/');
   revalidatePath('/about');
+  revalidatePath('/contact');
   revalidatePath('/checkout');
   return successResponse({ settings });
 });

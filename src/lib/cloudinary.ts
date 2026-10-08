@@ -13,7 +13,12 @@ export const uploadImage = async (
 
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
-      { folder: options?.folder || "indian-mist", public_id: options?.public_id },
+      {
+        folder: options?.folder || "indian-mist",
+        public_id: options?.public_id,
+        // Stored image is capped at 2000px (never upscaled) and compressed
+        transformation: [{ width: 2000, height: 2000, crop: "limit", quality: "auto" }],
+      },
       (error, result) => {
         if (result) {
           resolve({ url: result.secure_url, publicId: result.public_id });

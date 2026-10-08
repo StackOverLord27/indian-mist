@@ -13,6 +13,7 @@ export type Product = {
   price: string;
   badge?: ProductBadge;
   image: HomeImage;
+  sizes?: string[];
 };
 
 export type Category = {
@@ -31,6 +32,7 @@ export type Arrival = {
   price: string;
   badge?: ProductBadge;
   image: HomeImage;
+  sizes?: string[];
 };
 
 export const heroImage: HomeImage = {

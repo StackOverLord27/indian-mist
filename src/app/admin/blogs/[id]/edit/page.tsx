@@ -209,7 +209,7 @@ export default function AdminEditBlogPage({
           </AdminCard>
 
           {/* Cover Image */}
-          <AdminCard title="Cover Image">
+          <AdminCard title="Cover Image" description="Recommended: 1600 × 1000 px (16:10). Shown in full on the blog pages, so nothing important is cut off.">
             {coverPreview ? (
               <div className="relative">
                 <img

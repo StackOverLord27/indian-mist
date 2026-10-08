@@ -33,29 +33,37 @@ type NavLink = {
   children?: NavChild[];
 };
 
-const navLinks: NavLink[] = [
-  { name: "Home", href: "/" },
-  {
-    name: "Products",
-    href: "/products",
-    children: [
-      { name: "Forest Gear", href: "/products?category=forest-gear" },
-      { name: "Apparel", href: "/products?category=apparel" },
-      { name: "Pins & Patches", href: "/products?category=pins" },
-      { name: "Stationery", href: "/products?category=stationery" },
-    ],
-  },
-  {
-    name: "Collections",
-    href: "/collections",
-    children: [
-      { name: "Summer 2026", href: "/collections/summer-2026" },
-      { name: "Monsoon Edit", href: "/collections/monsoon-edit" },
-    ],
-  },
-  { name: "About", href: "/about" },
-  { name: "Blogs", href: "/blogs" },
-];
+type NavItem = { name: string; slug: string };
+
+function buildNavLinks(
+  categories: NavItem[],
+  collections: NavItem[],
+): NavLink[] {
+  return [
+    { name: "Home", href: "/" },
+    {
+      name: "Products",
+      href: "/products",
+      children: categories.map((c) => ({
+        name: c.name,
+        href: `/products?category=${c.slug}`,
+      })),
+    },
+    ...(collections.length > 0
+      ? [{
+          name: "Collections",
+          href: "/collections",
+          children: collections.map((c) => ({
+            name: c.name,
+            href: `/collections/${c.slug}`,
+          })),
+        }]
+      : []),
+    { name: "About", href: "/about" },
+    { name: "Blogs", href: "/blogs" },
+    { name: "Contact Us", href: "/contact" },
+  ];
+}
 
 // ─── Desktop nav link ────────────────────────────────────────────────────────
 
@@ -66,19 +74,61 @@ function DesktopNavLink({
   link: NavLink;
   isActive: boolean;
 }) {
+  const hasChildren = Boolean(link.children?.length);
+
+  if (!hasChildren) {
+    return (
+      <Link
+        href={link.href}
+        aria-current={isActive ? "page" : undefined}
+        className={cn(
+          "font-sans text-sm font-medium uppercase tracking-widest transition-all",
+          isActive
+            ? "text-olive-leaf underline underline-offset-8 decoration-2 decoration-olive-leaf"
+            : "text-black-forest/85 hover:opacity-100 hover:text-black-forest"
+        )}
+      >
+        {link.name}
+      </Link>
+    );
+  }
+
   return (
-    <Link
-      href={link.href}
-      aria-current={isActive ? "page" : undefined}
-      className={cn(
-        "font-sans text-xs font-medium uppercase tracking-widest transition-all",
-        isActive
-          ? "text-olive-leaf underline underline-offset-8 decoration-2 decoration-olive-leaf"
-          : "text-black-forest/75 hover:opacity-100 hover:text-black-forest"
-      )}
-    >
-      {link.name}
-    </Link>
+    <div className="group relative">
+      <Link
+        href={link.href}
+        aria-current={isActive ? "page" : undefined}
+        className={cn(
+          "inline-flex items-center gap-1 font-sans text-sm font-medium uppercase tracking-widest transition-all",
+          isActive
+            ? "text-olive-leaf underline underline-offset-8 decoration-2 decoration-olive-leaf"
+            : "text-black-forest/85 hover:opacity-100 hover:text-black-forest"
+        )}
+      >
+        {link.name}
+        <ChevronDown className="size-3 opacity-50 transition-transform group-hover:rotate-180" aria-hidden="true" />
+      </Link>
+
+      <div className="pointer-events-none absolute left-1/2 top-full z-50 -translate-x-1/2 pt-3 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
+        <div className="min-w-48 rounded-home-card border border-olive-leaf/15 bg-cornsilk p-2 shadow-lg">
+          <Link
+            href={link.href}
+            className="block rounded-sm px-4 py-2.5 font-sans text-sm font-medium uppercase tracking-widest text-olive-leaf transition-colors hover:bg-warm-mist"
+          >
+            All {link.name}
+          </Link>
+          {link.children!.map((child) => (
+            <Link
+              key={child.name}
+              href={child.href}
+              className="block rounded-sm px-4 py-2.5 font-sans text-sm font-light tracking-wide text-black-forest/80 transition-colors hover:bg-warm-mist hover:text-black-forest"
+            >
+              {child.name}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -97,7 +147,7 @@ function MobileNavItem({
   const hasChildren = Boolean(link.children?.length);
 
   const linkClass = cn(
-    "flex w-full items-center px-5 py-3.5 font-sans text-sm font-medium uppercase tracking-widest transition-colors",
+    "flex w-full items-center px-5 py-3.5 font-sans text-base font-medium uppercase tracking-widest transition-colors",
     isActive
       ? "text-olive-leaf"
       : "text-black-forest/80 hover:text-black-forest"
@@ -119,7 +169,7 @@ function MobileNavItem({
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
         className={cn(
-          "flex w-full items-center justify-between px-5 py-3.5 font-sans text-sm font-medium uppercase tracking-widest transition-colors",
+          "flex w-full items-center justify-between px-5 py-3.5 font-sans text-base font-medium uppercase tracking-widest transition-colors",
           isActive
             ? "text-olive-leaf"
             : "text-black-forest/80 hover:text-black-forest"
@@ -128,7 +178,7 @@ function MobileNavItem({
         <span>{link.name}</span>
         <ChevronDown
           className={cn(
-            "size-4 shrink-0 text-olive-leaf/70 transition-transform duration-200",
+            "size-4 shrink-0 text-olive-leaf/85 transition-transform duration-200",
             open && "rotate-180"
           )}
           aria-hidden="true"
@@ -148,7 +198,7 @@ function MobileNavItem({
             <Link
               href={link.href}
               onClick={onClose}
-              className="flex w-full items-center gap-2 px-4 py-2.5 font-sans text-xs font-medium uppercase tracking-widest text-olive-leaf transition-colors hover:text-black-forest"
+              className="flex w-full items-center gap-2 px-4 py-2.5 font-sans text-sm font-medium uppercase tracking-widest text-olive-leaf transition-colors hover:text-black-forest"
             >
               All {link.name}
             </Link>
@@ -159,7 +209,7 @@ function MobileNavItem({
               <Link
                 href={child.href}
                 onClick={onClose}
-                className="flex w-full items-center gap-2 px-4 py-2.5 font-sans text-xs font-light tracking-wide text-black-forest/70 transition-colors hover:text-black-forest"
+                className="flex w-full items-center gap-2 px-4 py-2.5 font-sans text-sm font-light tracking-wide text-black-forest/80 transition-colors hover:text-black-forest"
               >
                 {child.name}
               </Link>
@@ -173,19 +223,30 @@ function MobileNavItem({
 
 // ─── Main Navbar ─────────────────────────────────────────────────────────────
 
-export function Navbar() {
+export function Navbar({
+  categories = [],
+  collections = [],
+}: {
+  categories?: NavItem[];
+  collections?: NavItem[];
+}) {
   const pathname = usePathname();
+  const navLinks = buildNavLinks(categories, collections);
 
   const isHome = pathname === "/";
   const itemCount = useCartStore((s) => s.items.reduce((sum, i) => sum + i.quantity, 0));
   const wishlistCount = useWishlistStore((s) => s.items.length);
 
-  // Controlled open state so we can close the sheet programmatically
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
   const closeMobile = useCallback(() => setMobileOpen(false), []);
   const handleOpenChange = useCallback(
@@ -200,9 +261,13 @@ export function Navbar() {
 
   return (
     <nav
-      className={`sticky z-40 h-16 w-full border-b border-olive-leaf/15 bg-cornsilk ${isHome ? "top-8 sm:top-7" : "top-0"}`}
+      className={cn(
+        "sticky z-40 h-16 w-full border-b border-olive-leaf/15 bg-cornsilk transition-shadow duration-300",
+        isHome ? "top-8 sm:top-7" : "top-0",
+        scrolled && "shadow-sm"
+      )}
     >
-      <div className="flex h-16 w-full items-center justify-between gap-4 px-4 md:px-12">
+      <div className="mx-auto flex h-16 w-full max-w-screen-2xl items-center justify-between gap-4 px-4 md:px-12">
         {/* ── Logo ── */}
         <Link
           href="/"
@@ -349,7 +414,7 @@ export function Navbar() {
                 <Link
                   href="/profile"
                   onClick={closeMobile}
-                  className="flex w-full items-center gap-3 rounded-full border border-olive-leaf/25 px-4 py-2.5 font-sans text-xs font-medium uppercase tracking-widest text-black-forest/70 transition-colors hover:text-black-forest"
+                  className="flex w-full items-center gap-3 rounded-full border border-olive-leaf/25 px-4 py-2.5 font-sans text-xs font-medium uppercase tracking-widest text-black-forest/80 transition-colors hover:text-black-forest"
                 >
                   <User className="size-4 shrink-0" aria-hidden="true" />
                   My profile

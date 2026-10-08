@@ -11,15 +11,21 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     
     // Pagination
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "12", 10);
+    const clampInt = (value: string | null, fallback: number, min: number, max: number) => {
+      const n = parseInt(value || "", 10);
+      return Number.isFinite(n) ? Math.min(Math.max(n, min), max) : fallback;
+    };
+    const page = clampInt(searchParams.get("page"), 1, 1, 1000);
+    const limit = clampInt(searchParams.get("limit"), 12, 1, 60);
     const skip = (page - 1) * limit;
 
     // Sorting
     const sortParam = searchParams.get("sort") || "featured";
     let sortStage: any = { order: 1, createdAt: -1 }; // Default (Featured)
     
-    if (sortParam === "price-low") {
+    if (sortParam === "newest") {
+      sortStage = { createdAt: -1 };
+    } else if (sortParam === "price-low") {
       sortStage = { price: 1 };
     } else if (sortParam === "price-high") {
       sortStage = { price: -1 };
@@ -31,6 +37,13 @@ export async function GET(request: NextRequest) {
 
     // Filtering
     const matchStage: any = {};
+    const searchParam = searchParams.get("q");
+    if (searchParam) {
+      // Escape regex characters so user input is searched as plain text
+      const safeSearch = searchParam.slice(0, 80).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      matchStage.name = { $regex: safeSearch, $options: "i" };
+    }
+
     const categoryParam = searchParams.get("category");
     if (categoryParam) {
       matchStage.category = { $in: categoryParam.split(",").filter(Boolean) };
@@ -53,14 +66,15 @@ export async function GET(request: NextRequest) {
             { $sort: sortStage },
             { $skip: skip },
             { $limit: limit },
-            { 
+            {
               $project: {
                 slug: 1,
                 name: 1,
                 category: 1,
                 price: 1,
                 images: 1,
-                badge: 1
+                badge: 1,
+                sizes: 1
               }
             }
           ],
@@ -112,9 +126,11 @@ export async function GET(request: NextRequest) {
       slug: p.slug || "",
       name: p.name || "",
       category: p.category || "",
-      price: p.price ? `₹${p.price.toLocaleString("en-IN")}` : "₹0", // format price
+      price: p.price ? `₹${p.price.toLocaleString("en-IN")}` : "₹0",
       images: (p.images || []).map((img: any) => typeof img === 'string' ? img : img?.url).filter(Boolean),
       badge: p.badge,
+      hasSizes: Array.isArray(p.sizes) && p.sizes.length > 0,
+      sizes: Array.isArray(p.sizes) && p.sizes.length > 0 ? p.sizes : undefined,
     }));
 
     const totalCountArr = facetResult.totalCount || [];

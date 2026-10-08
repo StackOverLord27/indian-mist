@@ -11,6 +11,7 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { useWishlistStore, type WishlistItem } from "@/lib/wishlist-store";
+import toast from "react-hot-toast";
 import React from "react";
 
 interface ProductGalleryProps {
@@ -19,7 +20,12 @@ interface ProductGalleryProps {
   wishlistItem: WishlistItem; // full item shape for toggling
 }
 
-const placeholderColors = ["bg-[#d4e2c8]", "bg-[#e9edc9]", "bg-[#faedcd]", "bg-[#fefae0]"];
+const placeholderColors = [
+  "bg-[#d4e2c8]",
+  "bg-[#e9edc9]",
+  "bg-[#faedcd]",
+  "bg-[#fefae0]",
+];
 
 const WishlistButton = ({
   wishlisted,
@@ -37,7 +43,7 @@ const WishlistButton = ({
     <Heart
       className={cn(
         "size-[18px] transition-all duration-200",
-        wishlisted ? "fill-copper text-copper" : "text-forest/70"
+        wishlisted ? "fill-copper text-copper" : "text-forest/80",
       )}
     />
   </button>
@@ -52,8 +58,8 @@ const BadgeOverlay = ({ badge }: { badge?: "New" | "Sale" | "Sold Out" }) => {
         badge === "New"
           ? "bg-forest text-cornsilk"
           : badge === "Sold Out"
-          ? "bg-muted-text/80 text-cornsilk"
-          : "bg-copper text-cornsilk"
+            ? "bg-muted-text/80 text-cornsilk"
+            : "bg-copper text-cornsilk",
       )}
     >
       {badge}
@@ -61,22 +67,32 @@ const BadgeOverlay = ({ badge }: { badge?: "New" | "Sale" | "Sold Out" }) => {
   );
 };
 
-export function ProductGallery({ images, badge, wishlistItem }: ProductGalleryProps) {
+export function ProductGallery({
+  images,
+  badge,
+  wishlistItem,
+}: ProductGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   // Use granular selectors so the component re-renders only when
   // the specific data it cares about changes.
   const toggleItem = useWishlistStore((s) => s.toggleItem);
   const wishlisted = useWishlistStore((s) =>
-    s.items.some((i) => i.id === wishlistItem.id)
+    s.items.some((i) => i.id === wishlistItem.id),
   );
+  const handleToggleWishlist = () => {
+    toast.success(wishlisted ? "Removed from wishlist" : "Added to wishlist");
+    toggleItem(wishlistItem);
+  };
 
   // Sync carousel api → activeIndex for dot indicators
   React.useEffect(() => {
     if (!carouselApi) return;
     const onSelect = () => setActiveIndex(carouselApi.selectedScrollSnap());
     carouselApi.on("select", onSelect);
-    return () => { carouselApi.off("select", onSelect); };
+    return () => {
+      carouselApi.off("select", onSelect);
+    };
   }, [carouselApi]);
 
   const handleThumbnailClick = (index: number) => {
@@ -89,8 +105,18 @@ export function ProductGallery({ images, badge, wishlistItem }: ProductGalleryPr
   return (
     <div className="w-full">
       {/* Desktop Main Image */}
-      <div className={cn("hidden lg:block relative w-full aspect-square overflow-hidden rounded-md", badge === "Sold Out" && "opacity-60 grayscale")}>
-        <div className={cn("absolute inset-0", placeholderColors[activeIndex % placeholderColors.length])} />
+      <div
+        className={cn(
+          "hidden lg:block relative w-full aspect-square overflow-hidden rounded-md",
+          badge === "Sold Out" && "opacity-60 grayscale",
+        )}
+      >
+        <div
+          className={cn(
+            "absolute inset-0",
+            placeholderColors[activeIndex % placeholderColors.length],
+          )}
+        />
         <Image
           src={images[activeIndex]}
           alt={`Product image ${activeIndex + 1}`}
@@ -100,13 +126,19 @@ export function ProductGallery({ images, badge, wishlistItem }: ProductGalleryPr
           priority
         />
         <BadgeOverlay badge={badge} />
-        <WishlistButton wishlisted={wishlisted} onClick={() => toggleItem(wishlistItem)} />
+        <WishlistButton
+          wishlisted={wishlisted}
+          onClick={handleToggleWishlist}
+        />
       </div>
 
       {/* Mobile Swipe Carousel — shadcn Carousel (Embla) */}
       <div className="lg:hidden relative">
         <BadgeOverlay badge={badge} />
-        <WishlistButton wishlisted={wishlisted} onClick={() => toggleItem(wishlistItem)} />
+        <WishlistButton
+          wishlisted={wishlisted}
+          onClick={handleToggleWishlist}
+        />
         <Carousel
           setApi={setCarouselApi}
           opts={{ loop: false, align: "start" }}
@@ -115,8 +147,18 @@ export function ProductGallery({ images, badge, wishlistItem }: ProductGalleryPr
           <CarouselContent className="-ml-0">
             {images.map((img, idx) => (
               <CarouselItem key={idx} className="pl-0">
-                <div className={cn("relative w-full aspect-square overflow-hidden", badge === "Sold Out" && "opacity-60 grayscale")}>
-                  <div className={cn("absolute inset-0", placeholderColors[idx % placeholderColors.length])} />
+                <div
+                  className={cn(
+                    "relative w-full aspect-square overflow-hidden",
+                    badge === "Sold Out" && "opacity-60 grayscale",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "absolute inset-0",
+                      placeholderColors[idx % placeholderColors.length],
+                    )}
+                  />
                   <Image
                     src={img}
                     alt={`Product image ${idx + 1}`}
@@ -143,7 +185,7 @@ export function ProductGallery({ images, badge, wishlistItem }: ProductGalleryPr
               onClick={() => handleThumbnailClick(idx)}
               className={cn(
                 "h-1.5 rounded-full transition-all",
-                activeIndex === idx ? "bg-olive w-3" : "bg-olive/30 w-1.5"
+                activeIndex === idx ? "bg-olive w-3" : "bg-olive/30 w-1.5",
               )}
             />
           ))}
@@ -161,7 +203,7 @@ export function ProductGallery({ images, badge, wishlistItem }: ProductGalleryPr
                 "relative w-16 h-16 md:w-20 md:h-20 flex-shrink-0 rounded-sm overflow-hidden cursor-pointer border-2 transition-colors",
                 activeIndex === idx
                   ? "border-olive"
-                  : "border-olive/15 hover:border-olive/40"
+                  : "border-olive/15 hover:border-olive/40",
               )}
             >
               <Image

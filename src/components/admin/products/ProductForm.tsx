@@ -1,5 +1,5 @@
-/* eslint-disable react-hooks/incompatible-library */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
+ 
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -34,15 +34,35 @@ const productSchema = z.object({
   description: z.string().min(10, 'Description is too short'),
   features: z.array(z.string()),
   sizes: z.array(z.string()).optional(),
-  tags: z.string(), // We will handle array conversion manually or let hook form handle it
-  badge: z.enum(['New', 'Sale', '']).optional(),
+  tags: z.string(),
+  badge: z.enum(['New', 'Sale', 'Sold Out', '']).optional(),
   isFeatured: z.boolean().default(false),
+  trackInventory: z.boolean().default(false),
+  stockQuantity: z.number().int().min(0).default(0),
   materials: z.array(z.string()),
+  careInstructions: z.array(z.object({ text: z.string(), icon: z.string() })),
+  shippingStandard: z.string().optional(),
+  shippingExpress: z.string().optional(),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
 
 const ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+
+const CARE_ICONS = [
+  { value: 'droplets', label: 'Wash / Water' },
+  { value: 'sun', label: 'Dry / Sunlight' },
+  { value: 'wind', label: 'Air Dry / Wind' },
+  { value: 'thermometer', label: 'Temperature' },
+  { value: 'ban', label: 'Do Not' },
+  { value: 'hand', label: 'Hand Wash' },
+  { value: 'shirt', label: 'Garment' },
+  { value: 'sparkles', label: 'Bleach / Clean' },
+  { value: 'iron', label: 'Iron' },
+  { value: 'rotate-ccw', label: 'Tumble Dry' },
+  { value: 'shield-check', label: 'Safe / Protect' },
+  { value: 'info', label: 'General Info' },
+];
 
 export default function ProductForm({ product }: { product?: AdminProduct }) {
   const createMutation = useCreateProduct();
@@ -101,7 +121,12 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
       tags: product?.tags?.join(', ') || '',
       badge: product?.badge || '',
       isFeatured: product?.isFeatured || false,
+      trackInventory: product?.trackInventory || false,
+      stockQuantity: product?.stockQuantity || 0,
       materials: product?.materials || [''],
+      careInstructions: product?.careInstructions?.length ? product.careInstructions : [{ text: '', icon: 'droplets' }],
+      shippingStandard: product?.shippingInfo?.standard || '3-5 business days',
+      shippingExpress: product?.shippingInfo?.express || '1-2 business days',
     }
   });
 
@@ -115,6 +140,11 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
     name: 'materials' as never,
   });
 
+  const { fields: careFields, append: appendCare, remove: removeCare } = useFieldArray({
+    control,
+    name: 'careInstructions' as never,
+  });
+
   const onSubmit = async (data: ProductFormData) => {
     const formData = new FormData();
     
@@ -126,13 +156,20 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
     formData.append('description', data.description);
     if (data.badge) formData.append('badge', data.badge);
     formData.append('isFeatured', data.isFeatured ? 'true' : 'false');
+    formData.append('trackInventory', data.trackInventory ? 'true' : 'false');
+    formData.append('stockQuantity', String(data.stockQuantity || 0));
     
     // Arrays need special handling or JSON stringification
-    formData.append('features', JSON.stringify(data.features));
+    formData.append('features', JSON.stringify(data.features.filter(s => s.trim())));
     if (data.sizes) formData.append('sizes', JSON.stringify(data.sizes));
     formData.append('tags', JSON.stringify(data.tags.split(',').map(t => t.trim()).filter(Boolean)));
-    formData.append('materials', JSON.stringify(data.materials));
-    
+    formData.append('materials', JSON.stringify(data.materials.filter(s => s.trim())));
+    formData.append('careInstructions', JSON.stringify(data.careInstructions.filter(c => c.text.trim())));
+    formData.append('shippingInfo', JSON.stringify({
+      standard: data.shippingStandard || '3-5 business days',
+      express: data.shippingExpress || '1-2 business days',
+    }));
+
     // Image handling
     newFiles.forEach(file => {
       formData.append('images', file);
@@ -257,6 +294,7 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
                   <SelectItem value="">None</SelectItem>
                   <SelectItem value="New">New</SelectItem>
                   <SelectItem value="Sale">Sale</SelectItem>
+                  <SelectItem value="Sold Out">Sold Out</SelectItem>
                 </SelectContent>
               </Select>
             </AdminFormField>
@@ -271,6 +309,34 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
             <label htmlFor="isFeatured" className="font-montserrat text-sm font-medium text-forest cursor-pointer">
               Feature this product on the Homepage
             </label>
+          </div>
+
+          <div className="space-y-3 rounded-md border border-olive/15 p-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="trackInventory"
+                checked={watch('trackInventory')}
+                onCheckedChange={(checked) => setValue('trackInventory', !!checked, { shouldDirty: true })}
+              />
+              <label htmlFor="trackInventory" className="font-montserrat text-sm font-medium text-forest cursor-pointer">
+                Track stock for this product
+              </label>
+            </div>
+            {watch('trackInventory') && (
+              <AdminFormField label="Units in stock" error={errors.stockQuantity?.message}>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  {...register('stockQuantity', { valueAsNumber: true })}
+                  className={inputClass}
+                />
+              </AdminFormField>
+            )}
+            <p className="font-montserrat text-xs text-forest/60">
+              When on, customers cannot order more than the stock available, and the product is marked
+              &ldquo;Sold Out&rdquo; automatically when it reaches 0. When off, the product is always available.
+            </p>
           </div>
 
           <AdminFormField label="Description" required error={errors.description?.message}>
@@ -332,6 +398,43 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
               + Add Material
             </button>
           </div>
+
+          {/* Care Instructions */}
+          <div>
+            <label className="block font-montserrat text-xs font-semibold uppercase tracking-wider text-forest mb-1.5">Care Instructions</label>
+            {careFields.map((field, index) => (
+              <div key={field.id} className="flex gap-2 mb-2">
+                <select
+                  {...register(`careInstructions.${index}.icon` as const)}
+                  className={`${inputClass} w-40! shrink-0`}
+                >
+                  {CARE_ICONS.map((ci) => (
+                    <option key={ci.value} value={ci.value}>{ci.label}</option>
+                  ))}
+                </select>
+                <input {...register(`careInstructions.${index}.text` as const)} className={`${inputClass} flex-1`} placeholder="e.g. Machine wash cold, tumble dry low" />
+                <button type="button" onClick={() => removeCare(index)} className="p-2 text-copper hover:bg-copper/10 rounded-sm">
+                  <X className="size-5" />
+                </button>
+              </div>
+            ))}
+            <button type="button" onClick={() => appendCare({ text: '', icon: 'droplets' })} className="text-xs font-montserrat text-olive hover:underline">
+              + Add Care Instruction
+            </button>
+          </div>
+
+          {/* Shipping Info */}
+          <div>
+            <label className="block font-montserrat text-xs font-semibold uppercase tracking-wider text-forest mb-1.5">Shipping Information</label>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <AdminFormField label="Standard Delivery">
+                <input {...register('shippingStandard')} className={inputClass} placeholder="e.g. 3-5 business days" />
+              </AdminFormField>
+              {/* <AdminFormField label="Express Delivery">
+                <input {...register('shippingExpress')} className={inputClass} placeholder="e.g. 1-2 business days" />
+              </AdminFormField> */}
+            </div>
+          </div>
         </div>
 
         {/* Right Column */}
@@ -339,6 +442,7 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
           <div>
             <label className="block font-montserrat text-xs font-semibold uppercase tracking-wider text-forest mb-1.5">Product Images</label>
             <ImageUploadZone 
+              hint="Recommended: 1200 × 1200 px (square). Centre the product with some space around it."
               multiple={true}
               maxFiles={10}
               currentImages={currentImages}

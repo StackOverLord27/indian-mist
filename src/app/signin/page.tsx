@@ -109,7 +109,7 @@ export default function SignInPage() {
               <div className="space-y-1.5">
                 <label
                   htmlFor="signin-email"
-                  className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/70"
+                  className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/80"
                 >
                   Email address
                 </label>
@@ -122,7 +122,7 @@ export default function SignInPage() {
                   onChange={handleChange}
                   placeholder="you@example.com"
                   disabled={isLoading}
-                  className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/40 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
+                  className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/70 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
                 />
               </div>
 
@@ -131,7 +131,7 @@ export default function SignInPage() {
                 <div className="flex items-center justify-between">
                   <label
                     htmlFor="signin-password"
-                    className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/70"
+                    className="block font-montserrat text-xs font-medium uppercase tracking-widest text-black-forest/80"
                   >
                     Password
                   </label>
@@ -152,13 +152,13 @@ export default function SignInPage() {
                     onChange={handleChange}
                     placeholder="Your password"
                     disabled={isLoading}
-                    className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 pr-11 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/40 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
+                    className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 pr-11 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/70 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
                   />
                   <button
                     type="button"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-olive-leaf/60 hover:text-olive-leaf transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-olive-leaf/80 hover:text-olive-leaf transition-colors"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>

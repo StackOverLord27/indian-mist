@@ -17,7 +17,9 @@ export function OrderSummary({
   const subtotal = getTotal();
   const shippingFree = subtotal >= SHIPPING_THRESHOLD;
   const shipping = shippingFree ? 0 : SHIPPING_COST;
-  const tax = Math.round((subtotal + shipping) * GST_RATE);
+  // GST disabled — no GST registration yet
+  // const tax = Math.round((subtotal + shipping) * GST_RATE);
+  const tax = 0;
   const total = subtotal + shipping + tax;
 
   const freeShippingProgress = Math.min(
@@ -67,6 +69,7 @@ export function OrderSummary({
           )}
         </div>
 
+        {/* GST disabled — no GST registration yet
         <div className="flex justify-between items-center">
           <span className="font-montserrat text-sm font-normal text-muted-text">
             GST (18%)
@@ -75,6 +78,7 @@ export function OrderSummary({
             {formatPrice(tax)}
           </span>
         </div>
+        */}
       </div>
 
       {/* Total */}
@@ -115,20 +119,20 @@ export function OrderSummary({
       {/* Trust signals */}
       <div className="mt-4 space-y-2">
         <div className="flex items-center justify-center gap-1.5">
-          <LockKeyhole className="text-olive/60 size-[12px]" />
-          <span className="font-montserrat text-[10px] text-muted-text/70 font-normal">
+          <LockKeyhole className="text-olive/80 size-[12px]" />
+          <span className="font-montserrat text-[10px] text-muted-text font-normal">
             256-bit SSL encrypted checkout
           </span>
         </div>
         <div className="flex items-center justify-center gap-1.5">
-          <RefreshCw className="text-olive/60 size-[12px]" />
-          <span className="font-montserrat text-[10px] text-muted-text/70 font-normal">
+          <RefreshCw className="text-olive/80 size-[12px]" />
+          <span className="font-montserrat text-[10px] text-muted-text font-normal">
             Free returns within 30 days
           </span>
         </div>
         <div className="flex items-center justify-center gap-1.5">
-          <Leaf className="text-olive/60 size-[12px]" />
-          <span className="font-montserrat text-[10px] text-muted-text/70 font-normal">
+          <Leaf className="text-olive/80 size-[12px]" />
+          <span className="font-montserrat text-[10px] text-muted-text font-normal">
             Carbon-neutral delivery
           </span>
         </div>
@@ -136,7 +140,7 @@ export function OrderSummary({
 
       {/* Payment methods */}
       <div className="mt-5 pt-4 border-t border-olive/10">
-        <p className="font-montserrat text-[10px] uppercase tracking-wider text-muted-text/50 text-center mb-2">
+        <p className="font-montserrat text-[10px] uppercase tracking-wider text-muted-text text-center mb-2">
           We accept
         </p>
         <div className="flex justify-center gap-2 flex-wrap">

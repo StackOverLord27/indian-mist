@@ -3,71 +3,74 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { SiteSettings } from "@/types/admin";
-
-// Custom SVG icons styled exactly like Lucide icons since lucide-react removed brand icons
-const InstagramIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
-);
-const FacebookIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-);
-const TwitterIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
-);
-const YoutubeIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2.5 7.1C2 8.7 2 12 2 12s0 3.3.5 4.9c.3 1.1 1.2 2 2.3 2.2 3.6.4 7.2.4s3.6 0 7.2-.4c1.1-.2 2-.9 2.3-2.2.5-1.6.5-4.9.5-4.9s0-3.3-.5-4.9c-.3-1.1-1.2-2-2.3-2.2-3.6-.4-7.2-.4-7.2-.4s-3.6 0-7.2.4c-1.1.2-2 .9-2.3 2.2z"/><path d="m10 15 5-3-5-3z"/></svg>
-);
+import { FaInstagram, FaFacebook, FaXTwitter, FaYoutube } from "react-icons/fa6";
 
 const getSocialLinks = (settings?: SiteSettings): { label: string; icon: React.FC<{ className?: string }>; url: string }[] => {
   const links: { label: string; icon: React.FC<{ className?: string }>; url: string }[] = [];
   if (settings?.socialLinks?.instagram) {
-    links.push({ label: "Instagram", icon: InstagramIcon, url: settings.socialLinks.instagram });
+    links.push({ label: "Instagram", icon: FaInstagram, url: settings.socialLinks.instagram });
   }
   if (settings?.socialLinks?.facebook) {
-    links.push({ label: "Facebook", icon: FacebookIcon, url: settings.socialLinks.facebook });
+    links.push({ label: "Facebook", icon: FaFacebook, url: settings.socialLinks.facebook });
   }
   if (settings?.socialLinks?.twitter) {
-    links.push({ label: "Twitter", icon: TwitterIcon, url: settings.socialLinks.twitter });
+    links.push({ label: "Twitter", icon: FaXTwitter, url: settings.socialLinks.twitter });
   }
   if (settings?.socialLinks?.youtube) {
-    links.push({ label: "Youtube", icon: YoutubeIcon, url: settings.socialLinks.youtube });
+    links.push({ label: "Youtube", icon: FaYoutube, url: settings.socialLinks.youtube });
   }
   return links;
 };
 
-// Only actual existing pages on the website
-const footerColumns = [
-  {
-    title: "Shop",
-    links: [
-      { label: "All Products", href: "/products" },
-      { label: "Collections", href: "/collections" },
-      { label: "Forest Gear", href: "/products?category=forest-gear" },
-      { label: "Apparel", href: "/products?category=apparel" },
-      { label: "Stationery", href: "/products?category=stationery" },
-    ],
-  },
-  {
-    title: "Company",
-    links: [
-      { label: "About Us", href: "/about" },
-      { label: "Journal", href: "/blogs" },
-    ],
-  },
-  {
-    title: "Account",
-    links: [
-      { label: "My Profile & Orders", href: "/profile" },
-      { label: "Shopping Bag", href: "/cart" },
-      { label: "Wishlist", href: "/wishlist" },
-    ],
-  },
-];
+type NavItem = { name: string; slug: string };
+
+function buildFooterColumns(categories: NavItem[], collections: NavItem[]) {
+  const shopLinks = [
+    { label: "All Products", href: "/products" },
+    ...categories.map((c) => ({ label: c.name, href: `/products?category=${c.slug}` })),
+  ];
+
+  const collectionsLinks = collections.length > 0
+    ? [
+        { label: "All Collections", href: "/collections" },
+        ...collections.map((c) => ({ label: c.name, href: `/collections/${c.slug}` })),
+      ]
+    : [];
+
+  return [
+    { title: "Shop", links: shopLinks },
+    ...(collectionsLinks.length > 0 ? [{ title: "Collections", links: collectionsLinks }] : []),
+    {
+      title: "Company",
+      links: [
+        { label: "About Us", href: "/about" },
+        { label: "Journal", href: "/blogs" },
+        { label: "Contact Us", href: "/contact" },
+      ],
+    },
+    {
+      title: "Account",
+      links: [
+        { label: "My Profile & Orders", href: "/profile" },
+        { label: "Shopping Bag", href: "/cart" },
+        { label: "Wishlist", href: "/wishlist" },
+      ],
+    },
+  ];
+}
 
 // Eco certified & Fair trade only (Carbon neutral removed)
-const certifications = ["Eco certified", "Fair trade"];
+const certifications = ["Made in India"];
 
-export function Footer({ settings }: { settings?: SiteSettings }) {
+export function Footer({
+  settings,
+  categories = [],
+  collections = [],
+}: {
+  settings?: SiteSettings;
+  categories?: NavItem[];
+  collections?: NavItem[];
+}) {
   const pathname = usePathname();
 
   // Hide footer on all admin pages
@@ -76,11 +79,13 @@ export function Footer({ settings }: { settings?: SiteSettings }) {
   }
 
   const activeSocialLinks = getSocialLinks(settings);
+  const footerColumns = buildFooterColumns(categories, collections);
 
   return (
     <footer className="bg-forest px-6 pb-7 pt-13 md:px-12">
+      <div className="mx-auto max-w-screen-2xl">
       {/* Top grid — brand + nav columns */}
-      <div className="grid grid-cols-2 gap-10 md:grid-cols-4 lg:grid-cols-5">
+      <div className={`grid grid-cols-2 gap-10 ${footerColumns.length > 3 ? "md:grid-cols-4 lg:grid-cols-6" : "md:grid-cols-4 lg:grid-cols-5"}`}>
         {/* Brand block — full-width on mobile, 1 col on md, 2 cols on lg */}
         <div className="col-span-2 md:col-span-1 lg:col-span-2">
           <Link href="/" aria-label="Indian Mist home">
@@ -91,7 +96,7 @@ export function Footer({ settings }: { settings?: SiteSettings }) {
               {settings?.tagline || "Forest & Eco"}
             </span>
           </Link>
-          <p className="mt-5 max-w-sm font-montserrat text-xs font-light leading-6 text-cornsilk/60">
+          <p className="mt-5 max-w-sm font-montserrat text-xs font-light leading-6 text-cornsilk/75">
             {settings?.footerNote || "Forest gear and eco-friendly goods made with slower materials, repairable details, and respect for the people who make them."}
           </p>
           {activeSocialLinks.length > 0 && (
@@ -103,7 +108,7 @@ export function Footer({ settings }: { settings?: SiteSettings }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={social.label}
-                  className="flex size-9 items-center justify-center rounded-full border border-cornsilk/15 text-cornsilk/70 transition-opacity hover:opacity-75"
+                  className="flex size-9 items-center justify-center rounded-full border border-cornsilk/15 text-cornsilk/80 transition-opacity hover:opacity-75"
                 >
                   <social.icon className="size-4" />
                 </a>
@@ -123,7 +128,7 @@ export function Footer({ settings }: { settings?: SiteSettings }) {
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="font-montserrat text-xs font-light text-cornsilk/60 transition-colors hover:text-cornsilk hover:opacity-100"
+                    className="font-montserrat text-xs font-light text-cornsilk/75 transition-colors hover:text-cornsilk hover:opacity-100"
                   >
                     {link.label}
                   </Link>
@@ -136,19 +141,20 @@ export function Footer({ settings }: { settings?: SiteSettings }) {
 
       {/* Bottom bar */}
       <div className="mt-12 flex flex-col items-center justify-between gap-5 border-t border-cornsilk/10 pt-6 text-center md:flex-row md:text-left">
-        <p className="font-montserrat text-xs font-light text-cornsilk/50">
+        <p className="font-montserrat text-xs font-light text-cornsilk/70">
           © 2026 Indian Mist. All rights reserved.
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           {certifications.map((certification) => (
             <span
               key={certification}
-              className="rounded-full border border-cornsilk/15 px-3 py-1 font-montserrat text-[9px] font-medium uppercase tracking-widest text-cornsilk/55"
+              className="rounded-full border border-cornsilk/15 px-3 py-1 font-montserrat text-[9px] font-medium uppercase tracking-widest text-cornsilk/75"
             >
               {certification}
             </span>
           ))}
         </div>
+      </div>
       </div>
     </footer>
   );

@@ -14,6 +14,7 @@ interface ImageUploadZoneProps {
   onSetCategoryCover?: (publicId: string) => void;
   onReorderImages?: (orderedPublicIds: string[]) => void;
   showCategoryCoverOption?: boolean;
+  hint?: string;
 }
 
 export default function ImageUploadZone({
@@ -26,6 +27,7 @@ export default function ImageUploadZone({
   onSetCategoryCover,
   onReorderImages,
   showCategoryCoverOption = false,
+  hint,
 }: ImageUploadZoneProps) {
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -98,6 +100,9 @@ export default function ImageUploadZone({
         <p className="font-montserrat text-sm text-forest/60">
           Drop images here or click to browse
         </p>
+        {hint && (
+          <p className="font-montserrat text-xs text-forest/50 mt-2">{hint}</p>
+        )}
         <input 
           type="file" 
           ref={fileInputRef} 

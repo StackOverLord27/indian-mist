@@ -204,10 +204,12 @@ function OrderRow({ order, updateStatus, getStatusColor }: any) {
                       <span>-₹{order.discountAmount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-muted-text">
-                    <span>Taxes</span>
-                    <span>₹{order.taxAmount.toLocaleString("en-IN")}</span>
-                  </div>
+                  {order.taxAmount > 0 && (
+                    <div className="flex justify-between text-muted-text">
+                      <span>Taxes</span>
+                      <span>₹{order.taxAmount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
                   <div className="border-t border-olive/10 pt-2 flex justify-between font-bold text-forest">
                     <span>Total Paid</span>
                     <span>₹{order.totalAmount.toLocaleString("en-IN")}</span>

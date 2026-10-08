@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/incompatible-library */
+ 
 'use client';
 
 import React, { useState } from 'react';
@@ -147,6 +147,7 @@ export default function CategoryForm({ category }: { category?: AdminCategory })
           <div>
             <label className="block font-montserrat text-xs font-semibold uppercase tracking-wider text-forest mb-1.5">Category Cover Image</label>
             <ImageUploadZone 
+              hint="Normal category: 1200 × 1200 px (square). Featured category (wide banner card, 2:1): 1800 × 900 px. Keep the subject in the centre."
               multiple={false}
               maxFiles={1}
               currentImages={currentImages}

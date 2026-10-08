@@ -532,9 +532,10 @@ export default function AdminPricingPage() {
 
       <form onSubmit={handleSubmit} className="max-w-4xl space-y-6">
         <AdminCard
-          title="Shipping & Tax Rates"
-          description="Global configuration for shipping fees and taxes applied at checkout."
+          title="Shipping Rates"
+          description="Global configuration for shipping fees applied at checkout."
         >
+          {/* GST notice — disabled until GST registration is obtained
           <div className="p-3 mb-4 rounded-sm bg-amber-50 border border-amber-200 flex gap-2 items-start">
             <AlertCircle className="size-3.5 text-amber-600 mt-0.5 shrink-0" />
             <p className="font-sans text-xs text-amber-700">
@@ -545,6 +546,7 @@ export default function AdminPricingPage() {
               compliance.
             </p>
           </div>
+          */}
           <div className="grid grid-cols-2 gap-4">
             <AdminFormField
               label="Shipping Fee (₹)"
@@ -594,6 +596,7 @@ export default function AdminPricingPage() {
                 className={inputClass}
               />
             </AdminFormField>
+            {/* GST fields — disabled until GST registration is obtained
             <AdminFormField
               label="GST Rate (%)"
               hint="Applied to (subtotal + shipping). Indian standard is 18% for most apparel."
@@ -648,6 +651,7 @@ export default function AdminPricingPage() {
                 </option>
               </select>
             </AdminFormField>
+            */}
           </div>
         </AdminCard>
 

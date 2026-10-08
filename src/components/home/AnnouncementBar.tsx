@@ -16,10 +16,6 @@ export async function AnnouncementBar() {
     console.error("Failed to fetch announcements:", error);
   }
 
-  // Fallback
-  if (displayItems.length === 0) {
-    displayItems = ["Free shipping on orders above ₹999", "1 tree planted with every order"];
-  }
 
   return <AnnouncementBarClient displayItems={displayItems} />;
 }

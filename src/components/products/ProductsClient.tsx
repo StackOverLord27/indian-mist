@@ -1,14 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
+import toast from "react-hot-toast";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowUpDown, Heart, Plus, ShoppingBag, Filter } from "lucide-react";
-import { useCartStore } from "@/lib/cart-store";
-import { useWishlistStore } from "@/lib/wishlist-store";
-import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
-// import { Button } from "@/components/ui/button";
+import { ArrowUpDown, Filter, Search } from "lucide-react";
+import { ProductCard } from "@/components/home/ProductCard";
+import { ProductCardSkeleton } from "@/components/ui/skeletons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -20,6 +16,8 @@ interface ProductItem {
   price: string;
   images: string[];
   badge?: "New" | "Sale" | "Sold Out";
+  hasSizes?: boolean;
+  sizes?: string[];
 }
 
 interface FacetItem {
@@ -35,40 +33,47 @@ interface Facets {
 
 const BATCH_SIZE = 12;
 
-export default function ProductsClient({ 
-  initialProducts, 
+export default function ProductsClient({
+  initialProducts,
   initialFacets,
-  initialHasMore
-}: { 
-  initialProducts: ProductItem[], 
+  initialHasMore,
+  initialTotal,
+  initialCategory,
+  initialSort,
+}: {
+  initialProducts: ProductItem[],
   initialFacets: Facets,
-  initialHasMore: boolean 
+  initialHasMore: boolean,
+  initialTotal: number,
+  initialCategory?: string,
+  initialSort?: string,
 }) {
   const [products, setProducts] = useState<ProductItem[]>(initialProducts);
   const [facets, setFacets] = useState<Facets>(initialFacets);
   const [hasMore, setHasMore] = useState(initialHasMore);
+  const [totalCount, setTotalCount] = useState(initialTotal);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Filters and sort
-  const [sortBy, setSortBy] = useState("featured");
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  // Filters, sort, and search
+  const [sortBy, setSortBy] = useState(initialSort || "featured");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategory ? [initialCategory] : []);
   const [selectedBadges, setSelectedBadges] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   // Prevent initial mount from re-fetching
   const isMounted = useRef(false);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const addCartItem = useCartStore((s) => s.addItem);
-  const toggleWishlist = useWishlistStore((s) => s.toggleItem);
-  const wishlistItems = useWishlistStore((s) => s.items);
 
   const fetchProducts = useCallback(async (
-    currentPage: number, 
-    isAppend: boolean, 
-    sort: string, 
-    cats: string[], 
-    badges: string[]
+    currentPage: number,
+    isAppend: boolean,
+    sort: string,
+    cats: string[],
+    badges: string[],
+    query: string
   ) => {
     setIsLoading(true);
     try {
@@ -80,44 +85,55 @@ export default function ProductsClient({
 
       if (cats.length > 0) params.append("category", cats.join(","));
       if (badges.length > 0) params.append("badge", badges.join(","));
+      if (query) params.append("q", query);
 
       const res = await fetch(`/api/products?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch products");
 
       const data = await res.json();
-      
+
       if (isAppend) {
         setProducts((prev) => [...prev, ...data.products]);
       } else {
         setProducts(data.products);
       }
-      
+
       setFacets(data.facets);
       setHasMore(data.hasMore);
+      setTotalCount(data.total);
     } catch (error) {
       console.error(error);
+      toast.error("Couldn't load products. Please try again.");
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // When filters or sort change, reset to page 1 and fetch fresh data
+  // When filters, sort, or search change, reset to page 1 and fetch fresh data
   useEffect(() => {
     if (!isMounted.current) {
       isMounted.current = true;
       return;
     }
     setPage(1);
-    fetchProducts(1, false, sortBy, selectedCategories, selectedBadges);
-  }, [sortBy, selectedCategories, selectedBadges, fetchProducts]);
+    fetchProducts(1, false, sortBy, selectedCategories, selectedBadges, searchQuery);
+  }, [sortBy, selectedCategories, selectedBadges, searchQuery, fetchProducts]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      setSearchQuery(value);
+    }, 400);
+  };
 
   // Infinite scroll
   const loadMore = useCallback(() => {
     if (!hasMore || isLoading) return;
     const nextPage = page + 1;
     setPage(nextPage);
-    fetchProducts(nextPage, true, sortBy, selectedCategories, selectedBadges);
-  }, [page, hasMore, isLoading, sortBy, selectedCategories, selectedBadges, fetchProducts]);
+    fetchProducts(nextPage, true, sortBy, selectedCategories, selectedBadges, searchQuery);
+  }, [page, hasMore, isLoading, sortBy, selectedCategories, selectedBadges, searchQuery, fetchProducts]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -136,33 +152,6 @@ export default function ProductsClient({
     return () => observer.disconnect();
   }, [loadMore]);
 
-  const placeholderColors = ["bg-[#d4e2c8]", "bg-[#e0dbc8]", "bg-[#cdd9c5]", "bg-[#d9cfc0]"];
-
-  function handleAddToCart(product: ProductItem) {
-    if (product.badge === "Sold Out") return;
-    addCartItem({
-      id: product.id,
-      slug: product.slug,
-      name: product.name,
-      category: product.category,
-      price: parseFloat(product.price.replace(/[^\d.-]/g, "")),
-      image: product.images?.[0] ?? "",
-      quantity: 1,
-    });
-  }
-
-  function handleToggleWishlist(product: ProductItem) {
-    toggleWishlist({
-      id: product.id,
-      slug: product.slug,
-      name: product.name,
-      category: product.category,
-      price: parseFloat(product.price.replace(/[^\d.-]/g, "")),
-      badge: product.badge,
-      image: product.images?.[0] ?? "",
-    });
-  }
-
   const toggleCategory = (cat: string) => {
     setSelectedCategories((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
@@ -176,8 +165,9 @@ export default function ProductsClient({
   };
 
   return (
-    <div className="bg-cornsilk px-6 md:px-12 lg:px-16 pt-12 pb-8 min-h-screen">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+    <div className="bg-cornsilk px-4 sm:px-6 md:px-12 lg:px-16 pt-12 pb-8 min-h-screen">
+      <div className="mx-auto max-w-screen-2xl">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
         <div className="space-y-2 max-w-prose">
           <h1 className="font-merriweather text-3xl md:text-4xl font-normal text-forest">All Products</h1>
           <p className="font-montserrat text-sm font-light text-muted-text mt-2 max-w-prose">
@@ -185,7 +175,17 @@ export default function ProductsClient({
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto items-center">
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
+          {/* Search */}
+          <div className="relative flex items-center border border-olive/30 bg-card-surface rounded-sm h-10 w-full sm:w-auto transition-colors focus-within:border-olive-leaf">
+            <Search className="h-4 w-4 text-forest ml-3 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search products..."
+              onChange={handleSearchChange}
+              className="bg-transparent font-montserrat text-xs text-forest focus-visible:outline-none px-3 py-2 w-full sm:w-44 placeholder:text-muted-text"
+            />
+          </div>
           
           {/* Filters Dropdown */}
           <Popover>
@@ -220,7 +220,7 @@ export default function ProductsClient({
                           >
                             {c.name}
                           </label>
-                          <span className="text-xs text-muted-text/60 font-mono">({c.count})</span>
+                          <span className="text-xs text-muted-text font-mono">({c.count})</span>
                         </div>
                       ))}
                     </div>
@@ -250,7 +250,7 @@ export default function ProductsClient({
                           >
                             {b.name}
                           </label>
-                          <span className="text-xs text-muted-text/60 font-mono">({b.count})</span>
+                          <span className="text-xs text-muted-text font-mono">({b.count})</span>
                         </div>
                       ))}
                     </div>
@@ -276,13 +276,14 @@ export default function ProductsClient({
 
           {/* Sort By Dropdown */}
           <div className="relative flex items-center border border-olive/30 bg-card-surface rounded-sm h-10 px-3 w-full sm:w-auto transition-colors hover:bg-warm">
-            <ArrowUpDown className="h-4 w-4 text-forest mr-2 flex-shrink-0" />
+            <ArrowUpDown className="h-4 w-4 text-forest mr-2 shrink-0" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="bg-transparent font-montserrat text-xs uppercase tracking-wide text-forest focus-visible:outline-none cursor-pointer appearance-none pr-6 w-full sm:w-auto"
             >
               <option value="featured">Sort by: Featured</option>
+              <option value="newest">Newest Arrivals</option>
               <option value="price-low">Price: Low to High</option>
               <option value="price-high">Price: High to Low</option>
               <option value="name-asc">Name: A to Z</option>
@@ -292,6 +293,10 @@ export default function ProductsClient({
         </div>
       </div>
 
+      <p className="font-montserrat text-xs text-muted-text mb-6">
+        {totalCount} {totalCount === 1 ? "product" : "products"}{searchQuery || selectedCategories.length > 0 || selectedBadges.length > 0 ? " found" : ""}
+      </p>
+
       {products.length === 0 && !isLoading && (
         <div className="py-24 text-center">
           <p className="font-merriweather text-xl text-forest mb-2">No products found</p>
@@ -299,115 +304,35 @@ export default function ProductsClient({
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5 pb-16">
-        {products.map((product, index) => {
-          const isWishlisted = wishlistItems.some((i) => i.id === product.id);
-          const isSoldOut = product.badge === "Sold Out";
+      <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4 pb-16">
+        {products.map((product) => (
+          <ProductCard
+            key={product.id}
+            product={{
+              id: product.slug,
+              name: product.name,
+              category: product.category,
+              price: product.price,
+              badge: product.badge,
+              sizes: product.sizes,
+              image: {
+                src: product.images?.[0] || undefined,
+                alt: product.name,
+                fallbackClassName: "bg-olive-leaf/20",
+              },
+            }}
+          />
+        ))}
 
-          return (
-            <div key={product.id} className={cn("bg-card-surface border border-olive/10 rounded-md overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all duration-200", isSoldOut && "opacity-75")}>
-              {/* Product Image Area */}
-              <div className={cn(`aspect-square relative overflow-hidden ${placeholderColors[index % 4]} flex items-center justify-center`, isSoldOut && "opacity-60 grayscale")}>
-                {product.images && product.images.length > 0 && product.images[0] ? (
-                  <Link href={`/products/${product.slug}`} className="absolute inset-0">
-                    <Image
-                      src={product.images[0]}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                    />
-                  </Link>
-                ) : (
-                  <Link href={`/products/${product.slug}`} className="absolute inset-0 flex items-center justify-center">
-                    <ShoppingBag size={48} className="opacity-20 text-forest" />
-                  </Link>
-                )}
-                
-                <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
-                  {product.badge && (
-                    <span className={cn(
-                      "text-cornsilk text-[10px] font-montserrat font-semibold uppercase tracking-wider px-2 py-1 rounded-sm shadow-sm",
-                      product.badge === "Sold Out" ? "bg-muted-text/80" : 
-                      product.badge === "Sale" ? "bg-copperwood" : "bg-black-forest"
-                    )}>
-                      {product.badge}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleWishlist(product)}
-                    aria-label={isWishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
-                    className="bg-cornsilk/80 rounded-full w-8 h-8 flex items-center justify-center text-copper hover:bg-cornsilk transition shadow-sm"
-                  >
-                    <Heart
-                      className={cn(
-                        "h-4 w-4 transition-colors",
-                        isWishlisted ? "fill-copper text-copper" : "text-black-forest"
-                      )}
-                    />
-                  </button>
-                </div>
-              </div>
-              
-              {/* Product Info */}
-              <div className="p-4 flex flex-col">
-                <p className="text-olive text-[10px] font-semibold uppercase tracking-wider font-montserrat mb-1">
-                  {product.category}
-                </p>
-                <Link href={`/products/${product.slug}`} className="block">
-                  <h3 className="font-merriweather text-sm text-forest font-normal leading-snug mb-3 hover:underline">
-                    {product.name}
-                  </h3>
-                </Link>
-                
-                <div className="flex items-center justify-between mt-auto">
-                  <span className="font-merriweather text-lg font-bold text-forest">
-                    {product.price}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleAddToCart(product)}
-                    disabled={isSoldOut}
-                    aria-label={`Add ${product.name} to bag`}
-                    className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
-                      isSoldOut ? "bg-muted-text/30 text-cornsilk cursor-not-allowed" : "bg-forest text-cornsilk hover:bg-olive"
-                    )}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Skeleton placeholders for the next batch (visible while loading) */}
         {(hasMore || isLoading) &&
           Array.from({ length: isLoading ? BATCH_SIZE : Math.min(BATCH_SIZE, 4) }).map((_, i) => (
-            <div
-              key={`skeleton-${i}`}
-              className="bg-card-surface border border-olive/10 rounded-md overflow-hidden"
-            >
-              <Skeleton className="aspect-square w-full rounded-none" />
-              <div className="p-4 space-y-3">
-                <Skeleton className="h-2 w-14" />
-                <div className="space-y-1.5">
-                  <Skeleton className="h-3 w-full" />
-                  <Skeleton className="h-3 w-3/4" />
-                </div>
-                <div className="flex items-center justify-between pt-1">
-                  <Skeleton className="h-5 w-20" />
-                  <Skeleton className="w-8 h-8 rounded-full" />
-                </div>
-              </div>
-            </div>
+            <ProductCardSkeleton key={`skel-${i}`} />
           ))}
       </div>
 
       {/* Scroll sentinel — triggers loading the next batch */}
       {hasMore && !isLoading && <div ref={sentinelRef} className="h-1" aria-hidden="true" />}
+      </div>
     </div>
   );
 }
