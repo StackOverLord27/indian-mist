@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { cookieStorage } from "./cookie-storage";
+import { browserStorage } from "./browser-storage";
 
 export type WishlistItem = {
   id: string;
@@ -10,6 +10,8 @@ export type WishlistItem = {
   price: number;
   originalPrice?: number;
   image: string;
+  /** The product needs a size, so it must be added to the bag from its own page */
+  hasSizes?: boolean;
   badge?: "New" | "Sale" | "Sold Out";
 };
 
@@ -50,7 +52,7 @@ export const useWishlistStore = create<WishlistStore>()(
     }),
     {
       name: "indian-mist-wishlist",
-      storage: createJSONStorage(() => cookieStorage),
+      storage: createJSONStorage(() => browserStorage),
       skipHydration: true,
     }
   )

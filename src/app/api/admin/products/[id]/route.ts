@@ -5,6 +5,8 @@ import { withAdmin, parseFormData, validateImageFile, errorResponse, successResp
 import { Product } from '@/models/product.model';
 import { uploadImage, deleteManyImages } from '@/lib/cloudinary';
 import { ProductSchema } from '@/schemas/admin';
+import { slugify } from '@/lib/slugify';
+import { buildSizeStock } from '@/lib/size-stock';
 
 export const GET = withAdmin(async (req, context) => {
   const params = await context.params;
@@ -101,6 +103,9 @@ export const PUT = withAdmin(async (req, context) => {
     badge: fields.badge ?? product.badge ?? '',
     tags: fields.tags ? parseJSON(fields.tags, []) : product.tags,
     sizes: fields.sizes ? parseJSON(fields.sizes, []) : product.sizes,
+    colorName: fields.colorName !== undefined ? fields.colorName.trim() : (product.colorName ?? ''),
+    colorHex: fields.colorHex !== undefined ? fields.colorHex.trim() : (product.colorHex ?? ''),
+    colorGroup: fields.colorGroup !== undefined ? slugify(fields.colorGroup) : (product.colorGroup ?? ''),
     features: fields.features ? parseJSON(fields.features, []) : product.features,
     materials: fields.materials ? parseJSON(fields.materials, []) : product.materials,
     careInstructions: fields.careInstructions ? parseJSON(fields.careInstructions, []) : product.careInstructions,
@@ -109,6 +114,14 @@ export const PUT = withAdmin(async (req, context) => {
     trackInventory: fields.trackInventory !== undefined ? fields.trackInventory === 'true' : (product.trackInventory ?? false),
     stockQuantity: fields.stockQuantity !== undefined ? Math.max(0, Math.floor(Number(fields.stockQuantity) || 0)) : (product.stockQuantity ?? 0),
   };
+
+  // With stock tracking on and sizes chosen, stock is kept per size and the total is their sum
+  const sizeStock = buildSizeStock(
+    parsedFields.sizes ?? [],
+    fields.sizeStock ? parseJSON(fields.sizeStock, {}) : Object.fromEntries((product.sizeStock ?? []).map((s) => [s.size, s.quantity])),
+    parsedFields.trackInventory,
+  );
+  if (sizeStock.length) parsedFields.stockQuantity = sizeStock.reduce((n, s) => n + s.quantity, 0);
 
   const validationResult = ProductSchema.safeParse(parsedFields);
   if (!validationResult.success) {
@@ -119,7 +132,13 @@ export const PUT = withAdmin(async (req, context) => {
     return errorResponse('Validation failed', 400, errors);
   }
 
-  Object.assign(product, parsedFields);
+  // A colour with no group yet joins the group named after the product
+  if (parsedFields.colorName && !parsedFields.colorGroup) {
+    parsedFields.colorGroup = slugify(parsedFields.name);
+  }
+
+  // The slug is left alone on edit so existing links keep working
+  Object.assign(product, parsedFields, { sizeStock });
 
   await product.save();
   return successResponse({ product });

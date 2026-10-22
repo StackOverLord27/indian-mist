@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { withAdmin, errorResponse, successResponse } from '@/lib/api-helpers';
 import { Order } from '@/models/order.model';
 import { Product } from '@/models/product.model';
+import { restoreStock } from '@/lib/stock-reservation';
 
 const VALID_STATUSES = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 
@@ -38,17 +39,14 @@ export const PATCH = withAdmin(async (req: NextRequest, context) => {
 
   // Return stock for tracked products when a paid order is cancelled
   if (status === 'CANCELLED' && previous.paymentStatus === 'PAID') {
-    for (const item of previous.items) {
-      await Product.updateOne(
-        { _id: item.productId, trackInventory: true },
-        { $inc: { stockQuantity: item.quantity } },
-      );
-      // Stock is back, so the automatic "Sold Out" label no longer applies
-      await Product.updateOne(
-        { _id: item.productId, trackInventory: true, badge: 'Sold Out', stockQuantity: { $gt: 0 } },
-        { $set: { badge: '' } },
-      );
-    }
+    await restoreStock(
+      previous.items.map((i) => ({ productId: i.productId, size: i.selectedSize, quantity: i.quantity })),
+    );
+    // Stock is back, so the automatic "Sold Out" label no longer applies
+    await Product.updateMany(
+      { _id: { $in: previous.items.map((i) => i.productId) }, trackInventory: true, badge: 'Sold Out', stockQuantity: { $gt: 0 } },
+      { $set: { badge: '' } },
+    );
   }
 
   const order = await Order.findById(id);

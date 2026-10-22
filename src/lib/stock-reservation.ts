@@ -7,48 +7,96 @@ export const HOLD_MINUTES = 30;
 
 type Id = string | Types.ObjectId;
 
-export type ReserveItem = { productId: string; quantity: number };
+export type ReserveItem = { productId: string; size?: string; quantity: number };
+type StockLine = { productId: Id; size?: string; quantity: number };
 
 type ReserveResult =
   | { ok: true; reservationId: string | null }
   | { ok: false; message: string };
 
-async function giveBack(items: { productId: Id; quantity: number }[]) {
-  for (const item of items) {
+// Products without per-size stock (no sizes, or older products saved before it existed)
+const NO_SIZE_STOCK = { $or: [{ sizeStock: { $exists: false } }, { sizeStock: { $size: 0 } }] };
+
+/**
+ * Takes stock for one line with a single database operation that only succeeds while enough
+ * is left. Uses the size's own count when the product tracks stock per size, otherwise the
+ * product total. Returns false when there is not enough.
+ */
+async function claim(line: StockLine): Promise<boolean> {
+  if (line.size) {
+    const bySize = await Product.findOneAndUpdate(
+      {
+        _id: line.productId,
+        trackInventory: true,
+        sizeStock: { $elemMatch: { size: line.size, quantity: { $gte: line.quantity } } },
+      },
+      { $inc: { "sizeStock.$.quantity": -line.quantity, stockQuantity: -line.quantity } },
+    );
+    if (bySize) return true;
+  }
+  const total = await Product.findOneAndUpdate(
+    { _id: line.productId, trackInventory: true, stockQuantity: { $gte: line.quantity }, ...NO_SIZE_STOCK },
+    { $inc: { stockQuantity: -line.quantity } },
+  );
+  return !!total;
+}
+
+/** Puts units back, on the size's count when the product tracks per size. */
+export async function restoreStock(lines: StockLine[]) {
+  for (const line of lines) {
+    if (line.size) {
+      const bySize = await Product.updateOne(
+        { _id: line.productId, trackInventory: true, "sizeStock.size": line.size },
+        { $inc: { "sizeStock.$.quantity": line.quantity, stockQuantity: line.quantity } },
+      );
+      if (bySize.matchedCount > 0) continue;
+    }
     await Product.updateOne(
-      { _id: item.productId, trackInventory: true },
-      { $inc: { stockQuantity: item.quantity } },
+      { _id: line.productId, trackInventory: true },
+      { $inc: { stockQuantity: line.quantity } },
     );
   }
 }
 
+/** How many units of this line are left, or null when stock is not tracked. */
+async function unitsLeft(line: StockLine): Promise<{ name: string; left: number } | null> {
+  const product = await Product.findById(line.productId).select("name trackInventory stockQuantity sizeStock").lean();
+  if (!product || !product.trackInventory) return null;
+  const entry = line.size ? product.sizeStock?.find((s) => s.size === line.size) : undefined;
+  return { name: product.name, left: entry ? entry.quantity : (product.sizeStock?.length ? 0 : product.stockQuantity ?? 0) };
+}
+
 /**
- * Takes stock for products with tracking on. Each product is claimed with a single
- * database operation that only succeeds while enough stock is left, so two shoppers
- * can never both get the last unit.
+ * Takes stock for products with tracking on. Each line is claimed atomically, so two
+ * shoppers can never both get the last unit.
  */
 export async function reserveStock(userId: string, items: ReserveItem[]): Promise<ReserveResult> {
-  const taken: { productId: string; quantity: number }[] = [];
+  const taken: ReserveItem[] = [];
 
-  for (const item of items) {
-    const claimed = await Product.findOneAndUpdate(
-      { _id: item.productId, trackInventory: true, stockQuantity: { $gte: item.quantity } },
-      { $inc: { stockQuantity: -item.quantity } },
-    );
+  // Always claim in the same order. Two carts holding the same products in opposite order
+  // would otherwise each grab one item, fail on the other and roll back, both falsely "out of stock".
+  const ordered = [...items].sort((x, y) =>
+    `${x.productId}|${x.size ?? ""}`.localeCompare(`${y.productId}|${y.size ?? ""}`),
+  );
 
-    if (claimed) {
+  for (const item of ordered) {
+    if (await claim(item)) {
       taken.push(item);
       continue;
     }
 
-    const product = await Product.findById(item.productId).select("name trackInventory stockQuantity").lean();
-    if (product && !product.trackInventory) continue; // stock is not tracked for this product
+    const info = await unitsLeft(item);
+    if (!info) {
+      // Either stock is not tracked for this product (fine), or the product is gone
+      if (await Product.exists({ _id: item.productId })) continue;
+    }
 
-    await giveBack(taken); // undo whatever was already taken for this cart
-    const left = product?.stockQuantity ?? 0;
+    await restoreStock(taken); // undo whatever was already taken for this cart
+    const label = info ? `${info.name}${item.size ? ` (${item.size})` : ""}` : "A product";
+    const left = info?.left ?? 0;
     return {
       ok: false,
-      message: left > 0 ? `Only ${left} left of ${product?.name}` : `${product?.name ?? "A product"} is out of stock`,
+      message: left > 0 ? `Only ${left} left of ${label}` : `${label} is out of stock`,
     };
   }
 
@@ -74,7 +122,7 @@ export async function releaseReservation(filter: Record<string, unknown>): Promi
     { status: "RELEASED" },
   );
   if (!released) return false;
-  await giveBack(released.items);
+  await restoreStock(released.items);
   return true;
 }
 
@@ -112,7 +160,7 @@ async function markSoldOutWhereEmpty(productIds: Id[]) {
  */
 export async function settleStockForPaidOrder(
   razorpayOrderId: string,
-  items: { productId: Id; quantity: number; name?: string }[],
+  items: { productId: Id; selectedSize?: string; quantity: number; name?: string }[],
 ): Promise<string | null> {
   const held = await StockReservation.findOneAndUpdate(
     { razorpayOrderId, status: "ACTIVE" },
@@ -126,15 +174,20 @@ export async function settleStockForPaidOrder(
 
   const shortages: string[] = [];
   for (const item of items) {
-    const claimed = await Product.findOneAndUpdate(
-      { _id: item.productId, trackInventory: true, stockQuantity: { $gte: item.quantity } },
-      { $inc: { stockQuantity: -item.quantity } },
-    );
-    if (claimed) continue;
+    const line = { productId: item.productId, size: item.selectedSize, quantity: item.quantity };
+    if (await claim(line)) continue;
 
-    const product = await Product.findById(item.productId).select("name trackInventory stockQuantity").lean();
-    if (product?.trackInventory) {
-      shortages.push(`${product.name} (ordered ${item.quantity}, only ${product.stockQuantity} were left)`);
+    const info = await unitsLeft(line);
+    if (!info) continue;
+    const label = `${info.name}${item.selectedSize ? ` (${item.selectedSize})` : ""}`;
+    shortages.push(`${label} (ordered ${item.quantity}, only ${info.left} were left)`);
+    // Whatever was left is gone: zero it and keep the product total in step
+    if (item.selectedSize) {
+      await Product.updateOne(
+        { _id: item.productId, "sizeStock.size": item.selectedSize },
+        { $set: { "sizeStock.$.quantity": 0 }, $inc: { stockQuantity: -info.left } },
+      );
+    } else {
       await Product.updateOne({ _id: item.productId }, { $set: { stockQuantity: 0 } });
     }
   }

@@ -11,6 +11,8 @@ export const GET = withAdmin(async () => {
 
 export const PUT = withAdmin(async (req: NextRequest) => {
   const body = await req.json();
+  // The size chart has its own upload endpoint; a stale copy from this form must not overwrite it
+  delete body.sizeChart;
   
   const validationResult = SettingsSchema.safeParse(body);
   if (!validationResult.success) {

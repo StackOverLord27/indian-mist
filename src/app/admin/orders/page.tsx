@@ -187,11 +187,23 @@ function OrderRow({
                       )}
                       <div className="flex-1 min-w-0">
                         <p className="font-merriweather text-xs font-semibold text-forest truncate">{item.name}</p>
-                        <p className="font-montserrat text-[10px] text-muted-text mt-0.5">
-                          {item.selectedSize && `Size: ${item.selectedSize}`}
-                          {item.selectedSize && item.selectedColor && ' | '}
-                          {item.selectedColor && `Color: ${item.selectedColor}`}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-x-2 font-montserrat text-[10px] text-muted-text mt-0.5">
+                          {item.selectedSize && <span>Size: <strong className="text-forest">{item.selectedSize}</strong></span>}
+                          {item.selectedSize && item.selectedColor && <span>|</span>}
+                          {item.selectedColor && (
+                            <span className="inline-flex items-center gap-1">
+                              Color:
+                              {item.selectedColorHex && (
+                                <span
+                                  className="inline-block size-2.5 rounded-full border border-olive/30"
+                                  style={{ backgroundColor: item.selectedColorHex }}
+                                  aria-hidden
+                                />
+                              )}
+                              <strong className="text-forest">{item.selectedColor}</strong>
+                            </span>
+                          )}
+                        </div>
                         <div className="flex justify-between items-center mt-1.5">
                           <span className="font-montserrat text-[10px] font-medium text-olive-leaf">Qty: {item.quantity}</span>
                           <span className="font-montserrat text-[11px] font-bold text-forest">₹{item.priceAtPurchase.toLocaleString("en-IN")}</span>

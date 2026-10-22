@@ -36,7 +36,7 @@ export function CartItemCard({
   const handleRemove = () => {
     setRemoving(true);
     setTimeout(() => {
-      removeItem(item.id, item.size, item.color);
+      removeItem(item.id, item.size);
     }, 200);
   };
 
@@ -46,7 +46,7 @@ export function CartItemCard({
       handleRemove();
       return;
     }
-    updateQuantity(item.id, next, item.size, item.color);
+    updateQuantity(item.id, next, item.size);
     // Pulse animation on price
     setPriceFlash(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -134,8 +134,9 @@ export function CartItemCard({
             <button
               type="button"
               onClick={() => handleQuantity(1)}
+              disabled={item.maxQuantity !== undefined && item.quantity >= item.maxQuantity}
               aria-label="Increase quantity"
-              className="w-8 h-8 flex items-center justify-center hover:bg-warm text-forest transition-colors"
+              className="w-8 h-8 flex items-center justify-center hover:bg-warm text-forest transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Plus className="size-[12px]" />
             </button>

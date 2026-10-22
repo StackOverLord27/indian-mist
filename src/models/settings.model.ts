@@ -10,6 +10,10 @@ const SettingsSchema = new mongoose.Schema({
     youtube: { type: String, default: '' },
   },
   footerNote: { type: String, default: '' },
+  sizeChart: {
+    url: { type: String, default: '' },
+    publicId: { type: String, default: '' },
+  },
   metaTitle: { type: String, default: 'Indian Mist' },
   metaDescription: { type: String, default: '' },
   heroSettings: {

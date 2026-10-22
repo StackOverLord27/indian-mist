@@ -12,6 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { checkoutSchema, type CheckoutFormValues } from "@/schemas/checkout";
 import { ArrowLeft, LockKeyhole, Loader2 } from "lucide-react";
 import { useCartStore } from "@/lib/cart-store";
+import { useCartSync } from "@/lib/use-cart-sync";
 import { formatPrice } from "@/lib/utils";
 import { usePricingSettings } from "@/hooks/usePricingSettings";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -43,18 +44,16 @@ export function CheckoutPageClient() {
   const router = useRouter();
   const {
     items,
-    getTotal,
-    getItemCount,
     clearCart,
     buyNowItem,
     setBuyNowItem,
   } = useCartStore();
 
+  useCartSync();
   const checkoutItems = buyNowItem ? [buyNowItem] : items;
-  const checkoutItemCount = buyNowItem ? buyNowItem.quantity : getItemCount();
-  const subtotal = buyNowItem
-    ? buyNowItem.price * buyNowItem.quantity
-    : getTotal();
+  // Worked out from the items themselves so they follow every change to the bag
+  const checkoutItemCount = checkoutItems.reduce((n, i) => n + i.quantity, 0);
+  const subtotal = checkoutItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -238,6 +237,7 @@ export function CheckoutPageClient() {
 
   const onSubmit = async (data: CheckoutFormValues) => {
     setIsLoading(true);
+    let heldOrderId: string | null = null;
 
     try {
       // Step 1: Create order on backend
@@ -275,7 +275,12 @@ export function CheckoutPageClient() {
         }),
       });
 
+      heldOrderId = dataRes.razorpayOrderId;
+
       // Step 2: Open Razorpay checkout
+      if (typeof window.Razorpay !== "function") {
+        throw new Error("PAYMENT_WINDOW_UNAVAILABLE");
+      }
       const options = {
         key: dataRes.razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: dataRes.amount,
@@ -339,7 +344,15 @@ export function CheckoutPageClient() {
       });
       razorpay.open();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Something went wrong. Please try again."));
+      // The payment window never opened: give the held stock back right away
+      if (heldOrderId) {
+        axios.post("/api/checkout/release", { razorpayOrderId: heldOrderId }).catch(() => {});
+      }
+      toast.error(
+        err instanceof Error && err.message === "PAYMENT_WINDOW_UNAVAILABLE"
+          ? "The payment window could not load. Check your connection or ad blocker and try again."
+          : getApiErrorMessage(err, "Something went wrong. Please try again."),
+      );
       setIsLoading(false);
     }
   };

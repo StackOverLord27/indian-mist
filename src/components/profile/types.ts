@@ -22,6 +22,7 @@ export type OrderItemData = {
   image?: string;
   selectedSize?: string;
   selectedColor?: string;
+  selectedColorHex?: string;
 };
 
 export type OrderData = {

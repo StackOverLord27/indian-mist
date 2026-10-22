@@ -25,6 +25,7 @@ import { CarouselImage, SiteSettings } from "@/types/admin";
 export const revalidate = 60;
 
 type ProductDoc = {
+  _id?: string;
   slug: string;
   name: string;
   category: string;
@@ -120,6 +121,7 @@ export default async function Home() {
   if (featuredDocs.length > 0) {
     mappedFeatured = featuredDocs.map((p) => ({
       id: p.slug,
+      productId: p._id,
       name: p.name,
       category: p.category,
       price: formatPrice(p.price),
@@ -136,6 +138,7 @@ export default async function Home() {
   if (arrivalDocs.length > 0) {
     mappedArrivals = arrivalDocs.map((p) => ({
       id: p.slug,
+      productId: p._id,
       name: p.name,
       category: p.category,
       description: p.description ?? "",

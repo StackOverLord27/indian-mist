@@ -8,6 +8,8 @@ export type ProductBadge = "New" | "Sale" | "Sold Out";
 
 export type Product = {
   id: string;
+  /** The product's database id: what the bag and wishlist use to identify it (id above is the URL slug) */
+  productId?: string;
   name: string;
   category: string;
   price: string;

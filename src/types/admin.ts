@@ -22,6 +22,9 @@ export interface AdminProduct {
   description: string;
   features: string[];
   sizes?: string[];
+  colorName?: string;
+  colorHex?: string;
+  colorGroup?: string;
   tags: string[];
   badge?: 'New' | 'Sale' | '';
   materials: string[];
@@ -35,6 +38,7 @@ export interface AdminProduct {
   isFeatured?: boolean;
   trackInventory?: boolean;
   stockQuantity?: number;
+  sizeStock?: { size: string; quantity: number }[];
 }
 
 export interface Announcement {
@@ -186,6 +190,7 @@ export interface SiteSettings {
   tagline?: string;
   contactEmail?: string;
   footerNote?: string;
+  sizeChart?: { url?: string; publicId?: string };
   metaTitle?: string;
   metaDescription?: string;
   socialLinks?: {
@@ -266,6 +271,7 @@ export interface AdminOrderItem {
   image?: string;
   selectedSize?: string;
   selectedColor?: string;
+  selectedColorHex?: string;
 }
 
 export interface AdminOrder {

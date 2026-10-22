@@ -16,7 +16,12 @@ export type Product = {
   images: string[]
   sizes?: string[]
   availableSizes?: string[]
-  colors?: { name: string; hex: string }[]
+  /** Units left per size, only when stock is tracked per size */
+  stockBySize?: Record<string, number>
+  /** Units left for the whole product, only when stock is tracked without sizes */
+  stock?: number
+  color?: { name: string; hex: string }
+  colorVariants: { slug: string; name: string; hex: string; soldOut: boolean }[]
   materials: string[]
   careInstructions: { text: string; icon: string }[]
   tags: string[]
@@ -31,9 +36,20 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   await dbConnect();
   
   const p = await ProductModel.findOne({ slug })
-    .select("slug name category price originalPrice badge description images sizes colors materials careInstructions tags features shippingInfo")
+    .select("slug name category price originalPrice badge description images sizes trackInventory stockQuantity sizeStock colorName colorHex colorGroup materials careInstructions tags features shippingInfo")
     .lean();
   if (!p) return null;
+
+  const hasColor = !!p.colorName && !!p.colorHex;
+  const siblings = hasColor && p.colorGroup
+    ? await ProductModel.find({ colorGroup: p.colorGroup, colorName: { $ne: "" }, colorHex: { $ne: "" } })
+        .select("slug colorName colorHex badge")
+        .sort({ createdAt: 1 })
+        .lean()
+    : [];
+
+  const perSize = !!p.trackInventory && !!p.sizeStock?.length;
+  const stockBySize = perSize ? Object.fromEntries(p.sizeStock!.map((s) => [s.size, s.quantity])) : undefined;
 
   return {
     id: p._id.toString(),
@@ -47,8 +63,16 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     features: p.features || [],
     images: (p.images || []).map((img) => img.url),
     sizes: p.sizes || [],
-    availableSizes: p.sizes || [],
-    colors: (p.colors || []).map((c: string) => ({ name: c, hex: "#000" })),
+    availableSizes: stockBySize ? (p.sizes || []).filter((s) => (stockBySize[s] ?? 0) > 0) : p.sizes || [],
+    stockBySize,
+    stock: p.trackInventory && !perSize ? p.stockQuantity ?? 0 : undefined,
+    color: hasColor ? { name: p.colorName as string, hex: p.colorHex as string } : undefined,
+    colorVariants: siblings.map((s) => ({
+      slug: s.slug,
+      name: s.colorName as string,
+      hex: s.colorHex as string,
+      soldOut: s.badge === "Sold Out",
+    })),
     materials: p.materials || [],
     // Older products stored care instructions as plain strings
     careInstructions: ((p.careInstructions ?? []) as unknown as (string | { text: string; icon?: string })[]).map((c) =>

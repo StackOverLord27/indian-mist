@@ -73,38 +73,44 @@ export function ProductTabs({ product }: { product: Product }) {
         )}
 
         {activeTab === "Materials & Care" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <div>
-              <h3 className="font-merriweather text-base font-medium text-forest mb-4">
-                Materials
-              </h3>
-              {product.materials.map((material, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-3 py-3 border-b border-olive/10 last:border-0"
-                >
-                  <span className="font-montserrat text-sm text-forest font-medium">
-                    {material}
-                  </span>
+          <div className="space-y-8 max-w-3xl animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {product.materials.length > 0 && (
+              <div>
+                <h3 className="font-merriweather text-base font-medium text-forest mb-4">
+                  Materials
+                </h3>
+                <div className="flex flex-wrap gap-x-6 gap-y-3">
+                  {product.materials.map((material, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <Check className="text-olive size-[14px] flex-shrink-0 mt-0.5" />
+                      <span className="font-montserrat text-xs text-muted-text font-normal">
+                        {material}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div>
-              <h3 className="font-merriweather text-base font-medium text-forest mb-4">
-                Care Instructions
-              </h3>
-              {product.careInstructions.map((instruction, idx) => {
-                const IconComp = CARE_ICON_MAP[instruction.icon] || Droplets;
-                return (
-                  <div key={idx} className="flex items-start gap-2 mb-3">
-                    <IconComp className="text-olive size-[14px] flex-shrink-0 mt-0.5" />
-                    <span className="font-montserrat text-xs text-muted-text font-normal">
-                      {instruction.text}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+              </div>
+            )}
+            {product.careInstructions.length > 0 && (
+              <div>
+                <h3 className="font-merriweather text-base font-medium text-forest mb-4">
+                  Care Instructions
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+                  {product.careInstructions.map((instruction, idx) => {
+                    const IconComp = CARE_ICON_MAP[instruction.icon] || Droplets;
+                    return (
+                      <div key={idx} className="flex items-start gap-2">
+                        <IconComp className="text-olive size-[14px] flex-shrink-0 mt-0.5" />
+                        <span className="font-montserrat text-xs text-muted-text font-normal">
+                          {instruction.text}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

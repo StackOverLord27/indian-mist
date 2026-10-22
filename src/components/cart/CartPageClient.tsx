@@ -9,17 +9,20 @@ import { CartItemList } from "@/components/cart/CartItemList";
 import { OrderSummary } from "@/components/cart/OrderSummary";
 import { RelatedProducts } from "@/components/product/RelatedProducts";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { useCartSync } from "@/lib/use-cart-sync";
 
 export function CartPageClient() {
   const router = useRouter();
-  const { items, getTotal, getItemCount } = useCartStore();
+  const { items, setBuyNowItem } = useCartStore();
+  useCartSync();
   const checkoutBtnRef = useRef<HTMLButtonElement | null>(null);
   const [showStickyBar, setShowStickyBar] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+    setBuyNowItem(null); // opening the bag means checking out the whole bag
+  }, [setBuyNowItem]);
 
   // Intersection observer: show sticky mobile bar when checkout button scrolls out of view
   useEffect(() => {
@@ -33,8 +36,9 @@ export function CartPageClient() {
     return () => observer.disconnect();
   }, [items.length]); // re-init if cart empties/fills
 
-  const itemCount = getItemCount();
-  const total = getTotal();
+  // Worked out from the items themselves so the count and total follow every change to the bag
+  const itemCount = items.reduce((n, i) => n + i.quantity, 0);
+  const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const formatPrice = (p: number) =>
     new Intl.NumberFormat("en-IN", {
       style: "currency",

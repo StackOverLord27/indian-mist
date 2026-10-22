@@ -12,11 +12,15 @@ export interface IProduct extends Document {
   categoryCoverImage?: string;
   sizes: string[];
   colors: string[];
+  colorName?: string;
+  colorHex?: string;
+  colorGroup?: string;
   features?: string[];
   materials?: string[];
   careInstructions?: { text: string; icon: string }[];
   tags?: string[];
   stockQuantity: number;
+  sizeStock?: { size: string; quantity: number }[];
   trackInventory?: boolean;
   badge?: "New" | "Sale" | "Sold Out" | "";
   isFeatured?: boolean;
@@ -49,6 +53,10 @@ const ProductSchema: Schema = new Schema(
     categoryCoverImage: { type: String, default: "" },
     sizes: [{ type: String }],
     colors: [{ type: String }],
+    colorName: { type: String, default: "" },
+    colorHex: { type: String, default: "" },
+    // Products sharing a colorGroup are shown to each other as colour swatches
+    colorGroup: { type: String, default: "", index: true },
     features: [{ type: String }],
     materials: [{ type: String }],
     careInstructions: [{
@@ -60,7 +68,10 @@ const ProductSchema: Schema = new Schema(
       standard: { type: String, default: "3-5 business days" },
       express: { type: String, default: "1-2 business days" },
     },
+    // Total units. For products with per-size stock this is kept equal to the sum of sizeStock.
     stockQuantity: { type: Number, default: 0 },
+    // Units per size, used only when trackInventory is on and the product has sizes
+    sizeStock: [{ _id: false, size: { type: String, required: true }, quantity: { type: Number, default: 0 } }],
     trackInventory: { type: Boolean, default: false },
     badge: { type: String, enum: ["New", "Sale", "Sold Out", ""] },
     isFeatured: { type: Boolean, default: false },

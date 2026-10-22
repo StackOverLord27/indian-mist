@@ -24,6 +24,7 @@ const formatPrice = (price: number) => `₹${price.toLocaleString("en-IN")}`;
 export function toCardProduct(p: PopulatedProduct): Product {
   return {
     id: p.slug || p._id.toString(),
+    productId: p._id.toString(),
     name: p.name,
     category: p.category,
     price: formatPrice(p.price),

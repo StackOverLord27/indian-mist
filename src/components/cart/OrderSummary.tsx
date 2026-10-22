@@ -12,9 +12,9 @@ export function OrderSummary({
 }: {
   checkoutRef?: React.RefObject<HTMLButtonElement | null>;
 }) {
-  const { getTotal } = useCartStore();
+  const { items } = useCartStore();
 
-  const subtotal = getTotal();
+  const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const shippingFree = subtotal >= SHIPPING_THRESHOLD;
   const shipping = shippingFree ? 0 : SHIPPING_COST;
   // GST disabled — no GST registration yet

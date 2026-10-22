@@ -103,8 +103,13 @@ export async function finalizeOrder(opts: {
   // Atomic claim: only one caller gets the pending order, the rest see null
   const claimed = await redis.getdel(key);
   if (!claimed) {
-    const created = await Order.findOne({ razorpayOrderId });
-    if (created) return { ok: true, order: created, alreadyProcessed: true };
+    // Another request (the browser or the Razorpay webhook) is creating this order right now:
+    // give it a moment to finish rather than telling a paying customer something went wrong.
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const created = await Order.findOne({ razorpayOrderId });
+      if (created) return { ok: true, order: created, alreadyProcessed: true };
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
     return { ok: false, status: 409, message: "Your order is being processed. Please check your orders shortly." };
   }
 

@@ -14,7 +14,7 @@ export function CartItemList() {
       <div className="space-y-3 md:space-y-4">
         {items.map((item, index) => (
           <CartItemCard
-            key={`${item.id}-${item.size ?? ""}-${item.color ?? ""}`}
+            key={`${item.id}-${item.size ?? ""}`}
             item={item}
             index={index}
           />

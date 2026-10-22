@@ -14,9 +14,11 @@ export function ProductCard({ product, hideNewBadge = false }: { product: Produc
   const [sizePickerOpen, setSizePickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
+  // Bag and wishlist identify a product by its database id; product.id is the URL slug
+  const itemId = product.productId ?? product.id;
   const toggleItem = useWishlistStore((s) => s.toggleItem);
   const wishlisted = useWishlistStore((s) =>
-    s.items.some((i) => i.id === product.id)
+    s.items.some((i) => i.id === itemId)
   );
   const addCartItem = useCartStore((s) => s.addItem);
 
@@ -36,8 +38,9 @@ export function ProductCard({ product, hideNewBadge = false }: { product: Produc
     e.preventDefault();
     toast.success(wishlisted ? "Removed from wishlist" : "Added to wishlist");
     toggleItem({
-      id: product.id,
+      id: itemId,
       slug: product.id,
+      hasSizes: !!product.sizes?.length,
       name: product.name,
       category: product.category,
       price: parseFloat(product.price.replace(/[^\d.]/g, "")),
@@ -48,7 +51,7 @@ export function ProductCard({ product, hideNewBadge = false }: { product: Produc
 
   const addToCartWithSize = (size?: string) => {
     addCartItem({
-      id: product.id,
+      id: itemId,
       slug: product.id,
       name: product.name,
       category: product.category,
@@ -72,7 +75,7 @@ export function ProductCard({ product, hideNewBadge = false }: { product: Produc
 
   const hasSizes = product.sizes && product.sizes.length > 0;
   const inCart = useCartStore((s) => {
-    const matching = s.items.filter((i) => i.id === product.id);
+    const matching = s.items.filter((i) => i.id === itemId);
     if (!hasSizes) return matching.length > 0;
     return product.sizes!.every((size) => matching.some((i) => i.size === size));
   });
@@ -170,7 +173,7 @@ export function ProductCard({ product, hideNewBadge = false }: { product: Produc
             <div className="flex flex-wrap gap-1.5">
               {product.sizes.map((size) => {
                 const sizeInCart = useCartStore.getState().items.some(
-                  (i) => i.id === product.id && i.size === size
+                  (i) => i.id === itemId && i.size === size
                 );
                 return (
                   <button

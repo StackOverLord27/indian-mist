@@ -11,7 +11,7 @@ import AdminFormField, { inputClass } from '@/components/admin/ui/AdminFormField
 import ImageUploadZone from '@/components/admin/ui/ImageUploadZone';
 import { AdminProduct } from '@/types/admin';
 import { Loader2, X } from 'lucide-react';
-import { useCreateProduct, useUpdateProduct } from '@/hooks/admin/useAdminProducts';
+import { useAdminProducts, useCreateProduct, useUpdateProduct } from '@/hooks/admin/useAdminProducts';
 import { useAdminCategories } from '@/hooks/admin/useAdminCategories';
 import * as categoryApi from '@/lib/admin-api/categories';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -35,11 +35,15 @@ const productSchema = z.object({
   description: z.string().min(10, 'Description is too short'),
   features: z.array(z.string()),
   sizes: z.array(z.string()).optional(),
+  colorName: z.string().max(40).optional(),
+  colorHex: z.string().regex(/^(#[0-9a-fA-F]{6})?$/, 'Use a hex code like #1a2b3c').optional(),
+  colorGroup: z.string().max(80).optional(),
   tags: z.string(),
   badge: z.enum(['New', 'Sale', 'Sold Out', '']).optional(),
   isFeatured: z.boolean().default(false),
   trackInventory: z.boolean().default(false),
   stockQuantity: z.number().int().min(0).default(0),
+  sizeStock: z.record(z.string(), z.number().int().min(0)).optional(),
   materials: z.array(z.string()),
   careInstructions: z.array(z.object({ text: z.string(), icon: z.string() })),
   shippingStandard: z.string().optional(),
@@ -65,7 +69,14 @@ const CARE_ICONS = [
   { value: 'info', label: 'General Info' },
 ];
 
-export default function ProductForm({ product }: { product?: AdminProduct }) {
+// `duplicateOf` pre-fills a new product from an existing one (images and colour are not copied)
+export default function ProductForm({ product, duplicateOf }: { product?: AdminProduct; duplicateOf?: AdminProduct }) {
+  const source = product ?? duplicateOf;
+  const { data: allProducts } = useAdminProducts({ limit: 50 });
+  const existingGroups = Array.from(
+    new Set((allProducts?.products ?? []).map((p) => p.colorGroup).filter((g): g is string => !!g)),
+  );
+
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct(product?._id || '');
   
@@ -112,22 +123,26 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
   const { register, control, handleSubmit, formState: { errors, isDirty }, setValue, watch } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema) as Resolver<ProductFormData>,
     defaultValues: {
-      name: product?.name || '',
-      category: product?.category || '',
-      price: product?.price || 0,
-      originalPrice: product?.originalPrice || 0,
-      description: product?.description || '',
-      features: product?.features || [''],
-      sizes: product?.sizes || [],
-      tags: product?.tags?.join(', ') || '',
+      name: source?.name || '',
+      category: source?.category || '',
+      price: source?.price || 0,
+      originalPrice: source?.originalPrice || 0,
+      description: source?.description || '',
+      features: source?.features || [''],
+      sizes: source?.sizes || [],
+      colorName: product?.colorName || '',
+      colorHex: product?.colorHex || '#000000',
+      colorGroup: source?.colorGroup || '',
+      tags: source?.tags?.join(', ') || '',
       badge: product?.badge || '',
-      isFeatured: product?.isFeatured || false,
-      trackInventory: product?.trackInventory || false,
-      stockQuantity: product?.stockQuantity || 0,
-      materials: product?.materials || [''],
-      careInstructions: product?.careInstructions?.length ? product.careInstructions : [{ text: '', icon: 'droplets' }],
-      shippingStandard: product?.shippingInfo?.standard || '3-5 business days',
-      shippingExpress: product?.shippingInfo?.express || '1-2 business days',
+      isFeatured: source?.isFeatured || false,
+      trackInventory: source?.trackInventory || false,
+      stockQuantity: source?.stockQuantity || 0,
+      sizeStock: Object.fromEntries((source?.sizeStock ?? []).map((s) => [s.size, s.quantity])),
+      materials: source?.materials || [''],
+      careInstructions: source?.careInstructions?.length ? source.careInstructions : [{ text: '', icon: 'droplets' }],
+      shippingStandard: source?.shippingInfo?.standard || '3-5 business days',
+      shippingExpress: source?.shippingInfo?.express || '1-2 business days',
     }
   });
 
@@ -159,10 +174,18 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
     formData.append('isFeatured', data.isFeatured ? 'true' : 'false');
     formData.append('trackInventory', data.trackInventory ? 'true' : 'false');
     formData.append('stockQuantity', String(data.stockQuantity || 0));
+    // Per-size counts, only for the sizes currently selected
+    formData.append('sizeStock', JSON.stringify(
+      Object.fromEntries((data.sizes ?? []).map((size) => [size, Math.max(0, Math.floor(Number(data.sizeStock?.[size]) || 0))])),
+    ));
     
     // Arrays need special handling or JSON stringification
     formData.append('features', JSON.stringify(data.features.filter(s => s.trim())));
     if (data.sizes) formData.append('sizes', JSON.stringify(data.sizes));
+    const colorName = (data.colorName ?? '').trim();
+    formData.append('colorName', colorName);
+    formData.append('colorHex', colorName ? (data.colorHex ?? '') : '');
+    formData.append('colorGroup', data.colorGroup ?? '');
     formData.append('tags', JSON.stringify(data.tags.split(',').map(t => t.trim()).filter(Boolean)));
     formData.append('materials', JSON.stringify(data.materials.filter(s => s.trim())));
     formData.append('careInstructions', JSON.stringify(data.careInstructions.filter(c => c.text.trim())));
@@ -301,6 +324,38 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
             </AdminFormField>
           </div>
 
+          {/* Colour variant */}
+          <div className="space-y-3 rounded-md border border-olive/15 p-4">
+            <p className="font-montserrat text-xs font-semibold uppercase tracking-wider text-forest">Colour variant</p>
+            <div className="grid grid-cols-2 gap-4">
+              <AdminFormField label="Colour name" error={errors.colorName?.message}>
+                <input {...register('colorName')} className={inputClass} placeholder="e.g. Olive Green" />
+              </AdminFormField>
+              <AdminFormField label="Swatch colour" error={errors.colorHex?.message}>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={/^#[0-9a-fA-F]{6}$/.test(watch('colorHex') ?? '') ? watch('colorHex') : '#000000'}
+                    onChange={(e) => setValue('colorHex', e.target.value, { shouldDirty: true })}
+                    className="h-10 w-12 shrink-0 cursor-pointer rounded-sm border border-olive/25 bg-transparent p-1"
+                    aria-label="Pick swatch colour"
+                  />
+                  <input {...register('colorHex')} className={inputClass} placeholder="#556b2f" />
+                </div>
+              </AdminFormField>
+            </div>
+            <AdminFormField label="Colour group" error={errors.colorGroup?.message}>
+              <input {...register('colorGroup')} list="color-groups" className={inputClass} placeholder="Leave blank to group by product name" />
+              <datalist id="color-groups">
+                {existingGroups.map((g) => <option key={g} value={g} />)}
+              </datalist>
+            </AdminFormField>
+            <p className="font-montserrat text-xs text-forest/60">
+              Each colour is its own product with its own photos, price and URL. Products in the same group show each
+              other&apos;s swatches on the product page. Leave the colour name empty for products without colour options.
+            </p>
+          </div>
+
           <div className="flex items-center space-x-2 py-2">
             <Checkbox 
               id="isFeatured" 
@@ -323,7 +378,25 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
                 Track stock for this product
               </label>
             </div>
-            {watch('trackInventory') && (
+            {watch('trackInventory') && ((watch('sizes') ?? []).length > 0 ? (
+              <div>
+                <p className="block font-montserrat text-xs font-semibold uppercase tracking-wider text-forest mb-1.5">Units in stock per size</p>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                  {ALL_SIZES.filter((size) => (watch('sizes') ?? []).includes(size)).map((size) => (
+                    <label key={size} className="font-montserrat text-xs text-forest">
+                      {size}
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        {...register(`sizeStock.${size}` as const, { valueAsNumber: true })}
+                        className={`${inputClass} mt-1`}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : (
               <AdminFormField label="Units in stock" error={errors.stockQuantity?.message}>
                 <input
                   type="number"
@@ -333,9 +406,9 @@ export default function ProductForm({ product }: { product?: AdminProduct }) {
                   className={inputClass}
                 />
               </AdminFormField>
-            )}
+            ))}
             <p className="font-montserrat text-xs text-forest/60">
-              When on, customers cannot order more than the stock available, and the product is marked
+              When on, customers cannot order more than the stock available (per size if sizes are selected, otherwise for the whole product), and the product is marked
               &ldquo;Sold Out&rdquo; automatically when it reaches 0. When off, the product is always available.
             </p>
           </div>

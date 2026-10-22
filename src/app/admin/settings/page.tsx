@@ -6,6 +6,7 @@ import AdminCard from '@/components/admin/ui/AdminCard';
 import AdminFormField, { inputClass } from '@/components/admin/ui/AdminFormField';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import SizeChartCard from '@/components/admin/SizeChartCard';
 import { SiteSettings } from '@/types/admin';
 
 export default function AdminSettingsPage() {
@@ -120,6 +121,10 @@ export default function AdminSettingsPage() {
           </button>
         </div>
       </form>
+
+      <div className="max-w-3xl mt-6">
+        <SizeChartCard />
+      </div>
     </AdminProtectedRoute>
   );
 }

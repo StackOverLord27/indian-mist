@@ -242,7 +242,17 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                                     )}
                                     {item.selectedSize && item.selectedColor && <span>•</span>}
                                     {item.selectedColor && (
-                                      <span>Color: <strong className="text-forest">{item.selectedColor}</strong></span>
+                                      <span className="inline-flex items-center gap-1">
+                                        Color:
+                                        {item.selectedColorHex && (
+                                          <span
+                                            className="inline-block size-2.5 rounded-full border border-olive/30"
+                                            style={{ backgroundColor: item.selectedColorHex }}
+                                            aria-hidden
+                                          />
+                                        )}
+                                        <strong className="text-forest">{item.selectedColor}</strong>
+                                      </span>
                                     )}
                                   </div>
                                   <div className="mt-1 flex items-center gap-1.5">

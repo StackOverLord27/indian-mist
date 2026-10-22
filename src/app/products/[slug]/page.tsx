@@ -6,6 +6,8 @@ import { ProductTabs } from "@/components/product/ProductTabs";
 import { RelatedProducts } from "@/components/product/RelatedProducts";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Metadata } from "next";
+import dbConnect from "@/lib/db";
+import Settings from "@/models/settings.model";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -29,6 +31,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   if (!product) {
     notFound();
+  }
+
+  let sizeChartUrl: string | undefined;
+  if (product.sizes?.length) {
+    await dbConnect();
+    const settings = await Settings.findOne().select("sizeChart").lean<{ sizeChart?: { url?: string } } | null>();
+    sizeChartUrl = settings?.sizeChart?.url || undefined;
   }
 
   return (
@@ -60,11 +69,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               originalPrice: product.originalPrice,
               badge: product.badge,
               image: product.images[0] ?? "",
+              hasSizes: !!product.sizes?.length,
             }}
           />
 
           {/* Right Column: Product Info */}
-          <ProductInfo product={product} />
+          <ProductInfo key={product.id} product={product} sizeChartUrl={sizeChartUrl} />
         </div>
 
         {/* SECTION 2 — PRODUCT DETAILS TABS */}

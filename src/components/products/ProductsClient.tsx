@@ -311,6 +311,7 @@ export default function ProductsClient({
           <ProductCard
             product={{
               id: product.slug,
+              productId: product.id,
               name: product.name,
               category: product.category,
               price: product.price,

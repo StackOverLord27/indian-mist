@@ -6,6 +6,7 @@ import ImageUploadZone from '@/components/admin/ui/ImageUploadZone';
 import { useCarousel, useAddCarouselImage, useDeleteCarouselImage, useReorderCarousel, useUpdateCarouselItem } from '@/hooks/admin/useAdminCarousel';
 import { ArrowUp, ArrowDown, Pencil, Eye, EyeOff, Trash2, Loader2, Check, X } from 'lucide-react';
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 
 export default function AdminCarouselPage() {
@@ -16,32 +17,33 @@ export default function AdminCarouselPage() {
   const reorderMutation = useReorderCarousel();
   
   const [altText, setAltText] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [uploadKey, setUploadKey] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingAlt, setEditingAlt] = useState('');
 
-  const handleFileSelect = (files: File[]) => {
-    if (files.length > 0) {
-      setFile(files[0]);
-    } else {
-      setFile(null);
-    }
-  };
-
-  const handleUpload = () => {
-    if (file) {
+  const handleUpload = async () => {
+    if (files.length === 0) return;
+    // Upload one request per image (sequentially) so order is preserved and each stays under body-size limits.
+    const remaining = [...files];
+    for (const file of files) {
       const formData = new FormData();
       formData.append('image', file);
       formData.append('altText', altText || 'Carousel Image');
       formData.append('isActive', 'true');
-      addMutation.mutate(formData, {
-        onSuccess: () => {
-          setFile(null);
-          setAltText('');
-          setUploadKey(prev => prev + 1);
-        }
-      });
+      try {
+        await addMutation.mutateAsync(formData);
+        remaining.shift();
+      } catch {
+        break;
+      }
+    }
+    if (remaining.length === 0) {
+      setFiles([]);
+      setAltText('');
+      setUploadKey(prev => prev + 1);
+    } else {
+      toast.error(`${remaining.length} image(s) failed to upload. Remove uploaded ones and retry.`);
     }
   };
 
@@ -87,8 +89,9 @@ export default function AdminCarouselPage() {
         <ImageUploadZone 
           key={uploadKey}
           hint="Recommended: 1800 × 1200 px (3:2). Keep the subject in the centre; the edges may be trimmed on wide screens."
-          multiple={false} 
-          onFilesSelected={handleFileSelect} 
+          multiple
+          maxFiles={20}
+          onFilesSelected={setFiles}
         />
         <div className="mt-4 flex flex-col gap-4">
           <input 
@@ -99,11 +102,11 @@ export default function AdminCarouselPage() {
           />
           <Button 
             onClick={handleUpload} 
-            disabled={!file || addMutation.isPending}
+            disabled={files.length === 0 || addMutation.isPending}
             className="self-end bg-forest text-cornsilk hover:bg-olive transition-colors cursor-pointer"
           >
             {addMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {addMutation.isPending ? 'Uploading...' : 'Save Image'}
+            {addMutation.isPending ? 'Uploading...' : files.length > 1 ? `Save ${files.length} Images` : 'Save Image'}
           </Button>
         </div>
       </div>

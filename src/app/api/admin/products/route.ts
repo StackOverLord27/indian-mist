@@ -6,6 +6,8 @@ import { withAdmin, parseFormData, validateImageFile, errorResponse, successResp
 import { Product } from '@/models/product.model';
 import { uploadImage } from '@/lib/cloudinary';
 import { ProductSchema } from '@/schemas/admin';
+import { slugify, uniqueProductSlug } from '@/lib/slugify';
+import { buildSizeStock } from '@/lib/size-stock';
 
 export const GET = withAdmin(async (req) => {
   const { searchParams } = new URL(req.url);
@@ -51,6 +53,9 @@ export const POST = withAdmin(async (req) => {
     badge: fields.badge ?? '',
     tags: parseJSON(fields.tags, []),
     sizes: parseJSON(fields.sizes, []),
+    colorName: fields.colorName?.trim() ?? '',
+    colorHex: fields.colorHex?.trim() ?? '',
+    colorGroup: slugify(fields.colorGroup ?? '') || (fields.colorName?.trim() ? slugify(fields.name ?? '') : ''),
     features: parseJSON(fields.features, []),
     materials: parseJSON(fields.materials, []),
     careInstructions: parseJSON(fields.careInstructions, []),
@@ -58,7 +63,9 @@ export const POST = withAdmin(async (req) => {
     isFeatured: fields.isFeatured === 'true',
     trackInventory: fields.trackInventory === 'true',
     stockQuantity: Math.max(0, Math.floor(Number(fields.stockQuantity) || 0)),
+    sizeStock: buildSizeStock(parseJSON(fields.sizes, [] as string[]), parseJSON(fields.sizeStock, {}), fields.trackInventory === 'true'),
   };
+  if (parsedFields.sizeStock.length) parsedFields.stockQuantity = parsedFields.sizeStock.reduce((n, s) => n + s.quantity, 0);
 
   const validationResult = ProductSchema.safeParse(parsedFields);
   if (!validationResult.success) {
@@ -93,8 +100,12 @@ export const POST = withAdmin(async (req) => {
   const coverIdx = Number(fields.categoryCoverIndex ?? 0);
   const categoryCoverImage = uploadedImages[coverIdx]?.url ?? '';
 
+  // Slug = name + colour, so colour variants of one product never collide
+  const slug = await uniqueProductSlug(parsedFields.name, parsedFields.colorName, (s) => Product.exists({ slug: s }));
+
   const product = await Product.create({
     ...parsedFields,
+    slug,
     badge: parsedFields.badge as "New" | "Sale" | "Sold Out" | "",
     images: uploadedImages,
     categoryCoverImage,

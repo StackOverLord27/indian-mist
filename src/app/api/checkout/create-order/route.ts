@@ -29,6 +29,7 @@ type OrderLine = {
   image: string;
   selectedSize?: string;
   selectedColor?: string;
+  selectedColorHex?: string;
 };
 
 export const POST = withDB(async (req: NextRequest) => {
@@ -73,7 +74,9 @@ export const POST = withDB(async (req: NextRequest) => {
   }
 
   const orderItems: OrderLine[] = [];
-  const requestedQty = new Map<string, number>();
+  const orderLines = new Map<string, OrderLine>();
+  // Quantity wanted per product + size, so each size's stock is checked on its own
+  const requestedQty = new Map<string, { productId: string; size?: string; quantity: number }>();
   let subtotal = 0;
 
   for (const item of items) {
@@ -94,18 +97,41 @@ export const POST = withDB(async (req: NextRequest) => {
     if (product.colors?.length && item.color && !product.colors.includes(item.color)) {
       return errorResponse(`Invalid color for ${product.name}`, 400);
     }
+    if (product.trackInventory && product.sizeStock?.length && !item.size) {
+      return errorResponse(`Please choose a size for ${product.name}`, 400);
+    }
 
-    requestedQty.set(String(product._id), (requestedQty.get(String(product._id)) ?? 0) + quantity);
+    // One order line per product + size, even if the request lists it more than once
+    const lineKey = `${product._id}|${item.size ?? ""}`;
+    const lineSoFar = requestedQty.get(lineKey);
+    const mergedQuantity = (lineSoFar?.quantity ?? 0) + quantity;
+    if (mergedQuantity > MAX_QTY_PER_ITEM) {
+      return errorResponse(`You can order at most ${MAX_QTY_PER_ITEM} of ${product.name}`, 400);
+    }
+    requestedQty.set(lineKey, {
+      productId: String(product._id),
+      size: item.size || undefined,
+      quantity: mergedQuantity,
+    });
+
     subtotal += product.price * quantity;
-    orderItems.push({
+    const line = orderLines.get(lineKey);
+    if (line) {
+      line.quantity = mergedQuantity;
+      continue;
+    }
+    const newLine: OrderLine = {
       productId: product._id,
       name: product.name,
-      quantity,
+      quantity: mergedQuantity,
       priceAtPurchase: product.price,
       image: product.images?.[0]?.url || "",
-      selectedSize: item.size,
-      selectedColor: item.color,
-    });
+      selectedSize: item.size || undefined,
+      selectedColor: product.colorName || item.color,
+      selectedColorHex: product.colorHex || undefined,
+    };
+    orderLines.set(lineKey, newLine);
+    orderItems.push(newLine);
   }
 
   // ─── Settings: shipping rates and promo codes ────────────────────────────
@@ -190,7 +216,7 @@ export const POST = withDB(async (req: NextRequest) => {
   await releaseUserReservations(userId);
   const hold = await reserveStock(
     userId,
-    [...requestedQty].map(([productId, quantity]) => ({ productId, quantity })),
+    [...requestedQty.values()],
   );
   if (!hold.ok) return errorResponse(hold.message, 400);
   const releaseHold = async () => {

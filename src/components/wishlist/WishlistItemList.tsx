@@ -142,6 +142,15 @@ function WishlistItemCard({
 
         {/* Actions */}
         <div className="flex items-center gap-3 mt-4">
+          {item.hasSizes && !isSoldOut ? (
+            <Link
+              href={`/products/${item.slug}`}
+              className="flex items-center gap-1.5 font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2.5 rounded-sm transition-all min-h-[44px] bg-forest text-cornsilk hover:bg-olive active:scale-[0.98]"
+            >
+              <ShoppingBag className="size-[12px]" />
+              Choose size
+            </Link>
+          ) : (
           <button
             type="button"
             onClick={handleAddToCart}
@@ -162,6 +171,7 @@ function WishlistItemCard({
               </>
             )}
           </button>
+          )}
 
           <button
             type="button"

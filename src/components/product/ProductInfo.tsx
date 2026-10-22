@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/cart-store";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertDialog,
@@ -24,15 +25,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { Product } from "@/lib/get-product";
+import { SizeChartModal } from "@/components/product/SizeChartModal";
 
-export function ProductInfo({ product }: { product: Product }) {
+export function ProductInfo({ product, sizeChartUrl }: { product: Product; sizeChartUrl?: string }) {
   const router = useRouter();
   const [selectedSize, setSelectedSize] = useState<string>(
     product.availableSizes?.[0] || "",
   );
-  const [selectedColor, setSelectedColor] = useState<string>(
-    product.colors?.[0]?.name || "",
-  );
+  // Each colour is its own product, so the colour is simply this product's colour
+  const selectedColor = product.color?.name ?? "";
   const [quantity, setQuantity] = useState(1);
   const { items, addItem, setBuyNowItem } = useCartStore();
   const [showMergeDialog, setShowMergeDialog] = useState(false);
@@ -41,12 +42,14 @@ export function ProductInfo({ product }: { product: Product }) {
   const currentVariantInCart = items.find(
     (i) =>
       i.id === product.id &&
-      i.size === (selectedSize || undefined) &&
-      i.color === (selectedColor || undefined),
+      i.size === (selectedSize || undefined),
   );
 
   const isAdded = !!currentVariantInCart;
-  const isSoldOut = product.badge === "Sold Out";
+  const isSoldOut =
+    product.badge === "Sold Out" ||
+    (!!product.stockBySize && !product.availableSizes?.length) ||
+    product.stock === 0;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -57,7 +60,9 @@ export function ProductInfo({ product }: { product: Product }) {
   };
 
   const handleDecrement = () => setQuantity((q) => Math.max(1, q - 1));
-  const handleIncrement = () => setQuantity((q) => q + 1);
+  // Units the shopper can still add: the chosen size's stock, or the product's, when tracked
+  const maxQty = product.stockBySize ? (product.stockBySize[selectedSize] ?? 0) : product.stock;
+  const handleIncrement = () => setQuantity((q) => (maxQty === undefined ? q + 1 : Math.min(q + 1, Math.max(maxQty, 1))));
 
   const handleAddToCart = () => {
     addItem({
@@ -71,6 +76,7 @@ export function ProductInfo({ product }: { product: Product }) {
       size: selectedSize || undefined,
       color: selectedColor || undefined,
       quantity,
+      maxQuantity: maxQty,
     });
     toast.success(`${product.name} added to bag`);
   };
@@ -86,6 +92,7 @@ export function ProductInfo({ product }: { product: Product }) {
     size: selectedSize || undefined,
     color: selectedColor || undefined,
     quantity,
+    maxQuantity: maxQty,
   };
 
   const handleBuyNowClick = () => {
@@ -148,13 +155,16 @@ export function ProductInfo({ product }: { product: Product }) {
       <div className="space-y-6">
         {product.sizes && product.sizes.length > 0 && (
           <div>
-            <div className="font-montserrat text-xs font-semibold uppercase tracking-wider text-forest mb-2">
-              Size:
-              {selectedSize && (
-                <span className="text-muted-text ml-2 font-medium normal-case">
-                  {selectedSize}
-                </span>
-              )}
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-montserrat text-xs font-semibold uppercase tracking-wider text-forest">
+                Size:
+                {selectedSize && (
+                  <span className="text-muted-text ml-2 font-medium normal-case">
+                    {selectedSize}
+                  </span>
+                )}
+              </div>
+              {sizeChartUrl && <SizeChartModal url={sizeChartUrl} />}
             </div>
             <div className="flex flex-wrap gap-2">
               {product.sizes.map((size) => {
@@ -167,6 +177,7 @@ export function ProductInfo({ product }: { product: Product }) {
                     onClick={() => {
                       if (isAvailable) {
                         setSelectedSize(size);
+                        setQuantity(1);
                       }
                     }}
                     disabled={!isAvailable || isSoldOut}
@@ -191,39 +202,40 @@ export function ProductInfo({ product }: { product: Product }) {
           </div>
         )}
 
-        {product.colors && product.colors.length > 0 && (
+        {product.color && product.colorVariants.length > 1 && (
           <div>
             <div className="font-montserrat text-xs font-semibold uppercase tracking-wider text-forest mb-2">
               Color:
-              {selectedColor && (
-                <span className="text-muted-text ml-2 font-medium normal-case">
-                  {selectedColor}
-                </span>
-              )}
+              <span className="text-muted-text ml-2 font-medium normal-case">
+                {product.color.name}
+              </span>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {product.colors.map((color) => {
-                const isSelected = selectedColor === color.name;
+            <div className="flex flex-wrap gap-3">
+              {product.colorVariants.map((variant) => {
+                const isSelected = variant.slug === product.slug;
                 return (
-                  <button
-                    key={color.name}
-                    type="button"
-                    onClick={() => {
-                      setSelectedColor(color.name);
-                    }}
-                    disabled={isSoldOut}
+                  <Link
+                    key={variant.slug}
+                    href={`/products/${variant.slug}`}
+                    scroll={false}
+                    title={variant.soldOut ? `${variant.name} (sold out)` : variant.name}
+                    aria-label={`View ${variant.name}`}
+                    aria-current={isSelected ? "page" : undefined}
                     className={cn(
-                      "w-8 h-8 rounded-full border-2 transition-all",
-                      isSoldOut
-                        ? "opacity-40 cursor-not-allowed"
-                        : "cursor-pointer",
+                      "relative size-8 rounded-full border transition-all overflow-hidden",
                       isSelected
                         ? "border-forest ring-2 ring-forest ring-offset-2 ring-offset-cornsilk"
-                        : "border-transparent hover:border-olive/50",
+                        : "border-olive/30 hover:border-forest",
+                      variant.soldOut && "opacity-50",
                     )}
-                    style={{ backgroundColor: color.hex }}
-                    aria-label={`Select color ${color.name}`}
-                  />
+                    style={{ backgroundColor: variant.hex }}
+                  >
+                    {variant.soldOut && (
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <span className="block h-px w-full rotate-45 bg-forest/70" />
+                      </span>
+                    )}
+                  </Link>
                 );
               })}
             </div>
@@ -250,12 +262,15 @@ export function ProductInfo({ product }: { product: Product }) {
             <button
               type="button"
               onClick={handleIncrement}
-              disabled={isSoldOut}
+              disabled={isSoldOut || (maxQty !== undefined && quantity >= maxQty)}
               className="w-10 h-full flex items-center justify-center hover:bg-warm transition-colors text-forest disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Plus className="size-3.5" />
             </button>
           </div>
+          {maxQty !== undefined && maxQty > 0 && maxQty <= 5 && (
+            <p className="mt-2 font-montserrat text-xs text-copper">Only {maxQty} left</p>
+          )}
         </div>
       </div>
 

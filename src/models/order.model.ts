@@ -8,6 +8,7 @@ export interface IOrderItem {
   image?: string;
   selectedSize?: string;
   selectedColor?: string;
+  selectedColorHex?: string;
 }
 
 export interface IOrder extends Document {
@@ -48,6 +49,7 @@ const OrderItemSchema: Schema = new Schema({
   image: { type: String },
   selectedSize: { type: String },
   selectedColor: { type: String },
+  selectedColorHex: { type: String },
 });
 
 const OrderSchema: Schema = new Schema(
