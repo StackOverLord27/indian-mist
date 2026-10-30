@@ -24,6 +24,7 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   experimental: {
     proxyClientMaxBodySize: 52428800, // 50MB in bytes
+    agentUpgrade: "security",
   },
   turbopack: {
     root: process.cwd(),

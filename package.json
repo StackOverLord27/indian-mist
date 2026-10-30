@@ -39,7 +39,7 @@
     "jwt-decode": "^4.0.0",
     "lucide-react": "^1.23.0",
     "mongoose": "^9.8.0",
-    "next": "16.4.0",
+    "next": "16.4.3",
     "nodemailer": "^9.0.3",
     "razorpay": "^2.9.8",
     "react": "19.2.7",
@@ -67,7 +67,7 @@
     "@types/streamifier": "^0.1.2",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9.10.0",
-    "eslint-config-next": "16.4.0",
+    "eslint-config-next": "16.4.3",
     "tailwindcss": "^4.3.2",
     "typescript": "^6.0.3"
   }
