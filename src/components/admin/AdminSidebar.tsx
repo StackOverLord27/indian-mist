@@ -79,6 +79,8 @@ export default function AdminSidebar() {
         { label: 'Site Settings', href: '/admin/settings', icon: Settings, exact: true },
         { label: 'Collections', href: '/admin/collections', icon: Library, exact: false },
         { label: 'Contact Page', href: '/admin/contact', icon: Mail, exact: true },
+        { label: 'Privacy Policy', href: '/admin/legal/privacy-policy', icon: FileText, exact: true },
+        { label: 'Terms & Conditions', href: '/admin/legal/terms-and-conditions', icon: FileText, exact: true },
       ]
     }
   ];
