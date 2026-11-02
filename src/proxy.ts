@@ -29,7 +29,6 @@ const PUBLIC_API_PREFIXES = [
   "/api/auth/signout",
   "/api/auth/forgot-password",
   "/api/products",
-  "/api/blogs",
   "/api/settings",
   "/api/contact",
   "/api/subscribe",

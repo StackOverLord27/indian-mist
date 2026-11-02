@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 import { withAdmin, errorResponse, successResponse } from '@/lib/api-helpers';
 import { Collection } from '@/models/collection.model';
 import { CollectionSchema } from '@/schemas/admin';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 
 export const GET = withAdmin(async (req) => {
   const { searchParams } = new URL(req.url);
@@ -57,5 +58,6 @@ export const POST = withAdmin(async (req) => {
     slug,
   });
 
+  revalidateStorefront();
   return successResponse({ collection }, 201);
 });

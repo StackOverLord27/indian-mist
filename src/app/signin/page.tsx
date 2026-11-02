@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Leaf, LogIn, AlertCircle, CheckCircle2 } from "lucide-react";
 
-export default function SignInPage() {
+function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedUrl = searchParams.get("callbackUrl") || "/";
@@ -212,5 +212,14 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// useSearchParams needs its own Suspense boundary (same pattern as /admin/products/new)
+export default function SignInPage() {
+  return (
+    <Suspense>
+      <SignInContent />
+    </Suspense>
   );
 }

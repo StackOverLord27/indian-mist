@@ -4,7 +4,8 @@ import { Product } from "@/models/product.model";
 import ProductsClient from "@/components/products/ProductsClient";
 import { PageEnter } from "@/components/ui/PageEnter";
 
-export const revalidate = 60;
+// This page reads searchParams (?category=, ?sort=), so it is rendered on every request. A
+// `revalidate` export has no effect here and was removed so it does not suggest otherwise.
 
 const formatPrice = (price: number) => `₹${price.toLocaleString("en-IN")}`;
 

@@ -1,4 +1,4 @@
-import { revalidatePath } from 'next/cache';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 import { NextRequest } from 'next/server';
 import { withAdmin, successResponse, errorResponse } from '@/lib/api-helpers';
 import Announcement from '@/models/announcement.model';
@@ -24,7 +24,7 @@ export const PUT = withAdmin(async (req: NextRequest, context) => {
   );
   if (!item) return errorResponse('Not found', 404);
   
-  revalidatePath('/');
+  revalidateStorefront();
   return successResponse({ announcement: item });
 });
 
@@ -35,6 +35,6 @@ export const DELETE = withAdmin(async (req: NextRequest, context) => {
   const item = await Announcement.findByIdAndDelete(id);
   if (!item) return errorResponse('Not found', 404);
   
-  revalidatePath('/');
+  revalidateStorefront();
   return successResponse({ message: 'Deleted' });
 });

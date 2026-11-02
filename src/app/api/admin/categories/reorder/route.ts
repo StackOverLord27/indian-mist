@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { withAdmin, successResponse } from '@/lib/api-helpers';
 import { Category } from '@/models/category.model';
-import { revalidatePath } from 'next/cache';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 
 export const PUT = withAdmin(async (req: NextRequest) => {
   const { orderedIds } = await req.json();
@@ -16,7 +16,6 @@ export const PUT = withAdmin(async (req: NextRequest) => {
     )
   );
 
-  revalidatePath('/products');
-  revalidatePath('/');
+  revalidateStorefront();
   return successResponse({ message: 'Reordered successfully' });
 });

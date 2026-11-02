@@ -1,12 +1,13 @@
-import dbConnect from "@/lib/db";
 import type { ContactPageSettings, SiteSettings } from "@/types/admin";
-import SiteSettingsModel from "@/models/settings.model";
+import { getSiteSettings } from "@/lib/storefront-data";
 import { ContactForm } from "@/components/contact/ContactForm";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Mail, MapPin, Phone, Clock, Plus, ChevronRight } from "lucide-react";
 import { FaInstagram, FaFacebook, FaXTwitter, FaYoutube, FaWhatsapp } from "react-icons/fa6";
 
-export const revalidate = 60;
+// Longer than the home page: contact details rarely change, and saving them in the admin
+// refreshes this page straight away (revalidateStorefront).
+export const revalidate = 600;
 
 const DEFAULT_CONTACT: Required<ContactPageSettings> = {
   title: "Contact Us",
@@ -21,8 +22,7 @@ const DEFAULT_CONTACT: Required<ContactPageSettings> = {
 };
 
 export default async function ContactPage() {
-  await dbConnect();
-  const settings = await SiteSettingsModel.findOne().lean<SiteSettings>();
+  const settings = await getSiteSettings();
 
   const c: Required<ContactPageSettings> = { ...DEFAULT_CONTACT, ...settings?.contactPageSettings };
 

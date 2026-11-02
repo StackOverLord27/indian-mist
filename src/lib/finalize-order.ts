@@ -3,6 +3,7 @@ import { Order, type IOrder } from "@/models/order.model";
 import { settleStockForPaidOrder } from "@/lib/stock-reservation";
 import Settings from "@/models/settings.model";
 import type { SiteSettings } from "@/types/admin";
+import { revalidateCatalog } from "@/lib/revalidate-storefront";
 
 type PendingOrder = Record<string, unknown> & {
   userId: string;
@@ -140,6 +141,13 @@ export async function finalizeOrder(opts: {
   } catch (error) {
     // The customer has already paid, so never fail the order over a stock update
     console.error("[finalizeOrder] stock settle failed:", error);
+  }
+  // Stock and "Sold Out" badges changed: refresh the product pages. The customer has paid, so a
+  // problem here must never fail the order.
+  try {
+    revalidateCatalog();
+  } catch (error) {
+    console.error("[finalizeOrder] revalidation failed:", error);
   }
   await recordReviewNotes(order, stockNote);
 

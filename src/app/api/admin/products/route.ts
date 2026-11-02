@@ -8,6 +8,7 @@ import { uploadImage } from '@/lib/cloudinary';
 import { ProductSchema } from '@/schemas/admin';
 import { slugify, uniqueProductSlug } from '@/lib/slugify';
 import { buildSizeStock } from '@/lib/size-stock';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 
 export const GET = withAdmin(async (req) => {
   const { searchParams } = new URL(req.url);
@@ -111,5 +112,6 @@ export const POST = withAdmin(async (req) => {
     categoryCoverImage,
   });
 
+  revalidateStorefront();
   return successResponse({ product }, 201);
 });

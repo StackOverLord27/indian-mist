@@ -1,5 +1,6 @@
  
 // Old mock products and types removed
+import { cache } from "react";
 import dbConnect from "@/lib/db";
 import { Product as ProductModel } from "@/models/product.model";
 
@@ -32,7 +33,8 @@ export type Product = {
   }
 }
 
-export async function getProductBySlug(slug: string): Promise<Product | null> {
+// Cached per render: generateMetadata and the page both ask for the same product
+export const getProductBySlug = cache(async (slug: string): Promise<Product | null> => {
   await dbConnect();
   
   const p = await ProductModel.findOne({ slug })
@@ -85,4 +87,4 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
       express: p.shippingInfo?.express || "1-2 business days",
     }
   };
-}
+});

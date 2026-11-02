@@ -1,11 +1,11 @@
 export const runtime = 'nodejs';
 
-import { revalidatePath } from 'next/cache';
 import { NextRequest } from 'next/server';
 import { withAdmin, parseFormData, validateImageFile, successResponse, errorResponse } from '@/lib/api-helpers';
 import About from '@/models/about.model';
 import { uploadImage, deleteImage, deleteManyImages } from '@/lib/cloudinary';
 import { AboutSchema } from '@/schemas/admin';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 
 type AboutImages = {
   story?: { image?: { publicId?: string } };
@@ -91,6 +91,6 @@ export const PUT = withAdmin(async (req: NextRequest) => {
     console.error('About image cleanup failed:', error);
   }
 
-  revalidatePath('/about');
+  revalidateStorefront();
   return successResponse({ about });
 });

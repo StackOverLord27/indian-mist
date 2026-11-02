@@ -6,8 +6,24 @@ import { Product as ProductModel } from "@/models/product.model";
 import { ProductCard } from "@/components/home/ProductCard";
 import { toCardProduct, type PopulatedCollection, type PopulatedProduct } from "@/lib/collection-products";
 import type { Metadata } from "next";
+import { cache } from "react";
 
-export const revalidate = 0;
+// Built on the first visit, then cached (ISR). Saving a collection or product in the admin
+// refreshes it straight away (revalidateStorefront).
+export const revalidate = 300;
+
+export function generateStaticParams() {
+  return [];
+}
+
+// Cached per render: generateMetadata and the page both need the collection
+const getCollection = cache(async (slug: string) => {
+  await dbConnect();
+  ProductModel.init();
+  return Collection.findOne({ slug, isActive: true })
+    .populate("products")
+    .lean<PopulatedCollection>();
+});
 
 export async function generateMetadata({
   params,
@@ -15,10 +31,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  await dbConnect();
-  const collection = await Collection.findOne({ slug, isActive: true })
-    .select("name description")
-    .lean<Pick<PopulatedCollection, "name" | "description">>();
+  const collection = await getCollection(slug);
 
   if (!collection) return { title: "Collection Not Found" };
 
@@ -34,12 +47,7 @@ export default async function CollectionPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  await dbConnect();
-  ProductModel.init();
-
-  const collection = await Collection.findOne({ slug, isActive: true })
-    .populate("products")
-    .lean<PopulatedCollection>();
+  const collection = await getCollection(slug);
 
   if (!collection) notFound();
 

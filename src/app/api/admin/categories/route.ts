@@ -6,6 +6,7 @@ import { withAdmin, parseFormData, validateImageFile, errorResponse, successResp
 import { Category } from '@/models/category.model';
 import { uploadImage } from '@/lib/cloudinary';
 import { CategorySchema } from '@/schemas/admin';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 
 export const GET = withAdmin(async (req) => {
   const { searchParams } = new URL(req.url);
@@ -79,5 +80,6 @@ export const POST = withAdmin(async (req) => {
     image,
   });
 
+  revalidateStorefront();
   return successResponse({ category }, 201);
 });

@@ -1,10 +1,10 @@
 export const runtime = 'nodejs';
 
-import { revalidatePath } from 'next/cache';
 import { NextRequest } from 'next/server';
 import { withAdmin, parseFormData, validateImageFile, successResponse, errorResponse } from '@/lib/api-helpers';
 import Settings from '@/models/settings.model';
 import { uploadImage, deleteImage } from '@/lib/cloudinary';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 
 type StoredChart = { sizeChart?: { url?: string; publicId?: string } } | null;
 
@@ -35,7 +35,7 @@ export const PUT = withAdmin(async (req: NextRequest) => {
     await deleteImage(existing.sizeChart.publicId);
   }
 
-  revalidatePath('/products/[slug]', 'page');
+  revalidateStorefront();
   return successResponse({ sizeChart: { url: result.url, publicId: result.publicId } });
 });
 
@@ -45,6 +45,6 @@ export const DELETE = withAdmin(async () => {
   if (existing?.sizeChart?.publicId) {
     await deleteImage(existing.sizeChart.publicId);
   }
-  revalidatePath('/products/[slug]', 'page');
+  revalidateStorefront();
   return successResponse({ sizeChart: {} });
 });

@@ -1,4 +1,4 @@
-import { revalidatePath } from 'next/cache';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 import { NextRequest } from 'next/server';
 import { withAdmin, successResponse, errorResponse } from '@/lib/api-helpers';
 import Announcement from '@/models/announcement.model';
@@ -32,6 +32,6 @@ export const POST = withAdmin(async (req: NextRequest) => {
     order: (last?.order ?? -1) + 1,
   });
   
-  revalidatePath('/');
+  revalidateStorefront();
   return successResponse({ announcement: item }, 201);
 });

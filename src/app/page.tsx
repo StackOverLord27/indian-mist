@@ -18,7 +18,7 @@ import {
 import dbConnect from "@/lib/db";
 import { Product } from "@/models/product.model";
 import { Category as CategoryModel } from "@/models/category.model";
-import SiteSettingsModel from "@/models/settings.model";
+import { getSiteSettings } from "@/lib/storefront-data";
 import CarouselModel from "@/models/carousel.model";
 import { CarouselImage, SiteSettings } from "@/types/admin";
 
@@ -100,7 +100,7 @@ export default async function Home() {
     ]),
 
     // 4. Site settings for hero and branding
-    SiteSettingsModel.findOne().lean(),
+    getSiteSettings(),
 
     // 5. Active carousel images
     CarouselModel.find({ isActive: true })

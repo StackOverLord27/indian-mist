@@ -11,6 +11,7 @@ import {
 import { Blog } from "@/models/blog.model";
 import { uploadImage, deleteImage } from "@/lib/cloudinary";
 import { BlogSchema } from "@/schemas/blog";
+import { revalidateStorefront } from "@/lib/revalidate-storefront";
 
 export const GET = withAdmin(async (req, context) => {
   const params = await context.params;
@@ -92,6 +93,7 @@ export const PUT = withAdmin(async (req, context) => {
 
   Object.assign(blog, parsedFields);
   await blog.save();
+  revalidateStorefront();
 
   return successResponse({ blog });
 });
@@ -107,5 +109,6 @@ export const DELETE = withAdmin(async (req, context) => {
   }
 
   await blog.deleteOne();
+  revalidateStorefront();
   return successResponse({ message: "Blog deleted successfully" });
 });

@@ -6,8 +6,17 @@ import { ProductTabs } from "@/components/product/ProductTabs";
 import { RelatedProducts } from "@/components/product/RelatedProducts";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Metadata } from "next";
-import dbConnect from "@/lib/db";
-import Settings from "@/models/settings.model";
+import { getSiteSettings } from "@/lib/storefront-data";
+
+// Product pages are built on the first visit and then kept as ISR pages (nothing is prebuilt, so
+// the build does not read the database for them). Stock shown here is at most a minute old; the
+// cart and checkout always re-check stock on the server. Admin product edits and sales refresh
+// these pages straight away (revalidateStorefront / revalidateCatalog).
+export const revalidate = 60;
+
+export function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -35,8 +44,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   let sizeChartUrl: string | undefined;
   if (product.sizes?.length) {
-    await dbConnect();
-    const settings = await Settings.findOne().select("sizeChart").lean<{ sizeChart?: { url?: string } } | null>();
+    const settings = await getSiteSettings();
     sizeChartUrl = settings?.sizeChart?.url || undefined;
   }
 

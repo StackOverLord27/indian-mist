@@ -7,6 +7,7 @@ import { uploadImage, deleteManyImages } from '@/lib/cloudinary';
 import { ProductSchema } from '@/schemas/admin';
 import { slugify } from '@/lib/slugify';
 import { buildSizeStock } from '@/lib/size-stock';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 
 export const GET = withAdmin(async (req, context) => {
   const params = await context.params;
@@ -141,6 +142,7 @@ export const PUT = withAdmin(async (req, context) => {
   Object.assign(product, parsedFields, { sizeStock });
 
   await product.save();
+  revalidateStorefront();
   return successResponse({ product });
 });
 
@@ -155,5 +157,6 @@ export const DELETE = withAdmin(async (req, context) => {
   await deleteManyImages(publicIds);
 
   await product.deleteOne();
+  revalidateStorefront();
   return successResponse({ message: 'Product deleted successfully' });
 });

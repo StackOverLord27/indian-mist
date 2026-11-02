@@ -8,10 +8,18 @@ import dbConnect from "@/lib/db";
 import { Blog } from "@/models/blog.model";
 import { Calendar, Clock, ArrowLeft, ArrowRight, User } from "lucide-react";
 import type { Metadata } from "next";
+import { cache } from "react";
 
-export const revalidate = 0;
+// Built on the first visit, then cached (ISR). Saving a post in the admin refreshes it straight
+// away (revalidateStorefront). Nothing is prebuilt, so the build does not read the posts.
+export const revalidate = 300;
 
-async function getBlogBySlug(slug: string) {
+export function generateStaticParams() {
+  return [];
+}
+
+// Cached per render: generateMetadata and the page both need the post
+const getBlogBySlug = cache(async (slug: string) => {
   await dbConnect();
   const blog = await Blog.findOne({ slug, isPublished: true }).lean();
   if (!blog) return null;
@@ -30,7 +38,7 @@ async function getBlogBySlug(slug: string) {
     blog: JSON.parse(JSON.stringify(blog)) as BlogPostData,
     related: JSON.parse(JSON.stringify(related)) as BlogPostData[],
   };
-}
+});
 
 export async function generateMetadata({
   params,
@@ -38,16 +46,13 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  await dbConnect();
-  const blog = await Blog.findOne({ slug, isPublished: true })
-    .select("title excerpt")
-    .lean<{ title: string; excerpt: string }>();
+  const data = await getBlogBySlug(slug);
 
-  if (!blog) return { title: "Blog Post Not Found | Indian Mist" };
+  if (!data) return { title: "Blog Post Not Found | Indian Mist" };
 
   return {
-    title: `${blog.title} | Indian Mist Blog`,
-    description: blog.excerpt,
+    title: `${data.blog.title} | Indian Mist Blog`,
+    description: data.blog.excerpt,
   };
 }
 

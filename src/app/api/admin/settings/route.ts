@@ -1,8 +1,8 @@
-import { revalidatePath } from 'next/cache';
 import { NextRequest } from 'next/server';
 import { withAdmin, successResponse, errorResponse } from '@/lib/api-helpers';
 import Settings from '@/models/settings.model';
 import { SettingsSchema } from '@/schemas/admin';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 
 export const GET = withAdmin(async () => {
   const settings = await Settings.findOne().lean();
@@ -29,9 +29,6 @@ export const PUT = withAdmin(async (req: NextRequest) => {
     { upsert: true, new: true, runValidators: true }
   );
   
-  revalidatePath('/');
-  revalidatePath('/about');
-  revalidatePath('/contact');
-  revalidatePath('/checkout');
+  revalidateStorefront();
   return successResponse({ settings });
 });

@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { revalidatePath } from 'next/cache';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 import { NextRequest } from 'next/server';
 import { withAdmin, parseFormData, validateImageFile, successResponse, errorResponse } from '@/lib/api-helpers';
 import Carousel from '@/models/carousel.model';
@@ -48,6 +48,6 @@ export const POST = withAdmin(async (req: NextRequest) => {
     isActive: validationResult.data.isActive,
   });
   
-  revalidatePath('/');
+  revalidateStorefront();
   return successResponse({ image: item }, 201);
 });

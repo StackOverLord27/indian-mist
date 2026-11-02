@@ -1,23 +1,22 @@
+import { cache } from "react";
 import dbConnect from "@/lib/db";
 import LegalPage from "@/models/legal-page.model";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { sanitizeRichText } from "@/lib/sanitize";
 import { LEGAL_DEFAULTS, type LegalSlug } from "@/lib/legal-pages";
 
-export async function getLegalPage(slug: LegalSlug) {
+// Cached per render (the page title and the page body both ask for it). A database failure
+// throws on purpose, so a failed regeneration keeps the last good policy text instead of
+// caching the generic default (see src/lib/storefront-data.ts). A missing document is fine.
+export const getLegalPage = cache(async (slug: LegalSlug) => {
   const fallback = LEGAL_DEFAULTS[slug];
-  try {
-    await dbConnect();
-    const doc = await LegalPage.findOne({ slug }).lean<{ title?: string; content?: string }>();
-    return {
-      title: doc?.title?.trim() || fallback.title,
-      content: doc?.content?.trim() ? doc.content : fallback.content,
-    };
-  } catch (error) {
-    console.error(`Failed to load ${slug}:`, error);
-    return fallback;
-  }
-}
+  await dbConnect();
+  const doc = await LegalPage.findOne({ slug }).lean<{ title?: string; content?: string }>();
+  return {
+    title: doc?.title?.trim() || fallback.title,
+    content: doc?.content?.trim() ? doc.content : fallback.content,
+  };
+});
 
 export async function LegalPageView({ slug }: { slug: LegalSlug }) {
   const { title, content } = await getLegalPage(slug);

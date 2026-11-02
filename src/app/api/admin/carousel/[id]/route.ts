@@ -1,6 +1,6 @@
 export const runtime = 'nodejs';
 
-import { revalidatePath } from 'next/cache';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 import { NextRequest } from 'next/server';
 import { withAdmin, parseFormData, validateImageFile, successResponse, errorResponse } from '@/lib/api-helpers';
 import Carousel from '@/models/carousel.model';
@@ -46,7 +46,7 @@ export const PUT = withAdmin(async (req: NextRequest, context) => {
   }
 
   await item.save();
-  revalidatePath('/');
+  revalidateStorefront();
   return successResponse({ item });
 });
 
@@ -58,6 +58,6 @@ export const DELETE = withAdmin(async (req: NextRequest, context) => {
   await deleteImage(item.publicId);
   await item.deleteOne();
   
-  revalidatePath('/');
+  revalidateStorefront();
   return successResponse({ message: 'Deleted' });
 });

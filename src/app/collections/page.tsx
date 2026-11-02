@@ -4,7 +4,9 @@ import { ProductCard } from "@/components/home/ProductCard";
 import { toCardProduct, type PopulatedCollection } from "@/lib/collection-products";
 import { Product as ProductModel } from "@/models/product.model";
 
-export const revalidate = 0; // Prevent caching for now if we want fresh data
+// Cached page. Saving a collection or product in the admin refreshes it straight away
+// (revalidateStorefront). No pagination yet: later prompt.
+export const revalidate = 300;
 
 export default async function CollectionsPage() {
   await dbConnect();

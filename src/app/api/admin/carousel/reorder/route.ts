@@ -1,4 +1,4 @@
-import { revalidatePath } from 'next/cache';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 import { NextRequest } from 'next/server';
 import { withAdmin, successResponse } from '@/lib/api-helpers';
 import Carousel from '@/models/carousel.model';
@@ -19,6 +19,6 @@ export const PUT = withAdmin(async (req: NextRequest) => {
     );
   }
   
-  revalidatePath('/');
+  revalidateStorefront();
   return successResponse({ message: 'Reordered' });
 });

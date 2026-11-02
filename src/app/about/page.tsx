@@ -11,33 +11,32 @@ import CarouselModel from "@/models/carousel.model";
 import { Category as CategoryModel } from "@/models/category.model";
 import { resolveAbout } from "@/lib/about-content";
 
-export const revalidate = 60;
+// Content rarely changes, and saving it in the admin refreshes this page straight away.
+export const revalidate = 600;
 
 export default async function AboutPage() {
   let saved: Partial<AboutContent> | null = null;
   let fallbackPhotos: AboutImage[] = [];
 
-  try {
-    await dbConnect();
-    const [doc, imgs, cats] = await Promise.all([
-      About.findOne().lean(),
-      CarouselModel.find({ isActive: true }).sort({ order: 1 }).limit(5).lean(),
-      CategoryModel.find({ "image.url": { $exists: true, $ne: "" } }).limit(5).lean(),
-    ]);
-    saved = doc ? JSON.parse(JSON.stringify(doc)) : null;
+  // Errors are deliberately not caught: a failed regeneration must keep the last good page
+  // instead of caching the default text (see src/lib/storefront-data.ts).
+  await dbConnect();
+  const [doc, imgs, cats] = await Promise.all([
+    About.findOne().lean(),
+    CarouselModel.find({ isActive: true }).sort({ order: 1 }).limit(5).lean(),
+    CategoryModel.find({ "image.url": { $exists: true, $ne: "" } }).limit(5).lean(),
+  ]);
+  saved = doc ? JSON.parse(JSON.stringify(doc)) : null;
 
-    // Used only until photos are added in the admin gallery
-    const carousel = JSON.parse(JSON.stringify(imgs)) as { url: string; publicId?: string; alt?: string; altText?: string }[];
-    fallbackPhotos = carousel.map((c) => ({ url: c.url, publicId: c.publicId ?? "", alt: c.alt || c.altText || "" }));
-    const seen = new Set(fallbackPhotos.map((p) => p.url));
-    for (const c of JSON.parse(JSON.stringify(cats)) as { name: string; image?: { url?: string; alt?: string } }[]) {
-      if (fallbackPhotos.length >= 5) break;
-      if (!c.image?.url || seen.has(c.image.url)) continue;
-      seen.add(c.image.url);
-      fallbackPhotos.push({ url: c.image.url, publicId: "", alt: c.image.alt || c.name });
-    }
-  } catch (error) {
-    console.error("Failed to load about content:", error);
+  // Used only until photos are added in the admin gallery
+  const carousel = JSON.parse(JSON.stringify(imgs)) as { url: string; publicId?: string; alt?: string; altText?: string }[];
+  fallbackPhotos = carousel.map((c) => ({ url: c.url, publicId: c.publicId ?? "", alt: c.alt || c.altText || "" }));
+  const seen = new Set(fallbackPhotos.map((p) => p.url));
+  for (const c of JSON.parse(JSON.stringify(cats)) as { name: string; image?: { url?: string; alt?: string } }[]) {
+    if (fallbackPhotos.length >= 5) break;
+    if (!c.image?.url || seen.has(c.image.url)) continue;
+    seen.add(c.image.url);
+    fallbackPhotos.push({ url: c.image.url, publicId: "", alt: c.image.alt || c.name });
   }
 
   const about = resolveAbout(saved);

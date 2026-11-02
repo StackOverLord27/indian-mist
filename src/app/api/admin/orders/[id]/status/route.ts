@@ -4,6 +4,7 @@ import { withAdmin, errorResponse, successResponse } from '@/lib/api-helpers';
 import { Order } from '@/models/order.model';
 import { Product } from '@/models/product.model';
 import { restoreStock } from '@/lib/stock-reservation';
+import { revalidateCatalog } from '@/lib/revalidate-storefront';
 
 const VALID_STATUSES = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 
@@ -47,6 +48,7 @@ export const PATCH = withAdmin(async (req: NextRequest, context) => {
       { _id: { $in: previous.items.map((i) => i.productId) }, trackInventory: true, badge: 'Sold Out', stockQuantity: { $gt: 0 } },
       { $set: { badge: '' } },
     );
+    revalidateCatalog();
   }
 
   const order = await Order.findById(id);

@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server';
 import { withAdmin, errorResponse, successResponse } from '@/lib/api-helpers';
 import { Collection } from '@/models/collection.model';
 import { CollectionSchema } from '@/schemas/admin';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 
 export const GET = withAdmin(async (req, { params }) => {
   const { id } = await params;
@@ -42,6 +43,7 @@ export const PUT = withAdmin(async (req, { params }) => {
     return errorResponse('Collection not found', 404);
   }
 
+  revalidateStorefront();
   return successResponse({ collection });
 });
 
@@ -51,5 +53,6 @@ export const DELETE = withAdmin(async (req, { params }) => {
   if (!collection) {
     return errorResponse('Collection not found', 404);
   }
+  revalidateStorefront();
   return successResponse({ message: 'Collection deleted successfully' });
 });

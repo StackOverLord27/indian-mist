@@ -5,6 +5,7 @@ import { withAdmin, parseFormData, validateImageFile, errorResponse, successResp
 import { Category } from '@/models/category.model';
 import { uploadImage, deleteImage } from '@/lib/cloudinary';
 import { CategorySchema } from '@/schemas/admin';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 
 export const GET = withAdmin(async (req, context) => {
   const params = await context.params;
@@ -79,6 +80,7 @@ export const PUT = withAdmin(async (req, context) => {
   category.isHidden = parsedFields.isHidden;
 
   await category.save();
+  revalidateStorefront();
 
   return successResponse({ category });
 });
@@ -93,6 +95,7 @@ export const DELETE = withAdmin(async (req, context) => {
   }
 
   await category.deleteOne();
+  revalidateStorefront();
 
   return successResponse({ message: 'Category deleted' });
 });
