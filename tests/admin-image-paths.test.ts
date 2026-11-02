@@ -21,6 +21,9 @@ import * as carouselById from "@/app/api/admin/carousel/[id]/route";
 import * as about from "@/app/api/admin/about/route";
 import * as sizeChart from "@/app/api/admin/size-chart/route";
 import * as upload from "@/app/api/admin/upload/route";
+import * as ordersList from "@/app/api/admin/orders/route";
+import { Order } from "@/models/order.model";
+import { Product } from "@/models/product.model";
 import { buildBlogFormData } from "@/lib/admin-api/blog-form-data";
 
 setupTestDb();
@@ -373,5 +376,28 @@ describe("a reference check protects images used by documents", () => {
     await Settings.updateOne({}, { $set: { "sizeChart.publicId": "x/chart" } });
     await About.create({ customSections: [{ imagePublicId: "x/section" }], teamPhoto: { publicId: "x/team" } });
     for (const id of ["x/brand", "x/chart", "x/section", "x/team"]) expect(await isAssetReferenced(id), id).toBe(true);
+  });
+});
+
+describe("old orders", () => {
+  it("each order line also carries the product's current photo, for when the photo it was placed with is gone", async () => {
+    const product = await Product.create({
+      name: "Tee", slug: "tee", description: "d", category: "tees", price: 100,
+      images: [{ url: url("p/current"), publicId: "p/current", isPrimary: true }], colorName: "Olive", colorHex: "#556b2f",
+    });
+    await Order.create({
+      userId: new mongoose.Types.ObjectId(), status: "PROCESSING", paymentStatus: "PAID", totalAmount: 100,
+      items: [
+        { productId: product._id, name: "Tee", quantity: 1, priceAtPurchase: 100, image: url("p/deleted-long-ago") },
+        { productId: new mongoose.Types.ObjectId(), name: "Gone product", quantity: 1, priceAtPurchase: 5, image: url("p/also-gone") },
+      ],
+      customerName: "A", email: "a@b.c", phone: "9999999999",
+      shippingAddress: { street: "s", city: "c", state: "st", zipCode: "123456", country: "India" },
+    });
+    const res = await adminCall(ordersList.GET, { method: "GET" });
+    expect(res.status).toBe(200);
+    const [order] = (await res.json()).orders;
+    expect(order.items[0]).toMatchObject({ image: url("p/deleted-long-ago"), currentImage: url("p/current"), selectedColor: "Olive" });
+    expect(order.items[1].currentImage).toBeUndefined(); // product deleted: the page falls back to the placeholder
   });
 });

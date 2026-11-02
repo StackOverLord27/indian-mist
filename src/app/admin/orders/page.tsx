@@ -181,7 +181,7 @@ function OrderRow({
                   {order.items.map((item, idx) => (
                     <div key={idx} className="flex gap-3 bg-white p-2 border border-olive/10 rounded-sm">
                       <div className="relative w-12 h-16 bg-warm/50 shrink-0 overflow-hidden">
-                        <SafeImage src={item.image} alt={item.name} className="object-cover" sizes="48px" />
+                        <SafeImage src={item.image} fallbackSrc={item.currentImage} alt={item.name} className="object-cover" sizes="48px" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-merriweather text-xs font-semibold text-forest truncate">{item.name}</p>

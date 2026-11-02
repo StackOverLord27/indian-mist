@@ -23,7 +23,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "test:live": "vitest run --config vitest.live.config.ts",
-    "test:live:cold": "vitest run --config vitest.live-cold.config.ts tests/live-cold/1-upload.step.ts && vitest run --config vitest.live-cold.config.ts tests/live-cold/2-delete.step.ts; vitest run --config vitest.live-cold.config.ts tests/live-cold/3-cleanup.step.ts"
+    "test:live:cold": "vitest run --config vitest.live-cold.config.ts tests/live-cold/1-upload.step.ts && vitest run --config vitest.live-cold.config.ts tests/live-cold/2-delete.step.ts; vitest run --config vitest.live-cold.config.ts tests/live-cold/3-cleanup.step.ts",
+    "reconcile:cloudinary": "node scripts/reconcile-cloudinary.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

@@ -52,8 +52,8 @@ function getStatusDetails(status: string): StatusConfig {
   );
 }
 
-function getItemImage(item: OrderItemData): string {
-  if (item.image) return item.image;
+/** The product's current photo (the order is populated with it), tried when the order's own photo is gone */
+function getCurrentProductImage(item: OrderItemData): string {
   if (item.productId && typeof item.productId === "object") {
     if (Array.isArray(item.productId.images) && item.productId.images[0]?.url) {
       return item.productId.images[0].url;
@@ -210,7 +210,7 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
 
                       <div className="space-y-3">
                         {order.items?.map((item, idx) => {
-                          const itemImg = getItemImage(item);
+                          const currentImg = getCurrentProductImage(item);
                           const itemName = getItemName(item);
 
                           return (
@@ -221,7 +221,8 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                               <div className="flex items-center gap-3 min-w-0">
                                 <div className="relative size-14 shrink-0 rounded-sm overflow-hidden bg-cornsilk border border-olive-leaf/20 flex items-center justify-center">
                                   <SafeImage
-                                    src={itemImg}
+                                    src={item.image || currentImg}
+                                    fallbackSrc={currentImg}
                                     alt={itemName}
                                     className="object-cover"
                                     sizes="56px"

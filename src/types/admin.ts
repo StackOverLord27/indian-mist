@@ -273,6 +273,8 @@ export interface AdminOrderItem {
   quantity: number;
   priceAtPurchase: number;
   image?: string;
+  /** The product's current photo, used when `image` no longer exists */
+  currentImage?: string;
   selectedSize?: string;
   selectedColor?: string;
   selectedColorHex?: string;

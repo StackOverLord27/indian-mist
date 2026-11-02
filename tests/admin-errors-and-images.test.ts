@@ -38,6 +38,12 @@ describe("SafeImage", () => {
     expect(html).toContain("<img");
   });
 
+  it("with no address of its own, shows the product's current photo", () => {
+    const html = renderToStaticMarkup(createElement(SafeImage, { src: "", fallbackSrc: "https://res.cloudinary.com/x/current.jpg", alt: "Olive Tee" }));
+    expect(html).toContain("<img");
+    expect(html).toContain("current.jpg");
+  });
+
   it("uses a custom fallback when given", () => {
     const html = renderToStaticMarkup(createElement(SafeImage, { src: null, alt: "x", fallback: createElement("span", null, "no photo") }));
     expect(html).toContain("no photo");

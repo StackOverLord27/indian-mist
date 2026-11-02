@@ -109,6 +109,12 @@ Before this prompt `/products/[slug]`, `/blogs*`, `/collections*` were all `ƒ` 
 - **Tests added** (162 total): Cloudinary module, products (24), every other image path (28), settings (23), error messages and `SafeImage`. Mutation-checked: making the product route trust browser ids, or delete before save, fails the tests. Also run over real HTTP (production build, local Mongo): settings/category/blog/product/carousel/upload requests behaved as above. Live suite still passes, now including the atomic `MULTI INCR + EXPIRE NX` against real Upstash.
 - **Gates:** typecheck pass, lint 0 errors / same 5 warnings, tests 162 pass, build pass.
 
+### Prompt 5 follow-ups (owner answered yes to all three questions)
+- **Product images:** requiring at least one image on create stays.
+- **Reconciliation script** `npm run reconcile:cloudinary` (`scripts/reconcile-cloudinary.mjs`): lists Cloudinary files under `indian-mist/` that no document references (finds `*publicId` fields anywhere and any Cloudinary URL, so URL-only documents protect their files). Dry run by default and read-only. It never reports files younger than 24 h (`--min-age-hours`), anything outside `indian-mist/`, and warns about documents whose image is missing from Cloudinary. Deleting needs `--delete --confirm=<cloud>/<database>` typed exactly, and is refused when the database references no images (wrong-database guard); the refusal rules are unit tested (`deleteRefusal`). **First dry run against production (read-only): 21 unused files, about 51 MB, nothing missing, nothing deleted.** They are mostly old category/carousel/brand-story/product images from before the clean-up existed. Delete them only when the owner says so.
+- **Old orders:** instead of storing a Cloudinary id on each order line (that would change the checkout code, prompt 7), an order line whose own photo is gone now shows the product's CURRENT photo (admin orders API adds `currentImage`; profile order history already had the populated product), then the placeholder if the product itself was deleted. `SafeImage` takes `fallbackSrc`.
+- Tests: 170 total (reconciliation helpers, `currentImage`, `SafeImage` fallback).
+
 ## Found, not fixed
 - Lint warnings (5): `src/components/admin/ui/ImageUploadZone.tsx:125` unused eslint-disable directive, `:127` `<img>` instead of `next/image`; `src/lib/admin-axios.ts:38,62,72` `window.location.href` for internal navigation.
 - `npm install` reports known vulnerabilities in the dependency tree (not triaged; `npm audit` output to be reviewed in a later prompt).
@@ -126,11 +132,11 @@ Before this prompt `/products/[slug]`, `/blogs*`, `/collections*` were all `ƒ` 
 - (Prompt 4) `finalize-order.ts` still deletes the now-unused `promo_lock_*` key, and `verify-payment`/`release` parse the body without zod. Payment code, left for prompt 7.
 - (Prompt 4) Env values are now trimmed; a secret that intentionally had leading/trailing spaces would change (unlikely).
 - (Prompt 4) The signed-out browser can still load the `/admin` page shell if a stale refresh cookie exists (see sign-out limits above).
-- (Prompt 5) A file uploaded when picked (About page, homepage brand story) and then abandoned by leaving the page without saving is still left in Cloudinary. Replacing or removing it before saving is handled. A reconciliation script (dry run by default) listing Cloudinary files no document references would close this; not written (R9: only when a prompt asks).
+- (Prompt 5) A file uploaded when picked (About page, homepage brand story) and then abandoned by leaving the page without saving is still left in Cloudinary until `npm run reconcile:cloudinary` is run (replacing or removing it before saving is handled).
 - (Prompt 5) Two admin tabs editing the same settings section: last write wins for that section. A version check would be needed to prevent it.
 - (Prompt 5) Product edit still overwrites `stockQuantity`/`sizeStock` from the form (a sale between loading and saving the form is lost): prompt 7.
 - (Prompt 5) Creating a product now needs at least one image (the edit route already required it). Duplicating a product therefore needs a new image.
-- (Prompt 5) Orders keep the image address they were created with, so a deleted product photo shows the placeholder in old orders. Orders could instead store the Cloudinary id and fall back to the product's current image: product decision, not done.
+- (Prompt 5) Orders keep the image address they were created with; a deleted photo now falls back to the product's current photo (see follow-ups). Orders for a deleted product show the placeholder.
 - (Prompt 5) Not browser-tested: the placeholder swap on a real failed image load and the admin form clicks (the server side and the form's request shape are tested).
 - (Prompt 5) Announcements, pagination limits and reorder-route validation (other than a consistent error shape and JSON handling) were left for their own prompts; collections routes were not touched.
 
