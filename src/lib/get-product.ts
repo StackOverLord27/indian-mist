@@ -3,6 +3,7 @@
 import { cache } from "react";
 import dbConnect from "@/lib/db";
 import { Product as ProductModel } from "@/models/product.model";
+import { sweepExpiredReservations } from "@/lib/stock-reservation";
 
 export type Product = {
   id: string
@@ -36,7 +37,9 @@ export type Product = {
 // Cached per render: generateMetadata and the page both ask for the same product
 export const getProductBySlug = cache(async (slug: string): Promise<Product | null> => {
   await dbConnect();
-  
+  // Return stock held by abandoned checkouts before reading it (throttled; never throws)
+  await sweepExpiredReservations();
+
   const p = await ProductModel.findOne({ slug })
     .select("slug name category price originalPrice badge description images sizes trackInventory stockQuantity sizeStock colorName colorHex colorGroup materials careInstructions tags features shippingInfo")
     .lean();

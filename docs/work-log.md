@@ -182,3 +182,28 @@ Before this prompt `/products/[slug]`, `/blogs*`, `/collections*` were all `ƒ` 
 - Reordering moves items only inside the current page; moving a product to another page means dragging it page by page (or filter-free arrows at page edge are disabled).
 - Categories beyond 100 would be unreachable in the category page (single page by design).
 - Collection product order inside a collection is whatever the admin selected; picker keeps insertion order.
+
+
+## Prompt 8 (stock holds, pending orders, finalisation, webhook, promos, cancellation)
+
+Owner decisions applied: no cron; holds released lazily (throttled once a minute per instance) before stock is read; hold 15 min; pending order 24 h from ONE constant (`PENDING_ORDER_TTL_SECONDS`, stock-reservation.ts, used by create-order).
+
+Fixed (each proven by a test, mutation-checked where noted):
+1. Sweep gave stock back for a PAID order if the process stopped between creating the order and settling stock (hold stayed ACTIVE, expired, was released -> oversell). The sweep now consumes a hold whose order exists; `settleStockForPaidOrder` is idempotent on an already-CONSUMED hold; a retry of finalizeOrder on an existing order finishes the hold (`consumeHold`). (mutation-checked)
+2. "Sold Out" label set at payment stayed forever when another shopper's hold was later released (stock back, label stuck, cart rejects the product). `releaseReservation` now clears the automatic label; cancel uses the same helper. (mutation-checked)
+3. finalizeOrder deleted the pending order BEFORE creating the order (a crash lost a paid order). Now the pending order is deleted after the order is saved; exactly-once comes from the unique razorpayOrderId index (loser of a browser/webhook race gets the existing order). The old rollback path (and its 1800 s re-set) is gone, so there is no second TTL to keep in step.
+4. reserveStock leaked stock if saving the reservation record failed -> now restored.
+5. create-order: Redis now required before stock is held; everything after the hold is in one try/catch that releases it (attach failure was unguarded); saving the profile address is best effort (failure used to fail the checkout after hold + Razorpay order); total is rounded to whole paise once and the same number is charged and stored.
+6. verify-payment validates body types (zod) and malformed JSON is 400; signature checks moved to lib/razorpay-signature.ts (constant time, length-safe) and used by the webhook too; webhook checks id types/lengths and logs paid-but-no-order.
+7. Promo: lib/promo.ts holds the one normalisation rule (trim + upper-case) and the PAID-only usage counts, used by promo route, create-order, finalize. Removed the dead promo_lock delete.
+8. Lazy sweep wired into /api/products/cart, getProductBySlug and the admin product GET; create-order keeps its direct release.
+
+Verified correct, unchanged: atomic claim per line, sorted claim order, per-size accounting, release exactly once, owner-only release, cancel status filter (restock once), webhook event filtering, dummy Razorpay key fallback gone.
+
+### Found, not fixed
+- A payment arriving after the hold expired, when stock ran out, zeroes the remaining stock; cancelling that order later restocks the FULL quantity (more than was deducted). Rare; needs a per-order record of what was actually deducted.
+- A process stopping between `Order.create` and settling an UNHELD order (hold already released) leaves stock undeducted; there is no marker to repair it from (the held case is repaired).
+- Cancel: status change and restock are two steps (no transaction); a crash between them loses the restock.
+- verify-payment/webhook do not compare the paid amount with the order total (Razorpay enforces amount = order amount).
+- Webhook replay protection relies on finalizeOrder idempotency, there is no event-id store.
+- Mongo unique index on orders.razorpayOrderId must exist in production (Mongoose autoIndex creates it; confirm on Atlas).

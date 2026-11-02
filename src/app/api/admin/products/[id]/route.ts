@@ -8,12 +8,15 @@ import { ProductSchema } from '@/schemas/admin';
 import { slugify } from '@/lib/slugify';
 import { productCandidate, stockFor } from '@/lib/product-fields';
 import { revalidateStorefront } from '@/lib/revalidate-storefront';
+import { sweepExpiredReservations } from '@/lib/stock-reservation';
 
 const MAX_PRODUCT_IMAGES = 10;
 
 export const GET = withAdmin(async (req, context) => {
   const params = await context.params;
   if (!mongoose.isValidObjectId(params.id)) return errorResponse('Product not found', 404);
+  // Admins must see real stock: return abandoned holds first
+  await sweepExpiredReservations();
   const product = await Product.findById(params.id).lean();
   if (!product) return errorResponse('Product not found', 404);
   return successResponse({ product });

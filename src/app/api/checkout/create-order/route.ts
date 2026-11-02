@@ -6,7 +6,10 @@ import {
   releaseExpiredReservations,
   releaseUserReservations,
   attachRazorpayOrder,
+  PENDING_ORDER_TTL_SECONDS,
 } from "@/lib/stock-reservation";
+import { normalizePromoCode, findPromo, countPaidPromoUses, promoDiscount } from "@/lib/promo";
+import { requireRedis } from "@/lib/redis";
 import type { SiteSettings } from "@/types/admin";
 import { NextRequest } from "next/server";
 import mongoose from "mongoose";
@@ -41,6 +44,8 @@ export const POST = withDB(async (req: NextRequest) => {
   // fallback) before any stock is held.
   const razorpayKeyId = getRazorpayKeyId();
   const razorpayKeySecret = getRazorpayKeySecret();
+  // Same for Redis: without it the order could be paid but never created, so fail before holding stock
+  const redis = requireRedis();
 
   let rawBody: unknown;
   try {
@@ -151,10 +156,8 @@ export const POST = withDB(async (req: NextRequest) => {
 
   if (promoCode && typeof promoCode === "string") {
     const promoCodes = settings?.pricingSettings?.promoCodes || [];
-    const normalizedCode = promoCode.trim().toUpperCase();
-    const promo = promoCodes.find(
-      (p) => p.code.toUpperCase() === normalizedCode,
-    );
+    const normalizedCode = normalizePromoCode(promoCode);
+    const promo = findPromo(promoCodes, normalizedCode);
 
     if (!promo || !promo.isActive) {
       return errorResponse("Promo code is no longer valid", 400);
@@ -171,23 +174,17 @@ export const POST = withDB(async (req: NextRequest) => {
       );
     }
 
+    // Only PAID orders use up a code (see lib/promo.ts)
     const maxPerUser = promo.maxUsesPerUser ?? 1;
     if (maxPerUser > 0) {
-      const userUsageCount = await Order.countDocuments({
-        userId,
-        promoCode: normalizedCode,
-        paymentStatus: "PAID",
-      });
+      const userUsageCount = await countPaidPromoUses(normalizedCode, { userId });
       if (userUsageCount >= maxPerUser) {
         return errorResponse("You have already used this promo code", 400);
       }
     }
 
     if (promo.maxUses && promo.maxUses > 0) {
-      const totalUsageCount = await Order.countDocuments({
-        promoCode: normalizedCode,
-        paymentStatus: "PAID",
-      });
+      const totalUsageCount = await countPaidPromoUses(normalizedCode);
       if (totalUsageCount >= promo.maxUses) {
         return errorResponse(
           "This promo code has reached its usage limit",
@@ -196,25 +193,18 @@ export const POST = withDB(async (req: NextRequest) => {
       }
     }
 
-    let calculatedDiscount = 0;
-    if (promo.discountType === "PERCENTAGE") {
-      const pct = Math.min(Math.max(Number(promo.discountValue) || 0, 0), 100);
-      calculatedDiscount = Math.floor(subtotal * (pct / 100));
-    } else {
-      calculatedDiscount = Number(promo.discountValue) || 0;
-    }
-    calculatedDiscount = Math.min(calculatedDiscount, subtotal);
-
     validatedPromoCode = normalizedCode;
-    validatedDiscount = calculatedDiscount;
+    validatedDiscount = promoDiscount(promo, subtotal);
   }
 
   // ─── Totals (same rules the checkout page displays) ──────────────────────
   const shippingCost = subtotal >= freeThreshold ? 0 : shippingRate;
   const taxAmount = 0; // GST disabled — no GST registration yet
-  const totalAmount = Math.max(subtotal - validatedDiscount, 0) + shippingCost + taxAmount;
+  // Whole paise, so the amount stored on the order and the amount charged are always the same number
+  const totalPaise = Math.round((Math.max(subtotal - validatedDiscount, 0) + shippingCost + taxAmount) * 100);
+  const totalAmount = totalPaise / 100;
 
-  if (totalAmount < 1) return errorResponse("Order total is too low", 400);
+  if (!Number.isSafeInteger(totalPaise) || totalPaise < 100) return errorResponse("Order total is too low", 400);
 
   // ─── Hold the stock for this checkout ─────────────────────────────────────
   // The stock is taken in one atomic step, so two shoppers can never both get the last unit.
@@ -229,14 +219,12 @@ export const POST = withDB(async (req: NextRequest) => {
     if (hold.reservationId) await releaseReservation({ _id: hold.reservationId });
   };
 
-  // Initialize Razorpay
-  const razorpay = new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret });
-
-  // Create Razorpay order
-  let razorpayOrder;
+  // From here on the stock is held: whatever goes wrong, give it back before reporting the error
   try {
-    razorpayOrder = await razorpay.orders.create({
-      amount: Math.round(totalAmount * 100), // Razorpay expects amount in paise
+    const razorpay = new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret });
+
+    const razorpayOrder = await razorpay.orders.create({
+      amount: totalPaise, // Razorpay expects whole paise
       currency: "INR",
       receipt: `order_${Date.now()}`,
       notes: {
@@ -244,70 +232,59 @@ export const POST = withDB(async (req: NextRequest) => {
         email,
       },
     });
-  } catch (error) {
-    await releaseHold();
-    throw error;
-  }
-  if (hold.reservationId) await attachRazorpayOrder(hold.reservationId, razorpayOrder.id);
+    if (hold.reservationId) await attachRazorpayOrder(hold.reservationId, razorpayOrder.id);
 
-  // Store pending order details in Redis for up to 30 minutes
-  const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-  if (!redisUrl || !redisToken || redisUrl.startsWith("your_")) {
-    await releaseHold();
-    return errorResponse("Redis is not configured for pending orders", 500);
-  }
-
-  const { Redis } = await import("@upstash/redis");
-  const redis = new Redis({ url: redisUrl, token: redisToken });
-
-  const orderData = {
-    userId,
-    items: orderItems,
-    totalAmount,
-    subtotal,
-    shippingCost,
-    taxAmount,
-    discountAmount: validatedDiscount,
-    promoCode: validatedPromoCode,
-    customerName,
-    email,
-    phone,
-    shippingAddress: {
-      ...shippingAddress,
-      country: shippingAddress.country || "India",
-    },
-    ...(deliveryNotes?.trim() && { deliveryNotes: deliveryNotes.trim() }),
-  };
-
-  // Store the data in Redis securely using the razorpay order id (expires in 30 mins)
-  try {
-    await redis.set(`pending_order_${razorpayOrder.id}`, orderData, { ex: 1800 });
-  } catch (error) {
-    await releaseHold();
-    throw error;
-  }
-
-  // If the user checked "Save this address", update their profile
-  if (saveAddress) {
-    await User.findByIdAndUpdate(userId, {
-      $set: {
-        shippingAddress: {
-          ...shippingAddress,
-          country: shippingAddress.country || "India",
-        },
-        name: customerName,
-        phone: phone,
+    const orderData = {
+      userId,
+      items: orderItems,
+      totalAmount,
+      subtotal,
+      shippingCost,
+      taxAmount,
+      discountAmount: validatedDiscount,
+      promoCode: validatedPromoCode,
+      customerName,
+      email,
+      phone,
+      shippingAddress: {
+        ...shippingAddress,
+        country: shippingAddress.country || "India",
       },
-    });
-  }
+      ...(deliveryNotes?.trim() && { deliveryNotes: deliveryNotes.trim() }),
+    };
 
-  return successResponse({
-    razorpayOrderId: razorpayOrder.id,
-    razorpayKeyId,
-    amount: razorpayOrder.amount,
-    currency: razorpayOrder.currency,
-    totalAmount,
-  });
+    // What finalizeOrder needs to create the order once the payment is confirmed. It outlives the
+    // stock hold on purpose, so a late payment still becomes an order.
+    await redis.set(`pending_order_${razorpayOrder.id}`, orderData, { ex: PENDING_ORDER_TTL_SECONDS });
+
+    // If the shopper ticked "Save this address", update their profile. This is a convenience: if
+    // it fails the checkout carries on (the payment must not be blocked by it).
+    if (saveAddress) {
+      try {
+        await User.findByIdAndUpdate(userId, {
+          $set: {
+            shippingAddress: {
+              ...shippingAddress,
+              country: shippingAddress.country || "India",
+            },
+            name: customerName,
+            phone: phone,
+          },
+        });
+      } catch (error) {
+        console.error("[create-order] saving the address failed:", error);
+      }
+    }
+
+    return successResponse({
+      razorpayOrderId: razorpayOrder.id,
+      razorpayKeyId,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      totalAmount,
+    });
+  } catch (error) {
+    await releaseHold();
+    throw error;
+  }
 });

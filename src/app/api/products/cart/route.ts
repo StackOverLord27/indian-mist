@@ -6,6 +6,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { withDB, errorResponse, successResponse } from "@/lib/api-helpers";
 import { Product } from "@/models/product.model";
+import { sweepExpiredReservations } from "@/lib/stock-reservation";
 import type { CartCheckResult } from "@/lib/cart-sync";
 
 const BodySchema = z.object({
@@ -28,6 +29,9 @@ const BodySchema = z.object({
 export const POST = withDB(async (req: NextRequest) => {
   const parsed = BodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return errorResponse("Invalid request", 400);
+
+  // Return stock held by abandoned checkouts first, so the numbers below are true
+  await sweepExpiredReservations();
 
   // Older bags and cards identified products by slug, so accept either
   const keys = [...new Set(parsed.data.items.map((i) => i.productId))];

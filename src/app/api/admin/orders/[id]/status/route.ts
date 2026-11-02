@@ -2,8 +2,7 @@ import { NextRequest } from 'next/server';
 import mongoose from 'mongoose';
 import { withAdmin, errorResponse, successResponse } from '@/lib/api-helpers';
 import { Order } from '@/models/order.model';
-import { Product } from '@/models/product.model';
-import { restoreStock } from '@/lib/stock-reservation';
+import { restoreStock, clearSoldOutWhereInStock } from '@/lib/stock-reservation';
 import { revalidateCatalog } from '@/lib/revalidate-storefront';
 
 const VALID_STATUSES = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
@@ -44,10 +43,7 @@ export const PATCH = withAdmin(async (req: NextRequest, context) => {
       previous.items.map((i) => ({ productId: i.productId, size: i.selectedSize, quantity: i.quantity })),
     );
     // Stock is back, so the automatic "Sold Out" label no longer applies
-    await Product.updateMany(
-      { _id: { $in: previous.items.map((i) => i.productId) }, trackInventory: true, badge: 'Sold Out', stockQuantity: { $gt: 0 } },
-      { $set: { badge: '' } },
-    );
+    await clearSoldOutWhereInStock(previous.items.map((i) => i.productId));
     revalidateCatalog();
   }
 

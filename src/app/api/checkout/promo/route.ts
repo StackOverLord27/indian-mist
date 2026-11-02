@@ -3,7 +3,7 @@ import { isBlocked, recordFailure } from "@/lib/attempt-limit";
 import type { SiteSettings } from "@/types/admin";
 import { withDB, errorResponse, successResponse } from "@/lib/api-helpers";
 import Settings from "@/models/settings.model";
-import { Order } from "@/models/order.model";
+import { normalizePromoCode, findPromo, countPaidPromoUses, promoDiscount } from "@/lib/promo";
 
 export const POST = withDB(async (req: NextRequest) => {
   try {
@@ -11,16 +11,22 @@ export const POST = withDB(async (req: NextRequest) => {
     if (!userId)
       return errorResponse("Please login to apply a promo code", 401);
 
-    const { code, subtotal } = await req.json();
+    let body: { code?: unknown; subtotal?: unknown };
+    try {
+      body = await req.json();
+    } catch {
+      return errorResponse("Invalid request", 400);
+    }
+    const { code, subtotal } = body;
 
     if (!code || typeof code !== "string") {
       return errorResponse("Promo code is required", 400);
     }
-    if (typeof subtotal !== "number" || subtotal < 0) {
+    if (typeof subtotal !== "number" || !Number.isFinite(subtotal) || subtotal < 0) {
       return errorResponse("Invalid subtotal", 400);
     }
 
-    const normalizedCode = code.trim().toUpperCase();
+    const normalizedCode = normalizePromoCode(code);
 
     // Limit how many wrong codes one account can try
     const guessKey = `promo:${userId}`;
@@ -30,9 +36,7 @@ export const POST = withDB(async (req: NextRequest) => {
 
     const settings = await Settings.findOne().lean<SiteSettings>();
     const promoCodes = settings?.pricingSettings?.promoCodes || [];
-    const promo = promoCodes.find(
-      (p) => p.code.toUpperCase() === normalizedCode,
-    );
+    const promo = findPromo(promoCodes, normalizedCode);
 
     if (!promo) {
       await recordFailure(guessKey, 10 * 60);
@@ -57,10 +61,7 @@ export const POST = withDB(async (req: NextRequest) => {
 
     // Check global usage limit (maxUses: 0 = unlimited)
     if (promo.maxUses && promo.maxUses > 0) {
-      const totalUsageCount = await Order.countDocuments({
-        promoCode: promo.code.toUpperCase(),
-        paymentStatus: "PAID",
-      });
+      const totalUsageCount = await countPaidPromoUses(promo.code);
       if (totalUsageCount >= promo.maxUses) {
         return errorResponse(
           "This promo code has reached its usage limit",
@@ -72,27 +73,14 @@ export const POST = withDB(async (req: NextRequest) => {
     // Check per-user usage limit (maxUsesPerUser: default 1)
     const maxPerUser = promo.maxUsesPerUser ?? 1;
     if (maxPerUser > 0) {
-      const userUsageCount = await Order.countDocuments({
-        userId,
-        promoCode: promo.code.toUpperCase(),
-        paymentStatus: "PAID",
-      });
+      const userUsageCount = await countPaidPromoUses(promo.code, { userId });
       if (userUsageCount >= maxPerUser) {
         return errorResponse("You have already used this promo code", 400);
       }
     }
 
     // Calculate discount
-    let discountAmount = 0;
-    if (promo.discountType === "PERCENTAGE") {
-      const pct = Math.min(Math.max(Number(promo.discountValue) || 0, 0), 100);
-      discountAmount = Math.floor(subtotal * (pct / 100));
-    } else {
-      discountAmount = Number(promo.discountValue) || 0;
-    }
-
-    // Ensure discount doesn't exceed subtotal
-    discountAmount = Math.min(discountAmount, subtotal);
+    const discountAmount = promoDiscount(promo, subtotal);
 
     return successResponse({
       code: promo.code,
