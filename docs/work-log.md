@@ -43,3 +43,10 @@ Build was run with `MONGODB_URI` overridden to the local throwaway replica set (
 - Atlas `IndianMist` is production; reads allowed, anything destructive goes to local instances. Fakes or local instances are fine where they simulate production accurately.
 - Razorpay test keys (`rzp_test_`) may be used for real Test Mode calls; `rzp_live_` never.
 - `MAIL_*` credentials are test credentials; do not ignore them.
+- Prompt 2 (audit) answers:
+  - Fix order: moving money/stock fixes ahead of admin/Cloudinary is a recommendation, not a requirement. Default to the owner's planned order; the one hard rule is that D1/D2 (paid-but-no-order, stock settle) are fixed before any real payment is taken.
+  - `MAIL_*`, `JWT_EXPIRES_IN`, `NEXT_PUBLIC_API_URL` are leftovers; code reads only `SMTP_*`. Safe to drop from the local env and `.env.example` (owner edits `.env`; we never touch it).
+  - Redis missing/unreachable: Claude's call. Missing Redis env in production = fail closed (startup/first-use error) for OTP, login lockout and checkout; at runtime, a transient Redis outage on the global API rate limiter fails open (availability), but OTP/login/checkout paths fail closed.
+  - Admin = the single account whose email equals `SUPER_ADMIN_EMAIL` (case-insensitive, trimmed). The DB `role` field is not used for authorization.
+  - Unused routes `/api/about`, `/api/announcements`, `/api/carousel`, `/api/blogs`, `/api/blogs/[slug]` may be deleted.
+
