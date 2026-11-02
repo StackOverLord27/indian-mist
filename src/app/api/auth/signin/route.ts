@@ -11,6 +11,7 @@ import {
   setTokenCookies,
   REFRESH_TOKEN_MAX_AGE,
 } from "@/lib/auth-tokens";
+import { roleForEmail } from "@/lib/roles";
 import { SignInSchema } from "@/schemas/auth/signin.schema";
 
 const MAX_LOGIN_FAILURES = 10;
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
     // ever replayed, the entire family is wiped (see /api/auth/refresh).
     const family = randomUUID();
 
-    const userRole = email === process.env.SUPER_ADMIN_EMAIL ? 'admin' : 'user';
+    const userRole = roleForEmail(user.email);
 
     const accessToken = signAccessToken({
       userId: String(user._id),

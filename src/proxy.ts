@@ -17,7 +17,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAccessTokenEdge } from "@/lib/auth-tokens.edge";
-import { getAuthRateLimit, getGlobalApiRateLimit } from "@/lib/rate-limit";
+import { getRateLimiter } from "@/lib/rate-limit";
+import { limiterKindForPath } from "@/lib/rate-limit-paths";
+import { getJwtAccessSecret, isProduction } from "@/lib/env";
 
 // ─── Public & Protected paths ─────────────────────────────────────────────
 
@@ -39,59 +41,75 @@ const PUBLIC_API_PREFIXES = [
 const PUBLIC_PAGE_PATHS = ["/admin/login"];
 const PROTECTED_PAGE_PATHS = ["/checkout", "/admin", "/profile"];
 
+// ─── Rate limiting ────────────────────────────────────────────────────────
+
+/**
+ * Returns a response when the request must be stopped, otherwise null.
+ *
+ * Redis problems (not configured, or not answering):
+ *  - development: limits are off (lib/redis.ts logs a one-time warning);
+ *  - production: auth and form routes (sign-in, OTP, password reset, contact, newsletter) fail
+ *    CLOSED with 503, because they send mail or guard accounts; the general API limiter fails
+ *    OPEN so a Redis outage does not take the whole shop down. Both are logged.
+ */
+async function rateLimit(req: NextRequest, pathname: string): Promise<NextResponse | null> {
+  // Prefer headers set by the hosting platform; a client-supplied x-forwarded-for can be faked
+  const ip =
+    req.headers.get("x-vercel-forwarded-for") ||
+    req.headers.get("x-real-ip") ||
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "127.0.0.1";
+  const isLocalhost = ip === "127.0.0.1" || ip === "::1" || ip.includes("127.0.0.1");
+
+  // In development on localhost, skip rate limiting to prevent dev HMR lockouts
+  if (process.env.NODE_ENV === "development" && isLocalhost) return null;
+
+  const kind = limiterKindForPath(pathname);
+  const strict = kind !== "general";
+
+  try {
+    const limiter = getRateLimiter(kind);
+    if (!limiter) return null; // development without Redis
+
+    // Contact and newsletter are counted separately per route
+    const identifier = kind === "form" ? `${pathname}:${ip}` : ip;
+    const { success, limit, remaining, reset } = await limiter.limit(identifier);
+    if (success) return null;
+
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": Math.max(1, Math.ceil((reset - Date.now()) / 1000)).toString(),
+          "X-RateLimit-Limit": limit.toString(),
+          "X-RateLimit-Remaining": remaining.toString(),
+          "X-RateLimit-Reset": reset.toString(),
+        },
+      },
+    );
+  } catch (error) {
+    if (strict && isProduction()) {
+      console.error(`[proxy] Rate limiting unavailable, refusing ${pathname} (fail closed):`, error);
+      return NextResponse.json(
+        { error: "Service temporarily unavailable. Please try again shortly." },
+        { status: 503 },
+      );
+    }
+    console.warn(`[proxy] Rate limiting unavailable for ${pathname} (fail open):`, error);
+    return null;
+  }
+}
+
 // ─── Proxy function ───────────────────────────────────────────────────────
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // 1. Rate Limiting (API routes only) — fail-open if Redis is unconfigured
+  // 1. Rate limiting (API routes only)
   if (pathname.startsWith("/api/")) {
-    try {
-      // Prefer headers set by the hosting platform; a client-supplied x-forwarded-for can be faked
-      const ip =
-        req.headers.get("x-vercel-forwarded-for") ||
-        req.headers.get("x-real-ip") ||
-        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-        "127.0.0.1";
-      const isDev = process.env.NODE_ENV === "development";
-      const isLocalhost = ip === "127.0.0.1" || ip === "::1" || ip.includes("127.0.0.1");
-
-      // In development mode on localhost, skip aggressive rate limiting to prevent dev HMR lockouts
-      if (!isDev || !isLocalhost) {
-        // Only apply strict auth rate limiter to credential submission endpoints
-        const isStrictAuthRoute =
-          pathname === "/api/auth/signin" ||
-          pathname === "/api/auth/signup" ||
-          pathname === "/api/auth/verify-otp" ||
-          pathname === "/api/auth/forgot-password";
-
-        const ratelimit = isStrictAuthRoute
-          ? getAuthRateLimit()
-          : getGlobalApiRateLimit();
-
-        if (ratelimit) {
-          const { success, limit, remaining, reset } = await ratelimit.limit(ip);
-
-          if (!success) {
-            return NextResponse.json(
-              { error: "Too many requests. Please try again later." },
-              {
-                status: 429,
-                headers: {
-                  "X-RateLimit-Limit": limit.toString(),
-                  "X-RateLimit-Remaining": remaining.toString(),
-                  "X-RateLimit-Reset": reset.toString(),
-                },
-              }
-            );
-          }
-        }
-      }
-    } catch (error) {
-      // Rate limiting failed (e.g. Redis down) — fail-open to preserve availability.
-      // Log the error but don't block the request.
-      console.warn("[proxy] Rate limiting unavailable:", error);
-    }
+    const blocked = await rateLimit(req, pathname);
+    if (blocked) return blocked;
   }
 
   // Never trust identity headers sent by the client: only this proxy may set them.
@@ -126,7 +144,14 @@ export async function proxy(req: NextRequest) {
   }
 
   const accessToken = req.cookies.get("access_token")?.value;
-  const secret = process.env.JWT_ACCESS_SECRET ?? "";
+  let secret: string;
+  try {
+    secret = getJwtAccessSecret();
+  } catch (error) {
+    // Misconfigured server: say so in the logs (the message names the variable, never its value)
+    console.error("[proxy]", error);
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+  }
 
   const payload = accessToken
     ? await verifyAccessTokenEdge(accessToken, secret)

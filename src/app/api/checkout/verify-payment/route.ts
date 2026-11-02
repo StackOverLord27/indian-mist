@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { withDB, errorResponse, successResponse } from "@/lib/api-helpers";
 import { finalizeOrder } from "@/lib/finalize-order";
+import { getRazorpayKeySecret } from "@/lib/env";
 
 export const POST = withDB(async (req: NextRequest) => {
   const userId = req.headers.get("x-user-id");
@@ -17,7 +18,7 @@ export const POST = withDB(async (req: NextRequest) => {
   }
 
   // Verify Razorpay signature
-  const expected = createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+  const expected = createHmac("sha256", getRazorpayKeySecret())
     .update(`${razorpayOrderId}|${razorpayPaymentId}`)
     .digest("hex");
 

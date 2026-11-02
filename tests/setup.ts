@@ -20,6 +20,7 @@ Object.assign(process.env, {
   SMTP_PORT: "465",
   SMTP_USER: "test",
   SMTP_PASS: "test",
+  SMTP_FROM: "noreply@test.invalid",
   RAZORPAY_KEY_ID: "rzp_test_unit",
   RAZORPAY_KEY_SECRET: "unit-secret",
   RAZORPAY_WEBHOOK_SECRET: "unit-webhook-secret",

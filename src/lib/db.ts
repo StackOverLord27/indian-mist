@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { getMongoUri } from "@/lib/env";
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -24,13 +25,7 @@ export default async function dbConnect(): Promise<typeof mongoose> {
   }
 
   if (!cache.promise) {
-    const uri = process.env.MONGODB_URI;
-
-    if (!uri) {
-      throw new Error("MONGODB_URI is not defined");
-    }
-
-    cache.promise = mongoose.connect(uri, {
+    cache.promise = mongoose.connect(getMongoUri(), {
       bufferCommands: false,
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,

@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import dbConnect from "@/lib/db";
 import { User } from "@/models/user.model";
 import { RefreshToken } from "@/models/refreshToken.model";
+import { roleForEmail } from "@/lib/roles";
 import {
   verifyRefreshToken,
   signAccessToken,
@@ -14,8 +15,8 @@ import {
 } from "@/lib/auth-tokens";
 
 export async function POST(req: NextRequest) {
-  // The refresh token cookie is scoped to /api/auth/refresh so the browser
-  // only sends it here — it's never exposed to any other API route.
+  // The refresh cookie has path "/" (see setTokenCookies for why), so the browser sends it with
+  // every same-site request. Only the proxy (does it exist?), this route and signout look at it.
   const rawToken = req.cookies.get("refresh_token")?.value;
 
   if (!rawToken) {
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
   // Reuse the same family UUID — it groups all rotations for this session.
   const { family } = payload;
 
-  const userRole = user.email === process.env.SUPER_ADMIN_EMAIL ? 'admin' : user.role;
+  const userRole = roleForEmail(user.email);
 
   const newAccessToken = signAccessToken({
     userId: String(user._id),

@@ -1,15 +1,13 @@
 import { v2 as cloudinary } from "cloudinary";
 import streamifier from "streamifier";
+import { getCloudinaryConfig } from "@/lib/env";
 
 export const uploadImage = async (
   buffer: Buffer,
   options?: { folder?: string; public_id?: string }
 ): Promise<{ url: string; publicId: string }> => {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-  });
+  // Throws, naming the missing variable, if Cloudinary is not configured
+  cloudinary.config(getCloudinaryConfig());
 
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -24,9 +22,6 @@ export const uploadImage = async (
           resolve({ url: result.secure_url, publicId: result.public_id });
         } else {
           console.error('[Cloudinary Upload Error]', error);
-          if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY) {
-            console.error('[Cloudinary] Missing environment variables!');
-          }
           reject(error);
         }
       }

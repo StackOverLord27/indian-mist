@@ -1,61 +1,45 @@
 import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
+import { getRedis } from "@/lib/redis";
+import type { LimiterKind } from "@/lib/rate-limit-paths";
 
-// ─── Lazy Redis singleton ─────────────────────────────────────────────────────
-// Defer client creation until first use so that the module doesn't crash
-// at import time when Upstash env vars are not yet configured.
-
-let _redis: Redis | null = null;
-
-function getRedis(): Redis | null {
-  if (_redis) return _redis;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token || url.startsWith("your_")) {
-    // Credentials not configured yet — return null so callers can fail-open.
-    return null;
-  }
-  _redis = new Redis({ url, token });
-  return _redis;
-}
-
-// ─── Lazy rate-limiter singletons ─────────────────────────────────────────────
-
-let _authRateLimit: Ratelimit | null = null;
-let _globalApiRateLimit: Ratelimit | null = null;
-
-/**
- * Strict rate limiter for Authentication API routes.
- * Limits to 5 requests per 1 minute.
- * Returns null if Redis is not configured.
+/*
+ * Upstash sliding-window limiters, created on first use.
+ *
+ *  auth    5 requests / 1 minute / IP     sign-in, sign-up, OTP verification, password reset
+ *  form    5 requests / 10 minutes / IP   contact form and newsletter (each route counted separately)
+ *  general 100 requests / 10 seconds / IP everything else under /api
+ *
+ * Without Redis: returns null in development (limits off, one-time warning from lib/redis.ts),
+ * throws in production (the proxy then fails closed for auth/form routes, see src/proxy.ts).
+ * Note: @upstash/ratelimit lets a request through when Redis does not answer within its
+ * `timeout` (5 s by default); that is the library's own availability trade-off.
  */
-export function getAuthRateLimit(): Ratelimit | null {
-  if (_authRateLimit) return _authRateLimit;
+
+const limiters: Partial<Record<LimiterKind, Ratelimit>> = {};
+
+export function getRateLimiter(kind: LimiterKind): Ratelimit | null {
+  const existing = limiters[kind];
+  if (existing) return existing;
+
   const redis = getRedis();
   if (!redis) return null;
-  _authRateLimit = new Ratelimit({
+
+  const limiter =
+    kind === "auth"
+      ? Ratelimit.slidingWindow(5, "1 m")
+      : kind === "form"
+        ? Ratelimit.slidingWindow(5, "10 m")
+        : Ratelimit.slidingWindow(100, "10 s");
+
+  return (limiters[kind] = new Ratelimit({
     redis,
-    limiter: Ratelimit.slidingWindow(5, "1 m"),
+    limiter,
     analytics: true,
-    prefix: "@upstash/ratelimit/auth",
-  });
-  return _authRateLimit;
+    prefix: `@upstash/ratelimit/${kind}`,
+  }));
 }
 
-/**
- * Standard global rate limiter for general API routes.
- * Limits to 100 requests per 10 seconds.
- * Returns null if Redis is not configured.
- */
-export function getGlobalApiRateLimit(): Ratelimit | null {
-  if (_globalApiRateLimit) return _globalApiRateLimit;
-  const redis = getRedis();
-  if (!redis) return null;
-  _globalApiRateLimit = new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(100, "10 s"),
-    analytics: true,
-    prefix: "@upstash/ratelimit/api",
-  });
-  return _globalApiRateLimit;
+/** Test helper */
+export function resetRateLimitersForTests() {
+  for (const kind of Object.keys(limiters) as LimiterKind[]) delete limiters[kind];
 }

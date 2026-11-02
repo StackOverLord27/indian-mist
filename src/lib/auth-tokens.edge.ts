@@ -54,6 +54,10 @@ export async function verifyAccessTokenEdge(
       ["verify"]
     );
 
+    // Only HS256 is accepted (the signature check below is HMAC-SHA256 regardless of the header)
+    const header = JSON.parse(atob(headerB64.replace(/-/g, "+").replace(/_/g, "/"))) as { alg?: string };
+    if (header.alg !== "HS256") return null;
+
     // Verify signature
     const signingInput = `${headerB64}.${payloadB64}`;
     // .buffer on TextEncoder/Uint8Array is ArrayBufferLike in TS 6 — .slice()

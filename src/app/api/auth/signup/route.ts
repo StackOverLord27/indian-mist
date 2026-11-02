@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/db";
 import { User } from "@/models/user.model";
 import { setOtp, deleteOtp } from "@/lib/otp-store";
+import { allowOtpEmail } from "@/lib/attempt-limit";
 import { sendOTPVerificationEmail } from "@/lib/mailer";
 import { SignUpSchema } from "@/schemas/auth/signup.schema";
 
@@ -41,6 +42,14 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "User already exists with this email" },
         { status: 400 }
+      );
+    }
+
+    // One address cannot be flooded with verification e-mails
+    if (!(await allowOtpEmail("signup", email))) {
+      return NextResponse.json(
+        { error: "Too many verification emails requested for this address. Please try again later." },
+        { status: 429 }
       );
     }
 

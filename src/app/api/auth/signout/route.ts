@@ -6,14 +6,16 @@ import { clearTokenCookies, hashToken, verifyRefreshToken } from "@/lib/auth-tok
 export async function POST(req: NextRequest) {
   const rawToken = req.cookies.get("refresh_token")?.value;
 
-  // Best-effort DB cleanup: if we have a valid token, delete it from the store.
-  // We still clear cookies even if the token is missing/expired (user may have
-  // an access token but an already-expired refresh token).
+  // Best-effort DB cleanup: if we have a valid token, end this whole login session (every
+  // rotation of it), not just the newest token. We still clear cookies even if the token is
+  // missing/expired (user may have an access token but an already-expired refresh token).
   if (rawToken) {
     try {
-      verifyRefreshToken(rawToken); // guard: only hit DB with a structurally valid token
+      const payload = verifyRefreshToken(rawToken); // guard: only hit DB with a structurally valid token
       await dbConnect();
-      await RefreshToken.deleteOne({ tokenHash: hashToken(rawToken) });
+      await RefreshToken.deleteMany({
+        $or: [{ tokenHash: hashToken(rawToken) }, { userId: payload.userId, family: payload.family }],
+      });
     } catch {
       // Token already expired or malformed — DB record will be reaped by TTL.
       // Nothing to do; proceed to clear cookies.

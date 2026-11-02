@@ -5,6 +5,7 @@ import dbConnect from "@/lib/db";
 import { User } from "@/models/user.model";
 import { RefreshToken } from "@/models/refreshToken.model";
 import { verifyOtp, deleteOtp } from "@/lib/otp-store";
+import { roleForEmail } from "@/lib/roles";
 import {
   signAccessToken,
   signRefreshToken,
@@ -79,10 +80,12 @@ export async function POST(req: Request) {
     // Issue tokens — log the user in automatically, no need to sign in again.
     const family = randomUUID();
 
+    const userRole = roleForEmail(newUser.email);
+
     const accessToken = signAccessToken({
       userId: String(newUser._id),
       email: newUser.email,
-      role: newUser.role,
+      role: userRole,
     });
 
     const rawRefreshToken = signRefreshToken({
@@ -104,7 +107,7 @@ export async function POST(req: Request) {
           id: newUser._id,
           name: newUser.name,
           email: newUser.email,
-          role: newUser.role,
+          role: userRole,
         },
       },
       { status: 200 }

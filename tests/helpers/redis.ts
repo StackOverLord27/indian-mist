@@ -46,11 +46,26 @@ export class FakeRedis {
     this.store.set(key, { value: next, expiresAt: e?.expiresAt ?? null });
     return next;
   }
-  async expire(key: string, seconds: number) {
+  async expire(key: string, seconds: number, option?: "NX" | "XX" | "GT" | "LT") {
     const e = this.live(key);
     if (!e) return 0;
+    if (option === "NX" && e.expiresAt !== null) return 0; // only set a TTL when there is none
     e.expiresAt = this.now + seconds * 1000;
     return 1;
+  }
+  /** MULTI/EXEC: runs the queued commands in order and returns their results. */
+  multi() {
+    const queue: (() => Promise<unknown>)[] = [];
+    const chain = {
+      incr: (key: string) => (queue.push(() => this.incr(key)), chain),
+      expire: (key: string, seconds: number, option?: "NX" | "XX" | "GT" | "LT") => (queue.push(() => this.expire(key, seconds, option)), chain),
+      exec: async () => {
+        const results: unknown[] = [];
+        for (const run of queue) results.push(await run());
+        return results;
+      },
+    };
+    return chain;
   }
   async getdel<T = unknown>(key: string): Promise<T | null> {
     const v = await this.get<T>(key);
@@ -72,7 +87,18 @@ export const fakeRedis = new FakeRedis();
  * Pass-through stand-in for @upstash/ratelimit. By default every call
  * succeeds; set `ratelimitState.blocked = true` to simulate being limited.
  */
-export const ratelimitState = { blocked: false, calls: [] as string[] };
+export const ratelimitState = {
+  blocked: false,
+  /** Make limit() throw, like Redis being unreachable */
+  failing: false,
+  /** "<prefix>|<identifier>" for every limit() call */
+  calls: [] as string[],
+  reset() {
+    this.blocked = false;
+    this.failing = false;
+    this.calls = [];
+  },
+};
 
 export function redisModuleMock() {
   return { Redis: vi.fn(function () { return fakeRedis; }) };
@@ -82,9 +108,10 @@ export function ratelimitModuleMock() {
   class Ratelimit {
     static slidingWindow = (tokens: number, window: string) => ({ tokens, window });
     static fixedWindow = (tokens: number, window: string) => ({ tokens, window });
-    constructor(public config: unknown) {}
+    constructor(public config: { prefix?: string }) {}
     async limit(id: string) {
-      ratelimitState.calls.push(id);
+      if (ratelimitState.failing) throw new Error("redis unreachable");
+      ratelimitState.calls.push(`${this.config.prefix}|${id}`);
       return {
         success: !ratelimitState.blocked,
         limit: 100,

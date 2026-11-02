@@ -12,6 +12,7 @@
 import jwt from "jsonwebtoken";
 import { createHash } from "crypto";
 import type { NextResponse } from "next/server";
+import { getJwtAccessSecret, getJwtRefreshSecret, isProduction } from "@/lib/env";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -31,40 +32,30 @@ export interface RefreshTokenPayload {
   family: string; // login-session UUID — used for family-wipe on replay
 }
 
-// ─── Helpers — secret resolution ─────────────────────────────────────────────
-
-function getAccessSecret(): string {
-  const s = process.env.JWT_ACCESS_SECRET;
-  if (!s) throw new Error("JWT_ACCESS_SECRET is not set");
-  return s;
-}
-
-function getRefreshSecret(): string {
-  const s = process.env.JWT_REFRESH_SECRET;
-  if (!s) throw new Error("JWT_REFRESH_SECRET is not set");
-  return s;
-}
-
 // ─── Token signing ───────────────────────────────────────────────────────────
 
+// Tokens are signed and verified with HS256 only. Pinning the algorithm on verify means a token
+// that claims another algorithm (including "none") is rejected.
+const JWT_ALGORITHM = "HS256" as const;
+
 export function signAccessToken(payload: AccessTokenPayload): string {
-  return jwt.sign(payload, getAccessSecret(), { expiresIn: "15m" });
+  return jwt.sign(payload, getJwtAccessSecret(), { expiresIn: "15m", algorithm: JWT_ALGORITHM });
 }
 
 export function signRefreshToken(payload: RefreshTokenPayload): string {
-  return jwt.sign(payload, getRefreshSecret(), { expiresIn: "7d" });
+  return jwt.sign(payload, getJwtRefreshSecret(), { expiresIn: "7d", algorithm: JWT_ALGORITHM });
 }
 
 // ─── Token verification ──────────────────────────────────────────────────────
 
 /** Throws if the token is missing, malformed, or expired. */
 export function verifyAccessToken(token: string): AccessTokenPayload {
-  return jwt.verify(token, getAccessSecret()) as AccessTokenPayload;
+  return jwt.verify(token, getJwtAccessSecret(), { algorithms: [JWT_ALGORITHM] }) as AccessTokenPayload;
 }
 
 /** Throws if the token is missing, malformed, or expired. */
 export function verifyRefreshToken(token: string): RefreshTokenPayload {
-  return jwt.verify(token, getRefreshSecret()) as RefreshTokenPayload;
+  return jwt.verify(token, getJwtRefreshSecret(), { algorithms: [JWT_ALGORITHM] }) as RefreshTokenPayload;
 }
 
 // ─── Hashing ─────────────────────────────────────────────────────────────────
@@ -80,8 +71,6 @@ export function hashToken(raw: string): string {
 
 // ─── Cookie helpers ───────────────────────────────────────────────────────────
 
-const isProduction = process.env.NODE_ENV === "production";
-
 /**
  * Set both HTTP-only cookies on an existing NextResponse.
  * Call this from any route that issues tokens (signin, refresh).
@@ -93,7 +82,7 @@ export function setTokenCookies(
 ): void {
   const base = {
     httpOnly: true,
-    secure: isProduction,
+    secure: isProduction(),
     sameSite: "strict" as const,
     path: "/",
   };
@@ -106,8 +95,11 @@ export function setTokenCookies(
   (res as NextResponse).cookies.set("refresh_token", refreshToken, {
     ...base,
     maxAge: REFRESH_TOKEN_MAX_AGE,
-    // Scope refresh token to / so proxy middleware can read it on page loads
-    path: "/",
+    // Deliberately path "/", not "/api/auth/refresh": the proxy reads this cookie on ordinary page
+    // loads (/admin, /checkout, /profile) to let a signed-in user with an expired access token
+    // reach the page, where the client silently refreshes. A narrower path would hide the cookie
+    // from those requests. It is httpOnly and sameSite "strict", so scripts and other sites
+    // cannot read or send it.
   });
 }
 

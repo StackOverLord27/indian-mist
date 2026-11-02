@@ -4,6 +4,7 @@ import { z } from "zod";
 import dbConnect from "@/lib/db";
 import SiteSettingsModel from "@/models/settings.model";
 import { sendContactMessageEmail } from "@/lib/mailer";
+import { getFallbackContactEmail } from "@/lib/env";
 import { CONTACT_TOPICS } from "@/lib/contact-topics";
 
 const contactSchema = z.object({
@@ -40,10 +41,7 @@ export async function POST(req: Request) {
 
     await dbConnect();
     const settings = await SiteSettingsModel.findOne().lean<SiteSettings>();
-    const to =
-      settings?.contactPageSettings?.email ||
-      process.env.SUPER_ADMIN_EMAIL ||
-      process.env.SMTP_USER;
+    const to = settings?.contactPageSettings?.email || getFallbackContactEmail();
 
     if (!to) {
       return NextResponse.json(

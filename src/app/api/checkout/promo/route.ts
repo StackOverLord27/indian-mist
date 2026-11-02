@@ -82,28 +82,6 @@ export const POST = withDB(async (req: NextRequest) => {
       }
     }
 
-    // Check for in-progress checkout lock (Redis-based, short TTL)
-    // This prevents the same user from using the same code in parallel tabs
-    const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-    if (redisUrl && redisToken && !redisUrl.startsWith("your_")) {
-      const { Redis } = await import("@upstash/redis");
-      const redis = new Redis({ url: redisUrl, token: redisToken });
-      const lockKey = `promo_lock_${userId}_${normalizedCode}`;
-      const existingLock = await redis.get(lockKey);
-
-      if (existingLock) {
-        // Lock exists but that's OK — it means the same user is re-applying
-        // the same code (e.g. after modifying cart). We allow this.
-        // The lock just prevents concurrent tab abuse.
-      }
-
-      // Set/refresh a short lock (10 minutes). This expires automatically
-      // so abandoned checkouts don't permanently block the user.
-      await redis.set(lockKey, "1", { ex: 600 });
-    }
-
     // Calculate discount
     let discountAmount = 0;
     if (promo.discountType === "PERCENTAGE") {

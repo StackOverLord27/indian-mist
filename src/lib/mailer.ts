@@ -1,20 +1,25 @@
 import nodemailer from "nodemailer";
+import { getSmtpConfig } from "@/lib/env";
 
-const SMTP_HOST = process.env.SMTP_HOST || "";
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587", 10);
-const SMTP_USER = process.env.SMTP_USER || "";
-const SMTP_PASS = process.env.SMTP_PASS || "";
-const SMTP_FROM = process.env.SMTP_FROM || "noreply@indianmist.com";
+// Created on first use, so building the site never needs mail credentials. A missing SMTP_*
+// variable throws an error that names it, which the senders below log before returning false.
+let mailer: { transporter: ReturnType<typeof nodemailer.createTransport>; from: string } | null = null;
 
-const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: SMTP_PORT,
-  secure: SMTP_PORT === 465,
-  auth: {
-    user: SMTP_USER,
-    pass: SMTP_PASS,
-  },
-});
+function getMailer() {
+  if (!mailer) {
+    const smtp = getSmtpConfig();
+    mailer = {
+      transporter: nodemailer.createTransport({
+        host: smtp.host,
+        port: smtp.port,
+        secure: smtp.port === 465,
+        auth: { user: smtp.user, pass: smtp.pass },
+      }),
+      from: smtp.from,
+    };
+  }
+  return mailer;
+}
 
 const escapeHtml = (value: string) =>
   value
@@ -53,8 +58,9 @@ export async function sendContactMessageEmail(input: {
   const text = `New enquiry: ${input.topic}\n\nName: ${input.name}\nEmail: ${input.email}\nPhone: ${input.phone || "—"}\n\n${input.message}`;
 
   try {
+    const { transporter, from } = getMailer();
     await transporter.sendMail({
-      from: `"Indian Mist Website" <${SMTP_FROM}>`,
+      from: `"Indian Mist Website" <${from}>`,
       to: input.to,
       replyTo: input.email,
       subject: `[Contact] ${input.topic} — ${input.name}`.replace(/[\r\n]+/g, " "),
@@ -199,8 +205,9 @@ export async function sendOTPVerificationEmail(email: string, otp: string) {
   const text = `Your Indian Mist verification code is: ${otp}\n\nThis code expires in 5 minutes.\n\nIf you did not request this, you can safely ignore this email.`;
 
   try {
+    const { transporter, from } = getMailer();
     const info = await transporter.sendMail({
-      from: `"Indian Mist" <${SMTP_FROM}>`,
+      from: `"Indian Mist" <${from}>`,
       to: email,
       subject: "Your Indian Mist verification code",
       text,

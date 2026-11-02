@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { queryClient } from '@/lib/query-client';
 import { 
   LayoutDashboard, 
   Package, 
@@ -35,10 +36,15 @@ export default function AdminSidebar() {
     }
   }, []);
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    // End the session on the server first: this clears the cookies and deletes the refresh token,
+    // so /admin cannot be reopened with the old ones. If the request fails we still leave.
+    await fetch('/api/auth/signout', { method: 'POST' }).catch(() => {});
     localStorage.removeItem('im_admin_token');
     localStorage.removeItem('im_admin_user');
-    router.push('/admin/login');
+    // Drop the admin data held in memory, then leave
+    queryClient.clear();
+    router.replace('/admin/login');
   };
 
   const navGroups = [

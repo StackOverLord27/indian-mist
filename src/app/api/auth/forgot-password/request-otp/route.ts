@@ -1,14 +1,27 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { randomInt } from "crypto";
 import dbConnect from "@/lib/db";
 import { User } from "@/models/user.model";
-import { setOtp, checkOtpExists } from "@/lib/otp-store";
+import { setOtp, deleteOtp, checkOtpExists } from "@/lib/otp-store";
+import { allowOtpEmail } from "@/lib/attempt-limit";
+import { requireRedis } from "@/lib/redis";
 import { sendOTPVerificationEmail } from "@/lib/mailer";
 import { RequestOtpSchema } from "@/schemas/auth/forgot-password.schema";
 
+// The same answer whether or not an account exists, so this form cannot be used to find out
+// who has an account.
+const GENERIC_SUCCESS = {
+  message: "If an account exists for that email, we've sent a verification code.",
+};
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
     const parseResult = RequestOtpSchema.safeParse(body);
 
     if (!parseResult.success) {
@@ -22,43 +35,43 @@ export async function POST(req: Request) {
 
     await dbConnect();
 
-    // Check if user exists
-    const user = await User.findOne({ email });
-    if (!user) {
+    // One address cannot be flooded with codes. Counted for every request, whether or not an
+    // account exists, so hitting the limit reveals nothing either.
+    if (!(await allowOtpEmail("reset", email))) {
       return NextResponse.json(
-        { error: "No account found with this email address." },
-        { status: 404 }
-      );
-    }
-
-    // Check if an OTP request is already pending to prevent overwriting/spam
-    const otpExists = await checkOtpExists("reset", email);
-    if (otpExists) {
-      return NextResponse.json(
-        { error: "An OTP request is already pending for this email. Please check your inbox or wait 5 minutes before trying again." },
+        { error: "Too many code requests for this email address. Please try again later." },
         { status: 429 }
       );
     }
 
-    // Generate a secure 6-digit OTP
-    const otp = randomInt(100_000, 1_000_000).toString();
+    const user = await User.findOne({ email }).select("_id").lean();
+    // Same Redis read for both cases, so the two paths take about the same time
+    const pending = await checkOtpExists("reset", email);
 
-    // Store the OTP in Upstash Redis (5 min TTL)
-    await setOtp("reset", email, otp);
+    if (user && !pending) {
+      const otp = randomInt(100_000, 1_000_000).toString();
+      await setOtp("reset", email, otp);
 
-    // Send the OTP email
-    const emailSent = await sendOTPVerificationEmail(email, otp);
-    if (!emailSent) {
-      return NextResponse.json(
-        { error: "Failed to send verification email. Please try again later." },
-        { status: 500 }
-      );
+      // Send after the response so a slow or failing mail server cannot reveal (through timing
+      // or an error) that this address has an account.
+      after(async () => {
+        const sent = await sendOTPVerificationEmail(email, otp);
+        if (!sent) {
+          // Let the person ask again instead of waiting for a code that was never delivered
+          await deleteOtp("reset", email).catch((error) =>
+            console.error("Forgot password: could not clear unsent code:", error)
+          );
+        }
+      });
+    } else if (!user) {
+      // Mirror setOtp's two Redis writes for an address with no account
+      const redis = requireRedis();
+      await redis.set(`otp_decoy:${email}`, "1", { ex: 5 });
+      await redis.del(`otp_decoy_attempts:${email}`);
     }
+    // user exists and a code is already pending: send nothing new, answer the same way
 
-    return NextResponse.json(
-      { message: "OTP sent successfully." },
-      { status: 200 }
-    );
+    return NextResponse.json(GENERIC_SUCCESS, { status: 200 });
   } catch (error) {
     console.error("Forgot password request error:", error);
     return NextResponse.json(

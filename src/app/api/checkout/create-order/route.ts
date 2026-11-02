@@ -18,6 +18,7 @@ import Settings from "@/models/settings.model";
 import { SHIPPING_COST, SHIPPING_THRESHOLD } from "@/lib/constants";
 import { CreateOrderSchema } from "@/schemas/checkout-api";
 import Razorpay from "razorpay";
+import { getRazorpayKeyId, getRazorpayKeySecret } from "@/lib/env";
 
 const MAX_QTY_PER_ITEM = 50;
 
@@ -35,6 +36,11 @@ type OrderLine = {
 export const POST = withDB(async (req: NextRequest) => {
   const userId = req.headers.get("x-user-id");
   if (!userId) return errorResponse("Unauthenticated", 401);
+
+  // Read the Razorpay keys first: a missing key throws here (naming the variable, never a dummy
+  // fallback) before any stock is held.
+  const razorpayKeyId = getRazorpayKeyId();
+  const razorpayKeySecret = getRazorpayKeySecret();
 
   let rawBody: unknown;
   try {
@@ -224,10 +230,7 @@ export const POST = withDB(async (req: NextRequest) => {
   };
 
   // Initialize Razorpay
-  const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || "dummy_key_for_build",
-    key_secret: process.env.RAZORPAY_KEY_SECRET || "dummy_secret_for_build",
-  });
+  const razorpay = new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret });
 
   // Create Razorpay order
   let razorpayOrder;
@@ -302,7 +305,7 @@ export const POST = withDB(async (req: NextRequest) => {
 
   return successResponse({
     razorpayOrderId: razorpayOrder.id,
-    razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+    razorpayKeyId,
     amount: razorpayOrder.amount,
     currency: razorpayOrder.currency,
     totalAmount,

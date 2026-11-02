@@ -11,6 +11,7 @@ import {
   setTokenCookies,
   REFRESH_TOKEN_MAX_AGE,
 } from "@/lib/auth-tokens";
+import { roleForEmail } from "@/lib/roles";
 import { ResetPasswordSchema } from "@/schemas/auth/forgot-password.schema";
 
 export async function POST(req: Request) {
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
 
     // ── Issue fresh tokens and auto-signin ─────────────────────────────────────
     const family = randomUUID();
-    const userRole = email === process.env.SUPER_ADMIN_EMAIL ? 'admin' : 'user';
+    const userRole = roleForEmail(user.email);
 
     const accessToken = signAccessToken({
       userId: String(user._id),

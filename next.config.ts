@@ -4,6 +4,11 @@ const isDev = process.env.NODE_ENV === "development";
 
 // Which places the browser may load code and content from.
 // 'unsafe-inline' is needed because Next.js and React add small inline scripts and styles themselves.
+// A nonce-based policy would be stricter, but nonces need every page rendered per request, which
+// would undo the page caching (ISR). Reviewed against Razorpay Checkout: Razorpay publishes no CSP
+// list, and https://*.razorpay.com already covers the hosts it uses (checkout, api, cdn, lumberjack)
+// for scripts, frames, requests, images, fonts and styles, so nothing needs loosening. Confirm with
+// a real Test Mode payment in a browser and watch /api/csp-report for blocked requests.
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://*.razorpay.com`,
