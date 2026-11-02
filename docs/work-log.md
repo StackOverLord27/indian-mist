@@ -23,11 +23,13 @@ Build was run with `MONGODB_URI` overridden to the local throwaway replica set (
 - Mongo: real `mongod` 8.2.9 in podman container `indianmist-test-mongo`, single-node replica set `rs0`, `127.0.0.1:27018`. Start with:
   `podman run -d --name indianmist-test-mongo -p 127.0.0.1:27018:27017 docker.io/library/mongo:latest mongod --replSet rs0 --bind_ip_all --noauth`, then `rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})` once. Override with `MONGO_TEST_URI`. Helper refuses non-local hosts. Chosen over mongodb-memory-server: real server, transactions work, no extra dependency or binary download.
 - Redis: unit tests use the in-memory `FakeRedis` (tests/helpers/redis.ts). It does not emulate Upstash's REST layer or the Lua scripts inside `@upstash/ratelimit`; the ratelimit stand-in is a pass-through.
+- Live suite (`npm run test:live`, files `tests/live/*.live.ts`, never part of `npm test`): loads `.env` read-only and runs against real services. Redis: contract test running identical operations on FakeRedis and real Upstash (keys `im_test:<rand>:`, deleted afterwards); result: identical. Cloudinary: real `uploadImage`/`deleteImage` in folder `indian-mist-test/`, asset deleted and confirmed 404. Razorpay: real Test Mode order create/fetch with `rzp_test_` enforced. MongoDB is deliberately NOT live: tests wipe collections, so they stay on the local replica set; Atlas is for read-only checks only.
 - `tests/setup.ts` scrubs real service env vars and installs dummies so tests cannot reach Atlas, Upstash, Cloudinary, SMTP or Razorpay.
 
 ## Per-prompt log
 
 ### Prompt 1: rules, safety rails, test tooling, baseline
+- Follow-up: added the live suite above (owner asked for real-service checks where fakes may not be faithful).
 - Added docs/work-rules.md, docs/work-log.md, Vitest + helpers in `tests/`, `vitest.config.ts`, scripts. No application code changed.
 
 ## Found, not fixed
