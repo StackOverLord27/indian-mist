@@ -1,13 +1,13 @@
 import { NextRequest } from 'next/server';
-import { withAdmin, successResponse } from '@/lib/api-helpers';
+import { withAdmin, successResponse, errorResponse, parseJsonBody } from '@/lib/api-helpers';
 import { Category } from '@/models/category.model';
 import { revalidateStorefront } from '@/lib/revalidate-storefront';
 
 export const PUT = withAdmin(async (req: NextRequest) => {
-  const { orderedIds } = await req.json();
+  const orderedIds = ((await parseJsonBody(req)) as { orderedIds?: unknown } | null)?.orderedIds;
 
   if (!Array.isArray(orderedIds)) {
-    return successResponse({ message: 'orderedIds must be an array' }, 400);
+    return errorResponse('orderedIds must be an array', 400);
   }
 
   await Promise.all(

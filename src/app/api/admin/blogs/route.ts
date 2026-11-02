@@ -8,9 +8,11 @@ import {
   validateImageFile,
   errorResponse,
   successResponse,
+  validationError,
+  jsonFormField,
 } from "@/lib/api-helpers";
 import { Blog } from "@/models/blog.model";
-import { uploadImage } from "@/lib/cloudinary";
+import { uploadImage, deleteImage } from "@/lib/cloudinary";
 import { BlogSchema } from "@/schemas/blog";
 import { revalidateStorefront } from "@/lib/revalidate-storefront";
 
@@ -44,59 +46,41 @@ export const GET = withAdmin(async (req) => {
   });
 });
 
-export const POST = withAdmin(async (req) => {
+/** Validate, then upload the cover, then save; a failed save deletes the cover uploaded in this request. */
+export const POST = withAdmin(async (req: NextRequest) => {
   const { fields, files } = await parseFormData(req);
 
-  const parseJSON = <T>(val: string | undefined, fallback: T): T => {
-    try {
-      return val ? JSON.parse(val) : fallback;
-    } catch {
-      return fallback;
-    }
-  };
-
-  const parsedFields = {
-    title: fields.title?.trim(),
-    excerpt: fields.excerpt?.trim(),
-    content: fields.content?.trim(),
-    category: fields.category?.trim(),
-    tags: parseJSON(fields.tags, []),
+  const validated = BlogSchema.safeParse({
+    title: fields.title,
+    excerpt: fields.excerpt,
+    content: fields.content,
+    category: fields.category,
+    tags: jsonFormField<string[]>(fields, "tags") ?? [],
     author: fields.author?.trim() || "Indian Mist",
     isPublished: fields.isPublished === "true",
-  };
-
-  const validationResult = BlogSchema.safeParse(parsedFields);
-  if (!validationResult.success) {
-    const errors: Record<string, string> = {};
-    validationResult.error.issues.forEach((err) => {
-      errors[err.path.join(".")] = err.message;
-    });
-    return errorResponse("Validation failed", 400, errors);
-  }
-
-  // Upload cover image if provided
-  let coverImage = { url: "", publicId: "", alt: "" };
-  if (files.length > 0) {
-    const file = files[0];
-    const validation = validateImageFile(file);
-    if (!validation.valid) {
-      return errorResponse(validation.message!, 400);
-    }
-    const result = await uploadImage(file.buffer, {
-      folder: "indian-mist/blogs",
-    });
-    coverImage = {
-      url: result.url,
-      publicId: result.publicId,
-      alt: fields.coverImageAlt ?? parsedFields.title ?? "",
-    };
-  }
-
-  const blog = await Blog.create({
-    ...parsedFields,
-    coverImage,
   });
+  if (!validated.success) return validationError(validated.error);
+  const parsed = validated.data;
 
-  revalidateStorefront();
-  return successResponse({ blog }, 201);
+  const file = files[0];
+  if (file) {
+    const validation = validateImageFile(file);
+    if (!validation.valid) return errorResponse(validation.message!, 400, { file: validation.message! });
+  }
+
+  let coverImage = { url: "", publicId: "", alt: "" };
+  try {
+    if (file) {
+      const result = await uploadImage(file.buffer, { folder: "indian-mist/blogs" });
+      coverImage = { url: result.url, publicId: result.publicId, alt: fields.coverImageAlt ?? parsed.title };
+    }
+
+    const blog = await Blog.create({ ...parsed, coverImage });
+
+    revalidateStorefront();
+    return successResponse({ blog }, 201);
+  } catch (error) {
+    if (coverImage.publicId) await deleteImage(coverImage.publicId);
+    throw error;
+  }
 });

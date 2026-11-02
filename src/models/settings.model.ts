@@ -41,6 +41,8 @@ const SettingsSchema = new mongoose.Schema({
     buttonText: { type: String, default: 'Read our story' },
     buttonLink: { type: String, default: '/about' },
     imageUrl: { type: String, default: '' },
+    // Cloudinary id of the image, so replacing it can delete the old file. Missing on old documents.
+    imagePublicId: { type: String, default: '' },
   },
   trustStripSettings: {
     items: {

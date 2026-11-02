@@ -10,7 +10,7 @@ const used = new Set<string>();
 const k = (n: string) => { used.add(ns + n); return ns + n; };
 afterAll(async () => { if (used.size) await real.del(...used); });
 
-async function scenario(r: Pick<FakeRedis, "get" | "set" | "del" | "incr" | "expire" | "getdel" | "ttl">) {
+async function scenario(r: Pick<FakeRedis, "get" | "set" | "del" | "incr" | "expire" | "getdel" | "ttl" | "multi">) {
   const out: unknown[] = [];
   out.push(await r.set(k("a"), { otp: "123456", n: 1 }, { ex: 60 }));
   out.push(await r.get(k("a")));
@@ -23,6 +23,10 @@ async function scenario(r: Pick<FakeRedis, "get" | "set" | "del" | "incr" | "exp
   out.push(await r.getdel(k("s")), await r.getdel(k("s")));
   out.push(await r.del(k("a"), k("c"), k("t"), k("never")));
   out.push(await r.set(k("nx"), 1, { nx: true }), await r.set(k("nx"), 2, { nx: true }));
+  // atomic "add one and make sure it expires" used by the OTP caps and the sign-in lockout
+  out.push(await r.multi().incr(k("m")).expire(k("m"), 60, "NX").exec());
+  out.push(await r.multi().incr(k("m")).expire(k("m"), 60, "NX").exec());
+  out.push((await r.ttl(k("m"))) > 0);
   return out;
 }
 

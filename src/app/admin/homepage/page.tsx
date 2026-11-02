@@ -11,12 +11,13 @@ import AdminFormField, {
 } from "@/components/admin/ui/AdminFormField";
 import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SiteSettings, HeroSettings, BrandStorySettings } from "@/types/admin";
 import ImageUploadZone from "@/components/admin/ui/ImageUploadZone";
-import { adminAxios } from "@/lib/admin-axios";
+import { uploadAdminImage, discardUploadedImage } from "@/lib/admin-api/upload";
 import toast from "react-hot-toast";
 import { AVAILABLE_ICONS } from "@/lib/icon-map";
+import { settingsForSection } from "@/lib/admin-api/settings";
 
 const defaultHeroSettings: HeroSettings = {
   ecoBadge: { text: "Certified Organic", subtext: "GOTS", isVisible: true },
@@ -72,6 +73,12 @@ export default function AdminHomepageContentPage() {
   const { data, isLoading } = useSiteSettings();
   const updateMutation = useUpdateSettings();
   const [isUploading, setIsUploading] = useState(false);
+  // Uploaded when picked, but only part of the page once saved: a photo replaced or removed
+  // before saving is deleted again (the server refuses to delete anything still in use).
+  const unsaved = useRef(new Set<string>());
+  const dropPhoto = (publicId?: string) => {
+    if (publicId && unsaved.current.delete(publicId)) void discardUploadedImage(publicId);
+  };
 
   const [settings, setSettings] = useState<SiteSettings>({
     heroSettings: defaultHeroSettings,
@@ -85,6 +92,7 @@ export default function AdminHomepageContentPage() {
       buttonText: "Read our story",
       buttonLink: "/about",
       imageUrl: "",
+      imagePublicId: "",
     },
     trustStripSettings: { items: defaultTrustItems },
     ecoCommitmentSettings: defaultEcoSettings,
@@ -130,6 +138,7 @@ export default function AdminHomepageContentPage() {
           buttonText: data.brandStorySettings?.buttonText ?? "Read our story",
           buttonLink: data.brandStorySettings?.buttonLink ?? "/about",
           imageUrl: data.brandStorySettings?.imageUrl ?? "",
+          imagePublicId: data.brandStorySettings?.imagePublicId ?? "",
         },
         trustStripSettings: {
           items: data.trustStripSettings?.items?.length
@@ -311,7 +320,11 @@ export default function AdminHomepageContentPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateMutation.mutate(settings);
+    // This page owns the homepage sections only: other pages' settings are not sent
+    updateMutation.mutate(
+      settingsForSection(settings, "homepage"),
+      { onSuccess: () => unsaved.current.clear() },
+    );
   };
 
   if (isLoading)
@@ -647,25 +660,22 @@ export default function AdminHomepageContentPage() {
                         ]
                       : []
                   }
-                  onRemoveExisting={() =>
-                    handleBrandStoryChange("imageUrl", "")
-                  }
+                  onRemoveExisting={() => {
+                    dropPhoto(brandStory.imagePublicId);
+                    handleBrandStoryChange("imageUrl", "");
+                    handleBrandStoryChange("imagePublicId", "");
+                  }}
                   onFilesSelected={async (files) => {
                     if (files.length === 0) return;
                     setIsUploading(true);
                     try {
-                      const formData = new FormData();
-                      formData.append("file", files[0]);
-                      formData.append("context", "brand-story");
-                      const { data } = await adminAxios.post(
-                        "/api/admin/upload",
-                        formData,
-                        {
-                          headers: { "Content-Type": "multipart/form-data" },
-                        },
-                      );
-                      handleBrandStoryChange("imageUrl", data.url);
-                      toast.success("Image uploaded successfully");
+                      const { url, publicId } = await uploadAdminImage(files[0], "brand-story");
+                      unsaved.current.add(publicId);
+                      // A photo picked earlier in this session but never saved is replaced: delete it
+                      dropPhoto(brandStory.imagePublicId);
+                      handleBrandStoryChange("imageUrl", url);
+                      handleBrandStoryChange("imagePublicId", publicId);
+                      toast.success("Image uploaded. Save to publish.");
                     } catch (error) {
                       toast.error("Failed to upload image");
                     } finally {

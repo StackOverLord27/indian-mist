@@ -8,6 +8,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import SizeChartCard from '@/components/admin/SizeChartCard';
 import { SiteSettings } from '@/types/admin';
+import { settingsForSection } from '@/lib/admin-api/settings';
 
 export default function AdminSettingsPage() {
   const { data, isLoading } = useSiteSettings();
@@ -49,7 +50,9 @@ export default function AdminSettingsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateMutation.mutate(settings);
+    // This page owns the general and social settings only. Sending anything else could overwrite
+    // what other admin pages saved (pricing, homepage, contact).
+    updateMutation.mutate(settingsForSection(settings, 'general'));
   };
 
   if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-olive size-8" /></div>;

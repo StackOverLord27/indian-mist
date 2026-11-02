@@ -14,6 +14,7 @@ import { Loader2, X } from 'lucide-react';
 import { useAdminProducts, useCreateProduct, useUpdateProduct } from '@/hooks/admin/useAdminProducts';
 import { useAdminCategories } from '@/hooks/admin/useAdminCategories';
 import * as categoryApi from '@/lib/admin-api/categories';
+import { buildProductFormData } from '@/lib/admin-api/product-form-data';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
@@ -112,7 +113,8 @@ export default function ProductForm({ product, duplicateOf }: { product?: AdminP
   
   useEffect(() => {
     if (product?.images) {
-      const cImg = product.images.find(img => img.isCategoryCover);
+      // The category cover is stored as the URL of one of the images
+      const cImg = product.images.find(img => !!product.categoryCoverImage && img.url === product.categoryCoverImage);
       if (cImg) setCoverImageId(cImg.publicId);
       // Initialise order to existing array order; primary is always first
       const sorted = [...product.images].sort((a, b) => (a.isPrimary ? -1 : b.isPrimary ? 1 : 0));
@@ -162,53 +164,7 @@ export default function ProductForm({ product, duplicateOf }: { product?: AdminP
   });
 
   const onSubmit = async (data: ProductFormData) => {
-    const formData = new FormData();
-    
-    // Append scalar fields
-    formData.append('name', data.name);
-    formData.append('category', data.category);
-    formData.append('price', data.price.toString());
-    if (data.originalPrice) formData.append('originalPrice', data.originalPrice.toString());
-    formData.append('description', data.description);
-    if (data.badge) formData.append('badge', data.badge);
-    formData.append('isFeatured', data.isFeatured ? 'true' : 'false');
-    formData.append('trackInventory', data.trackInventory ? 'true' : 'false');
-    formData.append('stockQuantity', String(data.stockQuantity || 0));
-    // Per-size counts, only for the sizes currently selected
-    formData.append('sizeStock', JSON.stringify(
-      Object.fromEntries((data.sizes ?? []).map((size) => [size, Math.max(0, Math.floor(Number(data.sizeStock?.[size]) || 0))])),
-    ));
-    
-    // Arrays need special handling or JSON stringification
-    formData.append('features', JSON.stringify(data.features.filter(s => s.trim())));
-    if (data.sizes) formData.append('sizes', JSON.stringify(data.sizes));
-    const colorName = (data.colorName ?? '').trim();
-    formData.append('colorName', colorName);
-    formData.append('colorHex', colorName ? (data.colorHex ?? '') : '');
-    formData.append('colorGroup', data.colorGroup ?? '');
-    formData.append('tags', JSON.stringify(data.tags.split(',').map(t => t.trim()).filter(Boolean)));
-    formData.append('materials', JSON.stringify(data.materials.filter(s => s.trim())));
-    formData.append('careInstructions', JSON.stringify(data.careInstructions.filter(c => c.text.trim())));
-    formData.append('shippingInfo', JSON.stringify({
-      standard: data.shippingStandard || '3-5 business days',
-      express: data.shippingExpress || '1-2 business days',
-    }));
-
-    // Image handling
-    newFiles.forEach(file => {
-      formData.append('images', file);
-    });
-    
-    if (removedImageIds.length > 0) {
-      formData.append('removedImageIds', JSON.stringify(removedImageIds));
-    }
-    
-    // First image in imageOrder is primary
-    if (imageOrder.length > 0) {
-      formData.append('primaryImageId', imageOrder[0]);
-      formData.append('imageOrder', JSON.stringify(imageOrder));
-    }
-    if (coverImageId) formData.append('coverImageId', coverImageId);
+    const formData = buildProductFormData(data, { newFiles, removedImageIds, imageOrder, coverImageId });
 
     if (product) {
       updateMutation.mutate(formData);

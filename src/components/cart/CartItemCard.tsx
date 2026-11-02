@@ -2,10 +2,10 @@
 
 import { getImageSrc } from "@/lib/utils";
 import { useState, useRef } from "react";
-import Image from "next/image";
 import { Minus, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCartStore, type CartItem } from "@/lib/cart-store";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 const placeholderColors = [
   "bg-[#d4e2c8]",
@@ -71,15 +71,15 @@ export function CartItemCard({
       >
         {(() => {
           const imgSrc = getImageSrc(item.image);
-          return imgSrc ? (
-            <Image
+          return (
+            <SafeImage
               src={imgSrc}
               alt={item.name}
-              fill
               className="object-cover"
               sizes="(max-width: 640px) 64px, 96px"
+              fallback={<div className="absolute inset-0" />}
             />
-          ) : null;
+          );
         })()}
       </div>
 

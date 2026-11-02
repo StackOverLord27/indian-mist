@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useRef, useState } from 'react';
 
 import BlogCategorySelect from '@/components/admin/BlogCategorySelect';
+import { buildBlogFormData } from '@/lib/admin-api/blog-form-data';
 
 export default function AdminNewBlogPage() {
   const createBlog = useCreateBlog();
@@ -41,26 +42,7 @@ export default function AdminNewBlogPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('excerpt', excerpt);
-    formData.append('content', content);
-    formData.append('category', category);
-    formData.append('author', author);
-    formData.append('isPublished', String(isPublished));
-    formData.append(
-      'tags',
-      JSON.stringify(
-        tagsInput
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean)
-      )
-    );
-    if (coverFile) {
-      formData.append('file', coverFile);
-      formData.append('coverImageAlt', coverAlt || title);
-    }
+    const formData = buildBlogFormData({ title, excerpt, content, category, author, isPublished, tagsInput, coverFile, coverAlt });
 
     createBlog.mutate(formData);
   };

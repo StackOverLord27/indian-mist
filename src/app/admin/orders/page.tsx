@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight, Package, MapPin, CreditCard } from "lucide-react";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 type StatusUpdater = UseMutationResult<unknown, Error, { id: string; status: string }>;
 
@@ -180,11 +180,9 @@ function OrderRow({
                 <div className="space-y-3 max-h-62.5 overflow-y-auto pr-2 custom-scrollbar">
                   {order.items.map((item, idx) => (
                     <div key={idx} className="flex gap-3 bg-white p-2 border border-olive/10 rounded-sm">
-                      {item.image && (
-                        <div className="relative w-12 h-16 bg-warm/50 shrink-0">
-                          <Image src={item.image} alt={item.name} fill className="object-cover" />
-                        </div>
-                      )}
+                      <div className="relative w-12 h-16 bg-warm/50 shrink-0 overflow-hidden">
+                        <SafeImage src={item.image} alt={item.name} className="object-cover" sizes="48px" />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-merriweather text-xs font-semibold text-forest truncate">{item.name}</p>
                         <div className="flex flex-wrap items-center gap-x-2 font-montserrat text-[10px] text-muted-text mt-0.5">

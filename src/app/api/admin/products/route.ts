@@ -2,13 +2,15 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextRequest } from 'next/server';
-import { withAdmin, parseFormData, validateImageFile, errorResponse, successResponse } from '@/lib/api-helpers';
+import { withAdmin, parseFormData, validateImageFile, errorResponse, successResponse, validationError } from '@/lib/api-helpers';
 import { Product } from '@/models/product.model';
-import { uploadImage } from '@/lib/cloudinary';
+import { uploadImage, deleteManyImages } from '@/lib/cloudinary';
 import { ProductSchema } from '@/schemas/admin';
 import { slugify, uniqueProductSlug } from '@/lib/slugify';
-import { buildSizeStock } from '@/lib/size-stock';
+import { productCandidate, stockFor } from '@/lib/product-fields';
 import { revalidateStorefront } from '@/lib/revalidate-storefront';
+
+const MAX_PRODUCT_IMAGES = 10;
 
 export const GET = withAdmin(async (req) => {
   const { searchParams } = new URL(req.url);
@@ -36,82 +38,71 @@ export const GET = withAdmin(async (req) => {
   });
 });
 
-export const POST = withAdmin(async (req) => {
+/**
+ * Creating a product: validate everything first, then upload, then save. If saving fails the
+ * files uploaded in this request are deleted again.
+ */
+export const POST = withAdmin(async (req: NextRequest) => {
   const { fields, files } = await parseFormData(req);
 
-  // Parse JSON-encoded array/object fields from FormData
-  const parseJSON = <T>(val: string | undefined, fallback: T): T => {
-    try { return val ? JSON.parse(val) : fallback; }
-    catch { return fallback; }
-  };
-
-  const parsedFields = {
-    name: fields.name?.trim(),
-    category: fields.category,
-    price: Number(fields.price),
-    originalPrice: fields.originalPrice ? Number(fields.originalPrice) : undefined,
-    description: fields.description?.trim(),
-    badge: fields.badge ?? '',
-    tags: parseJSON(fields.tags, []),
-    sizes: parseJSON(fields.sizes, []),
-    colorName: fields.colorName?.trim() ?? '',
-    colorHex: fields.colorHex?.trim() ?? '',
-    colorGroup: slugify(fields.colorGroup ?? '') || (fields.colorName?.trim() ? slugify(fields.name ?? '') : ''),
-    features: parseJSON(fields.features, []),
-    materials: parseJSON(fields.materials, []),
-    careInstructions: parseJSON(fields.careInstructions, []),
-    shippingInfo: parseJSON(fields.shippingInfo, undefined),
-    isFeatured: fields.isFeatured === 'true',
-    trackInventory: fields.trackInventory === 'true',
-    stockQuantity: Math.max(0, Math.floor(Number(fields.stockQuantity) || 0)),
-    sizeStock: buildSizeStock(parseJSON(fields.sizes, [] as string[]), parseJSON(fields.sizeStock, {}), fields.trackInventory === 'true'),
-  };
-  if (parsedFields.sizeStock.length) parsedFields.stockQuantity = parsedFields.sizeStock.reduce((n, s) => n + s.quantity, 0);
-
-  const validationResult = ProductSchema.safeParse(parsedFields);
-  if (!validationResult.success) {
-    const errors: Record<string, string> = {};
-    validationResult.error.issues.forEach((err) => {
-      errors[err.path.join('.')] = err.message;
-    });
-    return errorResponse('Validation failed', 400, errors);
-  }
-
-  const uploadedImages: {
-    url: string; publicId: string;
-    alt: string; isPrimary: boolean;
-  }[] = [];
-
-  for (const [i, file] of files.entries()) {
+  for (const file of files) {
     const validation = validateImageFile(file);
-    if (!validation.valid) {
-      return errorResponse(validation.message!, 400);
-    }
-    const result = await uploadImage(file.buffer, {
-      folder: 'indian-mist/products',
-    });
-    uploadedImages.push({
-      url: result.url,
-      publicId: result.publicId,
-      alt: fields[`imageAlt_${i}`] ?? '',
-      isPrimary: i === 0,
-    });
+    if (!validation.valid) return errorResponse(validation.message!, 400, { images: validation.message! });
+  }
+  if (files.length === 0) {
+    return errorResponse('Product must have at least one image', 400, { images: 'Add at least one image' });
+  }
+  if (files.length > MAX_PRODUCT_IMAGES) {
+    return errorResponse(`A product can have at most ${MAX_PRODUCT_IMAGES} images`, 400, { images: `At most ${MAX_PRODUCT_IMAGES} images` });
   }
 
-  const coverIdx = Number(fields.categoryCoverIndex ?? 0);
-  const categoryCoverImage = uploadedImages[coverIdx]?.url ?? '';
+  const validated = ProductSchema.safeParse(productCandidate(fields));
+  if (!validated.success) return validationError(validated.error);
+  const parsed = validated.data;
 
-  // Slug = name + colour, so colour variants of one product never collide
-  const slug = await uniqueProductSlug(parsedFields.name, parsedFields.colorName, (s) => Product.exists({ slug: s }));
+  const colorGroup = parsed.colorGroup || (parsed.colorName ? slugify(parsed.name) : '');
+  const stock = stockFor(parsed, fields);
 
-  const product = await Product.create({
-    ...parsedFields,
-    slug,
-    badge: parsedFields.badge as "New" | "Sale" | "Sold Out" | "",
-    images: uploadedImages,
-    categoryCoverImage,
-  });
+  const uploadedImages: { url: string; publicId: string; alt: string; isPrimary: boolean }[] = [];
+  try {
+    for (const [i, file] of files.entries()) {
+      const result = await uploadImage(file.buffer, { folder: 'indian-mist/products' });
+      uploadedImages.push({
+        url: result.url,
+        publicId: result.publicId,
+        alt: fields[`imageAlt_${i}`] ?? '',
+        isPrimary: i === 0,
+      });
+    }
 
-  revalidateStorefront();
-  return successResponse({ product }, 201);
+    const coverIdx = Number(fields.categoryCoverIndex ?? 0);
+    const categoryCoverImage = uploadedImages[Number.isInteger(coverIdx) ? coverIdx : 0]?.url ?? uploadedImages[0].url;
+
+    // Slug = name + colour, so colour variants of one product never collide. Two admins saving
+    // the same name at once can both pick the same free slug: the unique index stops the second,
+    // which then picks the next free one.
+    for (let attempt = 0; ; attempt++) {
+      const slug = await uniqueProductSlug(parsed.name, parsed.colorName ?? '', (s) => Product.exists({ slug: s }));
+      try {
+        const product = await Product.create({
+          ...parsed,
+          colorGroup,
+          ...stock,
+          slug,
+          images: uploadedImages,
+          categoryCoverImage,
+        });
+        revalidateStorefront();
+        return successResponse({ product }, 201);
+      } catch (error) {
+        const duplicateSlug =
+          (error as { code?: number; keyPattern?: Record<string, unknown> })?.code === 11000 &&
+          (error as { keyPattern?: Record<string, unknown> }).keyPattern?.slug;
+        if (!duplicateSlug || attempt >= 4) throw error;
+      }
+    }
+  } catch (error) {
+    if (uploadedImages.length) await deleteManyImages(uploadedImages.map((img) => img.publicId));
+    throw error;
+  }
 });

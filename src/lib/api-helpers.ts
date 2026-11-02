@@ -2,6 +2,7 @@
 import dbConnect from './db';
 import type { NextRequest } from 'next/server';
 import mongoose from 'mongoose';
+import type { ZodError } from 'zod';
 
 export type RouteContext = {
   params: Promise<Record<string, string>>;
@@ -40,7 +41,48 @@ export function errorResponse(
   );
 }
 
+/** An error that carries the HTTP status and a message that is safe to show to the admin. */
+export class ApiError extends Error {
+  constructor(message: string, public readonly status = 400, public readonly errors?: Record<string, string>) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+/** Reads a JSON request body; a missing or broken body is a 400, not a 500. */
+export async function parseJsonBody(req: Request): Promise<unknown> {
+  try {
+    return await req.json();
+  } catch {
+    throw new ApiError('Request body must be valid JSON', 400);
+  }
+}
+
+/** A JSON-encoded form field. Missing/empty means "not sent"; broken JSON is a 400, never silently ignored. */
+export function jsonFormField<T>(fields: Record<string, string>, name: string): T | undefined {
+  const raw = fields[name];
+  if (raw === undefined || raw === '') return undefined;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    throw new ApiError(`${name} is not valid`, 400, { [name]: 'Not valid' });
+  }
+}
+
+/** The standard 400 for a failed zod check: { message: 'Validation failed', errors: { 'field.path': 'what is wrong' } } */
+export function validationError(error: ZodError): Response {
+  const errors: Record<string, string> = {};
+  for (const issue of error.issues) {
+    const key = issue.path.join('.') || 'body';
+    if (!errors[key]) errors[key] = issue.message;
+  }
+  return errorResponse('Validation failed', 400, errors);
+}
+
 export function handleApiError(error: unknown): Response {
+  if (error instanceof ApiError) {
+    return errorResponse(error.message, error.status, error.errors);
+  }
   console.error('[API Error]', error);
 
   if (error instanceof mongoose.Error.CastError) {
@@ -112,7 +154,12 @@ export async function parseFormData(req: NextRequest): Promise<{
   fields: Record<string, string>;
   files: UploadedFile[];
 }> {
-  const formData = await req.formData();
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    throw new ApiError('Request must be a valid form submission', 400);
+  }
   const fields: Record<string, string> = {};
   const files: UploadedFile[] = [];
 

@@ -11,9 +11,9 @@ import AdminFormField, { inputClass } from '@/components/admin/ui/AdminFormField
 import type { AboutContent, AboutImage } from '@/types/admin';
 import AdminCard from '@/components/admin/ui/AdminCard';
 import ImageUploadZone from '@/components/admin/ui/ImageUploadZone';
-import { adminAxios } from '@/lib/admin-axios';
 import toast from 'react-hot-toast';
 import { resolveAbout, type ResolvedAbout } from '@/lib/about-content';
+import { uploadAdminImage, discardUploadedImage } from '@/lib/admin-api/upload';
 
 const MAX_GALLERY = 5;
 
@@ -22,19 +22,21 @@ const tabClass =
 
 type Section = NonNullable<AboutContent['customSections']>[number];
 
-async function uploadImage(file: File): Promise<{ url: string; publicId: string }> {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('context', 'about');
-  const { data } = await adminAxios.post('/api/admin/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return { url: data.url, publicId: data.publicId };
-}
-
 export default function AdminAboutPage() {
   const { data, isLoading } = useAboutContent();
   const updateMutation = useUpdateAbout();
+  // Photos are uploaded as soon as they are picked, but only become part of the page when saved.
+  // This remembers those uploads so a photo that is replaced or removed before saving is deleted
+  // again instead of being left behind in Cloudinary (the server refuses to delete anything in use).
+  const unsaved = useRef(new Set<string>());
+  const uploadImage = async (file: File) => {
+    const result = await uploadAdminImage(file, 'about');
+    unsaved.current.add(result.publicId);
+    return result;
+  };
+  const dropPhoto = (publicId?: string) => {
+    if (publicId && unsaved.current.delete(publicId)) void discardUploadedImage(publicId);
+  };
   const [isUploading, setIsUploading] = useState(false);
   const [form, setForm] = useState<ResolvedAbout | null>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
@@ -81,7 +83,7 @@ export default function AdminAboutPage() {
       // The old combined text now lives in Hero + Story, so clear it
       mission: { heading: '', body: '' },
     };
-    updateMutation.mutate(payload);
+    updateMutation.mutate(payload, { onSuccess: () => unsaved.current.clear() });
   };
 
   const saveButton = (label: string) => (
@@ -226,12 +228,13 @@ export default function AdminAboutPage() {
                   multiple={false}
                   maxFiles={1}
                   currentImages={form.story.image.url ? [{ url: form.story.image.url, publicId: form.story.image.publicId || form.story.image.url, isPrimary: true }] : []}
-                  onRemoveExisting={() => patch('story', { image: { url: '', publicId: '', alt: form.story.image.alt } })}
+                  onRemoveExisting={() => { dropPhoto(form.story.image.publicId); patch('story', { image: { url: '', publicId: '', alt: form.story.image.alt } }); }}
                   onFilesSelected={async (files) => {
                     if (!files.length) return;
                     setIsUploading(true);
                     try {
                       const { url, publicId } = await uploadImage(files[0]);
+                      dropPhoto(form.story.image.publicId);
                       patch('story', { image: { url, publicId, alt: form.story.image.alt } });
                       toast.success('Image uploaded. Save to publish.');
                     } catch {
@@ -335,7 +338,7 @@ export default function AdminAboutPage() {
                         <div className="flex items-center gap-1 mt-auto">
                           <button type="button" onClick={() => moveImage(idx, -1)} disabled={idx === 0} aria-label="Move earlier" className="p-1.5 rounded-sm hover:bg-card disabled:opacity-30"><ArrowUp className="size-4 text-forest" /></button>
                           <button type="button" onClick={() => moveImage(idx, 1)} disabled={idx === images.length - 1} aria-label="Move later" className="p-1.5 rounded-sm hover:bg-card disabled:opacity-30"><ArrowDown className="size-4 text-forest" /></button>
-                          <button type="button" onClick={() => setImages(images.filter((_, i) => i !== idx))} aria-label="Remove photo" className="ml-auto p-1.5 rounded-sm text-copper hover:bg-copper/10"><X className="size-4" /></button>
+                          <button type="button" onClick={() => { dropPhoto(img.publicId); setImages(images.filter((_, i) => i !== idx)); }} aria-label="Remove photo" className="ml-auto p-1.5 rounded-sm text-copper hover:bg-copper/10"><X className="size-4" /></button>
                         </div>
                       </div>
                     </div>
@@ -377,7 +380,7 @@ export default function AdminAboutPage() {
                 <div key={idx} className="bg-warm/50 border border-olive/15 rounded-md p-6 space-y-4">
                   <div className="flex justify-between items-center">
                     <h3 className="font-merriweather text-lg text-forest">Section {idx + 1}</h3>
-                    <button type="button" onClick={() => removeSection(idx)} className="text-copper hover:text-red-700 text-sm font-semibold">Remove</button>
+                    <button type="button" onClick={() => { dropPhoto(section.imagePublicId); removeSection(idx); }} className="text-copper hover:text-red-700 text-sm font-semibold">Remove</button>
                   </div>
                   <AdminFormField label="Heading">
                     <input value={section.heading} onChange={e => updateSection(idx, { heading: e.target.value })} className={inputClass} placeholder="e.g. Crafted in the Wild" />
@@ -397,12 +400,13 @@ export default function AdminAboutPage() {
                       multiple={false}
                       maxFiles={1}
                       currentImages={section.imageUrl ? [{ url: section.imageUrl, publicId: section.imagePublicId || section.imageUrl, isPrimary: true }] : []}
-                      onRemoveExisting={() => updateSection(idx, { imageUrl: '', imagePublicId: '' })}
+                      onRemoveExisting={() => { dropPhoto(section.imagePublicId); updateSection(idx, { imageUrl: '', imagePublicId: '' }); }}
                       onFilesSelected={async (files) => {
                         if (!files.length) return;
                         setIsUploading(true);
                         try {
                           const { url, publicId } = await uploadImage(files[0]);
+                          dropPhoto(section.imagePublicId);
                           updateSection(idx, { imageUrl: url, imagePublicId: publicId });
                           toast.success('Image uploaded. Save to publish.');
                         } catch {

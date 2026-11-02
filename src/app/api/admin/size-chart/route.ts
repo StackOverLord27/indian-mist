@@ -13,24 +13,31 @@ export const GET = withAdmin(async () => {
   return successResponse({ sizeChart: settings?.sizeChart ?? {} });
 });
 
+/** Validate, upload, save the new chart, and only then delete the old one from Cloudinary. */
 export const PUT = withAdmin(async (req: NextRequest) => {
   const { files } = await parseFormData(req);
   if (!files.length) {
-    return errorResponse('Image file is required', 400);
+    return errorResponse('Image file is required', 400, { image: 'Choose an image' });
   }
   const validation = validateImageFile(files[0]);
   if (!validation.valid) {
-    return errorResponse(validation.message!, 400);
+    return errorResponse(validation.message!, 400, { image: validation.message! });
   }
 
   const existing = await Settings.findOne().select('sizeChart').lean<StoredChart>();
   const result = await uploadImage(files[0].buffer, { folder: 'indian-mist/size-chart' });
 
-  await Settings.findOneAndUpdate(
-    {},
-    { $set: { sizeChart: { url: result.url, publicId: result.publicId } } },
-    { upsert: true }
-  );
+  try {
+    await Settings.findOneAndUpdate(
+      {},
+      { $set: { sizeChart: { url: result.url, publicId: result.publicId } } },
+      { upsert: true }
+    );
+  } catch (error) {
+    // Not saved: the new file is not used by anything
+    await deleteImage(result.publicId);
+    throw error;
+  }
   if (existing?.sizeChart?.publicId) {
     await deleteImage(existing.sizeChart.publicId);
   }

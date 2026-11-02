@@ -1,9 +1,9 @@
 export const runtime = 'nodejs';
 
 import { NextRequest } from 'next/server';
-import { withAdmin, parseFormData, validateImageFile, successResponse, errorResponse } from '@/lib/api-helpers';
+import { withAdmin, parseFormData, parseJsonBody, jsonFormField, validateImageFile, successResponse, errorResponse, validationError } from '@/lib/api-helpers';
 import About from '@/models/about.model';
-import { uploadImage, deleteImage, deleteManyImages } from '@/lib/cloudinary';
+import { uploadImage, deleteManyImages, deleteImage } from '@/lib/cloudinary';
 import { AboutSchema } from '@/schemas/admin';
 import { revalidateStorefront } from '@/lib/revalidate-storefront';
 
@@ -30,59 +30,65 @@ export const GET = withAdmin(async () => {
   return successResponse({ about: about ?? {} });
 });
 
+/**
+ * Saves the sections the request contains (each section replaces the stored one; sections not
+ * in the request are left alone). Images are uploaded by the admin page as soon as they are
+ * picked, so the page sends only URLs and ids. After the save, every file the page used to
+ * point at and no longer does is deleted from Cloudinary. A cleanup problem is logged and
+ * never fails the save.
+ */
 export const PUT = withAdmin(async (req: NextRequest) => {
   const contentType = req.headers.get('content-type') ?? '';
-  const update: Record<string, unknown> = {};
+  const raw: Record<string, unknown> = {};
+  let newTeamPhoto: Awaited<ReturnType<typeof parseFormData>>['files'][number] | undefined;
+  let teamPhotoAlt = '';
 
   if (contentType.includes('multipart/form-data')) {
     const { fields, files } = await parseFormData(req);
-
-    if (fields.mission) update.mission = JSON.parse(fields.mission);
-    if (fields.drivesUs) update.drivesUs = JSON.parse(fields.drivesUs);
-    if (fields.cta) update.cta = JSON.parse(fields.cta);
-
-    if (files.length) {
-      const fileValidation = validateImageFile(files[0]);
-      if (!fileValidation.valid) {
-        return errorResponse(fileValidation.message!, 400);
-      }
-      // Delete old team photo from Cloudinary if exists
-      const existing = await About.findOne().select('teamPhoto').lean<{ teamPhoto?: { publicId?: string } } | null>();
-      if (existing?.teamPhoto?.publicId) {
-        await deleteImage(existing.teamPhoto.publicId);
-      }
-      const result = await uploadImage(files[0].buffer, {
-        folder: 'indian-mist/about',
-      });
-      update.teamPhoto = {
-        url: result.url,
-        publicId: result.publicId,
-        alt: fields.teamPhotoAlt ?? '',
-      };
+    for (const key of ['mission', 'drivesUs', 'cta'] as const) {
+      const value = jsonFormField<unknown>(fields, key);
+      if (value !== undefined) raw[key] = value;
+    }
+    newTeamPhoto = files[0];
+    teamPhotoAlt = fields.teamPhotoAlt ?? '';
+    if (newTeamPhoto) {
+      const validation = validateImageFile(newTeamPhoto);
+      if (!validation.valid) return errorResponse(validation.message!, 400, { image: validation.message! });
     }
   } else {
-    Object.assign(update, await req.json());
+    const body = await parseJsonBody(req);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return errorResponse('Request body must be an object', 400);
+    }
+    Object.assign(raw, body);
   }
-  
-  const validationResult = AboutSchema.safeParse(update);
-  if (!validationResult.success) {
-    const errors: Record<string, string> = {};
-    validationResult.error.issues.forEach((err) => {
-      errors[err.path.join('.')] = err.message;
-    });
-    return errorResponse('Validation failed', 400, errors);
-  }
+
+  const validated = AboutSchema.safeParse(raw);
+  if (!validated.success) return validationError(validated.error);
+  // Only the validated, whitelisted data is saved
+  const update: Record<string, unknown> = { ...validated.data };
 
   const before = await About.findOne().lean<AboutImages | null>();
 
-  const about = await About.findOneAndUpdate(
-    {},
-    { $set: update },
-    { upsert: true, new: true, runValidators: true }
-  );
-  
-  // Delete photos that were replaced or removed, so nothing is left behind in Cloudinary.
-  // A cleanup problem must never fail the save itself.
+  let uploadedPublicId = '';
+  let about;
+  try {
+    if (newTeamPhoto) {
+      const result = await uploadImage(newTeamPhoto.buffer, { folder: 'indian-mist/about' });
+      uploadedPublicId = result.publicId;
+      update.teamPhoto = { url: result.url, publicId: result.publicId, alt: teamPhotoAlt };
+    }
+    about = await About.findOneAndUpdate(
+      {},
+      { $set: update },
+      { upsert: true, returnDocument: 'after', runValidators: true }
+    );
+  } catch (error) {
+    if (uploadedPublicId) await deleteImage(uploadedPublicId);
+    throw error;
+  }
+
+  // Saved: delete the photos that were replaced or removed, so nothing is left behind in Cloudinary.
   try {
     const stillUsed = collectPublicIds(about.toObject() as AboutImages);
     const unused = [...collectPublicIds(before)].filter((id) => !stillUsed.has(id));

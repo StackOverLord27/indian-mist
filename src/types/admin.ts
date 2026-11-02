@@ -34,6 +34,8 @@ export interface AdminProduct {
     express?: string;
   };
   images: ProductImage[];
+  /** URL of the image shown on the category grid (one of `images`) */
+  categoryCoverImage?: string;
   isActive?: boolean;
   isFeatured?: boolean;
   trackInventory?: boolean;
@@ -146,6 +148,8 @@ export interface BrandStorySettings {
   buttonText?: string;
   buttonLink?: string;
   imageUrl?: string;
+  /** Cloudinary id of the image. Missing on documents saved before it existed. */
+  imagePublicId?: string;
 }
 
 export interface PromoCode {

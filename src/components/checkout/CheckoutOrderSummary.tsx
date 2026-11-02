@@ -1,7 +1,6 @@
 "use client";
 
 import { getImageSrc } from "@/lib/utils";
-import Image from "next/image";
 import {
   LockKeyhole,
   ShieldCheck,
@@ -14,6 +13,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 interface CartItem {
   id: string;
@@ -88,18 +88,13 @@ export function CheckoutOrderSummary({
               <div className="w-14 h-14 shrink-0 rounded-sm overflow-hidden bg-olive/10 relative">
                 {(() => {
                   const imgSrc = getImageSrc(item.image);
-                  return imgSrc ? (
-                    <Image
+                  return (
+                    <SafeImage
                       src={imgSrc}
                       alt={item.name}
-                      fill
                       className="object-cover"
                       sizes="56px"
                     />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-olive/30 text-xs font-montserrat">
-                      IM
-                    </div>
                   );
                 })()}
                 {/* Quantity badge */}

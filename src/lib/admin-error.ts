@@ -7,7 +7,14 @@ export function getApiErrorMessage(error: unknown, fallback = 'Something went wr
       | { errors?: unknown; message?: unknown; error?: unknown }
       | undefined;
     if (Array.isArray(data?.errors)) return data.errors.join(', ');
-    if (typeof data?.message === 'string' && data.message) return data.message;
+    if (typeof data?.message === 'string' && data.message) {
+      // Routes send { message: 'Validation failed', errors: { field: 'what is wrong' } }: show the first reason too
+      if (data.errors && typeof data.errors === 'object') {
+        const first = Object.entries(data.errors as Record<string, unknown>).find(([, v]) => typeof v === 'string' && v);
+        if (first) return `${data.message}: ${first[1]}`;
+      }
+      return data.message;
+    }
     if (typeof data?.error === 'string' && data.error) return data.error;
   }
 

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { ChevronDown, ChevronRight, Package, MapPin, FileText, CheckCircle2 } from "lucide-react";
 import type { OrderData, OrderItemData } from "./types";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 interface StatusConfig {
   label: string;
@@ -220,17 +220,13 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                             >
                               <div className="flex items-center gap-3 min-w-0">
                                 <div className="relative size-14 shrink-0 rounded-sm overflow-hidden bg-cornsilk border border-olive-leaf/20 flex items-center justify-center">
-                                  {itemImg ? (
-                                    <Image
-                                      src={itemImg}
-                                      alt={itemName}
-                                      fill
-                                      className="object-cover"
-                                      sizes="56px"
-                                    />
-                                  ) : (
-                                    <Package className="size-6 text-olive-leaf/70" />
-                                  )}
+                                  <SafeImage
+                                    src={itemImg}
+                                    alt={itemName}
+                                    className="object-cover"
+                                    sizes="56px"
+                                    fallback={<Package className="size-6 text-olive-leaf/70" />}
+                                  />
                                 </div>
                                 <div className="min-w-0">
                                   <p className="font-montserrat text-xs md:text-sm font-semibold text-forest truncate">

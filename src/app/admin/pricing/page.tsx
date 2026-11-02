@@ -24,6 +24,7 @@ import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import AdminFormField from "@/components/admin/ui/AdminFormField";
 import type { PromoCode, SiteSettings } from "@/types/admin";
+import { settingsForSection } from "@/lib/admin-api/settings";
 
 const inputClass =
   "w-full bg-warm/50 border border-olive/20 rounded-sm px-4 py-2.5 font-montserrat text-sm text-forest focus:outline-none focus:border-olive focus:ring-1 focus:ring-olive transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
@@ -418,7 +419,8 @@ export default function AdminPricingPage() {
       }
     }
 
-    updateMutation.mutate(settings);
+    // This page owns the pricing section only: other pages' settings are not sent
+    updateMutation.mutate(settingsForSection(settings, "pricing"));
   };
 
   const handlePricingChange = (field: string, value: string | number | boolean) => {

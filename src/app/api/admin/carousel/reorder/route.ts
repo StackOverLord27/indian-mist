@@ -1,23 +1,24 @@
 import { revalidateStorefront } from '@/lib/revalidate-storefront';
 import { NextRequest } from 'next/server';
-import { withAdmin, successResponse } from '@/lib/api-helpers';
+import { withAdmin, successResponse, errorResponse, parseJsonBody } from '@/lib/api-helpers';
 import Carousel from '@/models/carousel.model';
 
 export const PUT = withAdmin(async (req: NextRequest) => {
-  const body = await req.json();
-  let items: { id: string; order: number }[] = body.items;
-  
-  if (!items && Array.isArray(body.orderedIds)) {
+  const body = (await parseJsonBody(req)) as { items?: { id: string; order: number }[]; orderedIds?: string[] } | null;
+  let items = body?.items;
+
+  if (!items && Array.isArray(body?.orderedIds)) {
     items = body.orderedIds.map((id: string, idx: number) => ({ id, order: idx }));
   }
-  
-  if (items && Array.isArray(items)) {
-    await Promise.all(
-      items.map(({ id, order }) =>
-        Carousel.findByIdAndUpdate(id, { order })
-      )
-    );
+  if (!Array.isArray(items)) {
+    return errorResponse('orderedIds must be an array', 400);
   }
+
+  await Promise.all(
+    items.map(({ id, order }) =>
+      Carousel.findByIdAndUpdate(id, { order })
+    )
+  );
   
   revalidateStorefront();
   return successResponse({ message: 'Reordered' });

@@ -5,13 +5,27 @@ import { Writable } from "node:stream";
 export const cloudinaryCalls = {
   uploads: [] as { publicId: string; options: Record<string, unknown>; bytes: number }[],
   destroys: [] as string[],
+  /** options passed to each destroy call, in order */
+  destroyOptions: [] as Record<string, unknown>[],
   failNextUpload: false,
   failNextDestroy: false,
+  /** upload number (1 based) that should fail, e.g. 2 = the second upload */
+  failUploadNumber: 0,
+  /** destroy calls for these ids throw */
+  failDestroyIds: new Set<string>(),
+  /** runs at the moment a file is destroyed (lets a test look at the database at that point) */
+  onDestroy: null as null | ((publicId: string) => Promise<void> | void),
+  uploadCount: 0,
   reset() {
     this.uploads = [];
     this.destroys = [];
+    this.destroyOptions = [];
     this.failNextUpload = false;
     this.failNextDestroy = false;
+    this.failUploadNumber = 0;
+    this.failDestroyIds = new Set();
+    this.onDestroy = null;
+    this.uploadCount = 0;
   },
 };
 let seq = 0;
@@ -25,7 +39,8 @@ export function cloudinaryModuleMock() {
         return new Writable({
           write(chunk, _enc, done) { bytes += chunk.length; done(); },
           final(done) {
-            if (cloudinaryCalls.failNextUpload) {
+            cloudinaryCalls.uploadCount++;
+            if (cloudinaryCalls.failNextUpload || cloudinaryCalls.failUploadNumber === cloudinaryCalls.uploadCount) {
               cloudinaryCalls.failNextUpload = false;
               cb(new Error("mock upload failure"));
             } else {
@@ -38,12 +53,14 @@ export function cloudinaryModuleMock() {
           },
         });
       }),
-      destroy: vi.fn(async (publicId: string) => {
-        if (cloudinaryCalls.failNextDestroy) {
+      destroy: vi.fn(async (publicId: string, options?: Record<string, unknown>) => {
+        await cloudinaryCalls.onDestroy?.(publicId);
+        if (cloudinaryCalls.failNextDestroy || cloudinaryCalls.failDestroyIds.has(publicId)) {
           cloudinaryCalls.failNextDestroy = false;
           throw new Error("mock destroy failure");
         }
         cloudinaryCalls.destroys.push(publicId);
+        cloudinaryCalls.destroyOptions.push(options ?? {});
         return { result: "ok" };
       }),
     },
