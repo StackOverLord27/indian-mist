@@ -122,3 +122,7 @@ Before this prompt `/products/[slug]`, `/blogs*`, `/collections*` were all `ƒ` 
   - Admin = the single account whose email equals `SUPER_ADMIN_EMAIL` (case-insensitive, trimmed). The DB `role` field is not used for authorization.
   - Unused routes `/api/about`, `/api/announcements`, `/api/carousel`, `/api/blogs`, `/api/blogs/[slug]` may be deleted.
 
+- Prompt 4 answers:
+  - Fix N1 (atomic refresh-token rotation) and N2 (atomic sign-up) in the next auth-related prompt. Not started yet.
+  - `.env.example` stays committed (with `!.env.example` in `.gitignore`) for now; owner may revisit.
+  - No answer on the cap values: kept at 5 OTP e-mails per address per hour and 5 contact/newsletter requests per 10 minutes per IP.
