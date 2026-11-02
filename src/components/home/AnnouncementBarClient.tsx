@@ -39,8 +39,11 @@ export function AnnouncementBarClient({ displayItems }: { displayItems: string[]
 
   if (!displayItems || displayItems.length === 0) return null;
 
+  // The list can shrink while the page is open; never point past its end
+  const activeIndex = currentIndex % displayItems.length;
+
   return (
-    <div className="sticky top-0 z-50 flex h-8 w-full items-center justify-center overflow-hidden bg-black-forest px-4 font-sans text-2xs uppercase tracking-widest text-cornsilk sm:h-7">
+    <div className="flex h-8 w-full items-center justify-center overflow-hidden bg-black-forest px-4 font-sans text-2xs uppercase tracking-widest text-cornsilk sm:h-7">
       
       {/* MOBILE: Fade Carousel */}
       <div className="relative flex w-full max-w-2xl items-center justify-center h-full md:hidden">
@@ -48,7 +51,7 @@ export function AnnouncementBarClient({ displayItems }: { displayItems: string[]
           <div
             key={i}
             className={`absolute w-full text-center transition-opacity duration-500 ease-in-out px-4 truncate ${
-              i === currentIndex ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
+              i === activeIndex ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
             }`}
           >
             {text}

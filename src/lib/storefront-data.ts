@@ -48,7 +48,8 @@ export const getNavCollections = cache(async (): Promise<NavLink[]> => {
 export const getAnnouncementTexts = cache(async (): Promise<string[]> => {
   await dbConnect();
   const items = await AnnouncementModel.find({ isActive: true })
-    .sort({ order: 1 })
+    // Oldest first; _id breaks ties between items created in the same millisecond.
+    .sort({ createdAt: 1, _id: 1 })
     .select("text")
     .lean<{ text: string }[]>();
   return items.map((item) => item.text);

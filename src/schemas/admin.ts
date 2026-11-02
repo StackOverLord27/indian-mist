@@ -29,15 +29,29 @@ export const ProductSchema = z.object({
   stockQuantity: z.number().int().min(0).max(1_000_000).optional().default(0),
 });
 
+const announcementText = z
+  .string()
+  .trim()
+  .min(1, "Text is required")
+  .max(200, "Text cannot exceed 200 characters");
+
+// Plain text only: no links, no manual order. Unknown fields (e.g. from an old admin tab) are
+// dropped by zod and never reach the database.
 export const AnnouncementSchema = z.object({
-  text: z
-    .string()
-    .min(1, "Text is required")
-    .max(200, "Text cannot exceed 200 characters"),
-  link: z.string().optional(),
-  linkText: z.string().optional(),
+  text: announcementText,
   isActive: z.boolean().optional().default(true),
 });
+
+// Update/toggle: send only what changes. No defaults here, or an edit of the text alone would
+// silently switch the announcement back on.
+export const AnnouncementUpdateSchema = z
+  .object({
+    text: announcementText.optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((v) => v.text !== undefined || v.isActive !== undefined, {
+    message: "Nothing to update",
+  });
 
 export const CarouselSchema = z.object({
   alt: z.string().trim().max(300, "Alt text is too long").optional(),

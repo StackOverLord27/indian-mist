@@ -233,7 +233,6 @@ export function Navbar({
   const pathname = usePathname();
   const navLinks = buildNavLinks(categories, collections);
 
-  const isHome = pathname === "/";
   const itemCount = useCartStore((s) => s.items.reduce((sum, i) => sum + i.quantity, 0));
   const wishlistCount = useWishlistStore((s) => s.items.length);
 
@@ -262,8 +261,7 @@ export function Navbar({
   return (
     <nav
       className={cn(
-        "sticky z-40 h-16 w-full border-b border-olive-leaf/15 bg-cornsilk transition-shadow duration-300",
-        isHome ? "top-8 sm:top-7" : "top-0",
+        "relative h-16 w-full border-b border-olive-leaf/15 bg-cornsilk transition-shadow duration-300",
         scrolled && "shadow-sm"
       )}
     >

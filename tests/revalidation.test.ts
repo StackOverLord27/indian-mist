@@ -19,7 +19,6 @@ import { Blog } from "@/models/blog.model";
 import { Order } from "@/models/order.model";
 import * as announcements from "@/app/api/admin/announcements/route";
 import * as announcementById from "@/app/api/admin/announcements/[id]/route";
-import * as announcementReorder from "@/app/api/admin/announcements/reorder/route";
 import * as carouselReorder from "@/app/api/admin/carousel/reorder/route";
 import * as carouselById from "@/app/api/admin/carousel/[id]/route";
 import * as categories from "@/app/api/admin/categories/route";
@@ -81,7 +80,7 @@ describe("revalidateStorefront", () => {
 });
 
 describe("admin mutations refresh the whole storefront", () => {
-  it("announcements: create, update, delete, reorder", async () => {
+  it("announcements: create, update, toggle, delete", async () => {
     const created = await call(announcements.POST, { method: "POST", json: { text: "Free shipping" } });
     expect(created.status).toBe(201);
     const id = String((await created.json()).announcement._id);
@@ -90,11 +89,8 @@ describe("admin mutations refresh the whole storefront", () => {
     expect((await call(announcementById.PUT, { method: "PUT", json: { isActive: false } }, { id })).status).toBe(200);
     expect(layoutRevalidations()).toBe(2);
 
-    expect((await call(announcementReorder.PUT, { method: "PUT", json: { items: [{ id, order: 0 }] } })).status).toBe(200);
-    expect(layoutRevalidations()).toBe(3);
-
     expect((await call(announcementById.DELETE, { method: "DELETE" }, { id })).status).toBe(200);
-    expect(layoutRevalidations()).toBe(4);
+    expect(layoutRevalidations()).toBe(3);
   });
 
   it("does not revalidate when the change was rejected", async () => {

@@ -1,37 +1,21 @@
 import { revalidateStorefront } from '@/lib/revalidate-storefront';
 import { NextRequest } from 'next/server';
-import { withAdmin, successResponse, errorResponse } from '@/lib/api-helpers';
+import { withAdmin, successResponse, parseJsonBody, validationError } from '@/lib/api-helpers';
 import Announcement from '@/models/announcement.model';
 import { AnnouncementSchema } from '@/schemas/admin';
 
+// Oldest first: the same order the storefront bar uses.
 export const GET = withAdmin(async () => {
-  const items = await Announcement.find().sort({ order: 1 }).lean();
+  const items = await Announcement.find().sort({ createdAt: 1, _id: 1 }).limit(200).lean();
   return successResponse({ announcements: items });
 });
 
 export const POST = withAdmin(async (req: NextRequest) => {
-  const body = await req.json();
-  
-  const validationResult = AnnouncementSchema.safeParse(body);
-  if (!validationResult.success) {
-    const errors: Record<string, string> = {};
-    validationResult.error.issues.forEach((err) => {
-      errors[err.path.join('.')] = err.message;
-    });
-    return errorResponse('Validation failed', 400, errors);
-  }
+  const parsed = AnnouncementSchema.safeParse(await parseJsonBody(req));
+  if (!parsed.success) return validationError(parsed.error);
 
-  const { text, link, linkText, isActive } = validationResult.data;
+  const item = await Announcement.create(parsed.data);
 
-  const last = await Announcement.findOne().sort({ order: -1 }).lean<{ order?: number } | null>();
-  const item = await Announcement.create({
-    text: text.trim(),
-    link: link?.trim() ?? '',
-    linkText: linkText?.trim() ?? '',
-    isActive: isActive ?? true,
-    order: (last?.order ?? -1) + 1,
-  });
-  
   revalidateStorefront();
   return successResponse({ announcement: item }, 201);
 });

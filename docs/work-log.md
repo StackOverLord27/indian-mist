@@ -155,3 +155,15 @@ Before this prompt `/products/[slug]`, `/blogs*`, `/collections*` were all `ƒ` 
   - Fix N1 (atomic refresh-token rotation) and N2 (atomic sign-up) in the next auth-related prompt. Not started yet.
   - `.env.example` stays committed (with `!.env.example` in `.gitignore`) for now; owner may revisit.
   - No answer on the cap values: kept at 5 OTP e-mails per address per hour and 5 contact/newsletter requests per 10 minutes per IP.
+
+
+## Prompt 6 (announcements) - plain text only
+
+- Model: `link`/`linkText` removed (old docs keep them harmlessly, no migration). Schema: `text` (trim, 1-200) and `isActive`.
+- API: create uses `AnnouncementSchema`; update/toggle use a separate `AnnouncementUpdateSchema` without defaults (the old `.partial()` of a schema with `isActive` default(true) risked re-enabling on a text edit). Parsed data only; malformed ids give 404; list sorted `createdAt, _id` ascending (same as storefront), capped at 200. Reorder route deleted. All mutations call `revalidateStorefront()`.
+- Admin UI: link fields, link preview, drag handle/state, order call removed; confirm on delete, error toasts, load-error state with retry, per-row pending state, row actions visible on touch screens.
+- Navbar/bar: both now live in one `sticky top-0 z-50` wrapper in layout.tsx; Navbar is `relative`, bar is not sticky. Fixes (reasoned from CSS, not screenshotted): non-home pages used to slide the navbar under the sticky bar; home left a 32px gap when the bar was empty.
+- Tests: tests/announcements.test.ts (11) + updated revalidation test. 184 pass.
+
+### Found, not fixed
+- Announcement removed for rotation: mobile carousel index is not reset when list shrinks (now clamped with modulo only).

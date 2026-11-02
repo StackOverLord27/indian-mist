@@ -46,10 +46,8 @@ export interface AdminProduct {
 export interface Announcement {
   _id: string;
   text: string;
-  linkUrl?: string;
-  linkText?: string;
   isActive: boolean;
-  order: number;
+  createdAt?: string;
 }
 
 export interface CarouselImage {

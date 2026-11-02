@@ -54,8 +54,12 @@ export default async function RootLayout({
         <StoreHydration />
         <ClientSetup />
         <AppToaster />
-        <AnnouncementBar />
-        <Navbar categories={navCategories} collections={navCollections} />
+        {/* One sticky wrapper for both bars: they stack with no gap when the announcement bar is
+            empty, and can never overlap. The wrapper has no height on admin pages (both hide). */}
+        <div className="sticky top-0 z-50">
+          <AnnouncementBar />
+          <Navbar categories={navCategories} collections={navCollections} />
+        </div>
         <main className="flex-1 w-full">{children}</main>
         <Footer settings={settings ?? undefined} categories={navCategories} collections={navCollections} />
       </body>

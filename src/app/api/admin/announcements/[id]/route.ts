@@ -1,40 +1,38 @@
+import mongoose from 'mongoose';
 import { revalidateStorefront } from '@/lib/revalidate-storefront';
 import { NextRequest } from 'next/server';
-import { withAdmin, successResponse, errorResponse } from '@/lib/api-helpers';
+import { withAdmin, successResponse, errorResponse, parseJsonBody, validationError } from '@/lib/api-helpers';
 import Announcement from '@/models/announcement.model';
-import { AnnouncementSchema } from '@/schemas/admin';
+import { AnnouncementUpdateSchema } from '@/schemas/admin';
 
+// Edit the text and/or switch an announcement on or off (PATCH is the same as PUT).
 export const PUT = withAdmin(async (req: NextRequest, context) => {
   const { id } = await context.params;
-  const body = await req.json();
+  if (!mongoose.isValidObjectId(id)) return errorResponse('Not found', 404);
 
-  const validationResult = AnnouncementSchema.partial().safeParse(body);
-  if (!validationResult.success) {
-    const errors: Record<string, string> = {};
-    validationResult.error.issues.forEach((err) => {
-      errors[err.path.join('.')] = err.message;
-    });
-    return errorResponse('Validation failed', 400, errors);
-  }
+  const parsed = AnnouncementUpdateSchema.safeParse(await parseJsonBody(req));
+  if (!parsed.success) return validationError(parsed.error);
 
   const item = await Announcement.findByIdAndUpdate(
     id,
-    { $set: validationResult.data },
+    { $set: parsed.data },
     { returnDocument: 'after', runValidators: true }
   );
   if (!item) return errorResponse('Not found', 404);
-  
+
   revalidateStorefront();
   return successResponse({ announcement: item });
 });
 
 export const PATCH = PUT;
 
-export const DELETE = withAdmin(async (req: NextRequest, context) => {
+export const DELETE = withAdmin(async (_req: NextRequest, context) => {
   const { id } = await context.params;
+  if (!mongoose.isValidObjectId(id)) return errorResponse('Not found', 404);
+
   const item = await Announcement.findByIdAndDelete(id);
   if (!item) return errorResponse('Not found', 404);
-  
+
   revalidateStorefront();
   return successResponse({ message: 'Deleted' });
 });
