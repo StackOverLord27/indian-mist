@@ -36,7 +36,7 @@ export default function AdminCategoriesPage() {
     const newOrder = [...categories];
     const [moved] = newOrder.splice(index, 1);
     newOrder.splice(targetIndex, 0, moved);
-    reorderMutation.mutate(newOrder.map(c => c._id));
+    reorderMutation.mutate({ orderedIds: newOrder.map(c => c._id), offset: 0 });
   };
 
   return (
@@ -95,7 +95,7 @@ export default function AdminCategoriesPage() {
                   const newOrder = [...categories];
                   const [moved] = newOrder.splice(draggedIdx, 1);
                   newOrder.splice(idx, 0, moved);
-                  reorderMutation.mutate(newOrder.map(c => c._id));
+                  reorderMutation.mutate({ orderedIds: newOrder.map(c => c._id), offset: 0 });
                   setDraggedIdx(null);
                 }}
                 onDragEnd={() => {

@@ -1,20 +1,16 @@
 import { NextRequest } from 'next/server';
-import { withAdmin, successResponse, errorResponse, parseJsonBody } from '@/lib/api-helpers';
+import { withAdmin, successResponse, parseJsonBody, validationError } from '@/lib/api-helpers';
 import { Category } from '@/models/category.model';
 import { revalidateStorefront } from '@/lib/revalidate-storefront';
+import { ReorderSchema, reorderPage } from '@/lib/reorder';
+import { CATEGORY_SORT } from '@/lib/category-sort';
 
+/** Same contract as the products reorder: the ids must be exactly the categories at `offset`, else 409. */
 export const PUT = withAdmin(async (req: NextRequest) => {
-  const orderedIds = ((await parseJsonBody(req)) as { orderedIds?: unknown } | null)?.orderedIds;
+  const parsed = ReorderSchema.safeParse(await parseJsonBody(req));
+  if (!parsed.success) return validationError(parsed.error);
 
-  if (!Array.isArray(orderedIds)) {
-    return errorResponse('orderedIds must be an array', 400);
-  }
-
-  await Promise.all(
-    orderedIds.map((id: string, index: number) =>
-      Category.findByIdAndUpdate(id, { order: index })
-    )
-  );
+  await reorderPage(Category, CATEGORY_SORT, parsed.data.orderedIds, parsed.data.offset);
 
   revalidateStorefront();
   return successResponse({ message: 'Reordered successfully' });

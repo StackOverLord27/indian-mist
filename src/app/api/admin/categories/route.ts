@@ -8,25 +8,23 @@ import { uploadImage, deleteImage } from '@/lib/cloudinary';
 import { CategorySchema } from '@/schemas/admin';
 import { slugify } from '@/lib/slugify';
 import { revalidateStorefront } from '@/lib/revalidate-storefront';
+import { parsePagination, paginationMeta } from '@/lib/pagination';
+import { CATEGORY_SORT } from '@/lib/category-sort';
 
 export const GET = withAdmin(async (req) => {
   const { searchParams } = new URL(req.url);
-  const page = Math.max(1, Number(searchParams.get('page') ?? 1));
-  const limit = Math.min(50, Number(searchParams.get('limit') ?? 20));
+  const pagination = parsePagination(searchParams);
 
   const [categories, total] = await Promise.all([
     Category.find({})
-      .sort({ order: 1, createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
+      .sort(CATEGORY_SORT)
+      .skip(pagination.skip)
+      .limit(pagination.limit)
       .lean(),
     Category.countDocuments({}),
   ]);
 
-  return successResponse({
-    categories, total, page,
-    totalPages: Math.ceil(total / limit),
-  });
+  return successResponse({ categories, ...paginationMeta(total, pagination) });
 });
 
 /** Validate, then upload, then save; a failed save deletes the file uploaded in this request. */

@@ -1,20 +1,19 @@
 import { NextRequest } from 'next/server';
-import { withAdmin, successResponse, errorResponse, parseJsonBody } from '@/lib/api-helpers';
+import { withAdmin, successResponse, parseJsonBody, validationError } from '@/lib/api-helpers';
 import { Product } from '@/models/product.model';
 import { revalidateStorefront } from '@/lib/revalidate-storefront';
+import { PRODUCT_SORT } from '@/lib/product-sort';
+import { ReorderSchema, reorderPage } from '@/lib/reorder';
 
+/**
+ * Body: { orderedIds: string[] (one page, in the new order), offset: number (where that page starts) }.
+ * 409 when the ids are not exactly the products at that position any more. See lib/reorder.ts.
+ */
 export const PUT = withAdmin(async (req: NextRequest) => {
-  const orderedIds = ((await parseJsonBody(req)) as { orderedIds?: unknown } | null)?.orderedIds;
+  const parsed = ReorderSchema.safeParse(await parseJsonBody(req));
+  if (!parsed.success) return validationError(parsed.error);
 
-  if (!Array.isArray(orderedIds)) {
-    return errorResponse('orderedIds must be an array', 400);
-  }
-
-  await Promise.all(
-    orderedIds.map((id: string, index: number) =>
-      Product.findByIdAndUpdate(id, { order: index })
-    )
-  );
+  await reorderPage(Product, PRODUCT_SORT, parsed.data.orderedIds, parsed.data.offset);
 
   revalidateStorefront();
   return successResponse({ message: 'Reordered successfully' });

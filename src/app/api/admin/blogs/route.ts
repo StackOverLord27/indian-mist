@@ -15,11 +15,11 @@ import { Blog } from "@/models/blog.model";
 import { uploadImage, deleteImage } from "@/lib/cloudinary";
 import { BlogSchema } from "@/schemas/blog";
 import { revalidateStorefront } from "@/lib/revalidate-storefront";
+import { parsePagination, paginationMeta } from "@/lib/pagination";
 
 export const GET = withAdmin(async (req) => {
   const { searchParams } = new URL(req.url);
-  const page = Math.max(1, Number(searchParams.get("page") ?? 1));
-  const limit = Math.min(50, Number(searchParams.get("limit") ?? 20));
+  const pagination = parsePagination(searchParams);
   const category = searchParams.get("category");
   const status = searchParams.get("status"); // "published" | "draft"
 
@@ -30,20 +30,15 @@ export const GET = withAdmin(async (req) => {
 
   const [blogs, total] = await Promise.all([
     Blog.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
+      .sort({ createdAt: -1, _id: 1 })
+      .skip(pagination.skip)
+      .limit(pagination.limit)
       .select("-content") // exclude heavy content for listing
       .lean(),
     Blog.countDocuments(filter),
   ]);
 
-  return successResponse({
-    blogs,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
-  });
+  return successResponse({ blogs, ...paginationMeta(total, pagination) });
 });
 
 /** Validate, then upload the cover, then save; a failed save deletes the cover uploaded in this request. */

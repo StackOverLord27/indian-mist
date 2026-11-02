@@ -7,9 +7,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { AdminCollection, AdminProduct } from '@/types/admin';
 import { useCreateCollection, useUpdateCollection } from '@/hooks/admin/useAdminCollections';
-import { useAdminProducts } from '@/hooks/admin/useAdminProducts';
+import ProductPicker from '@/components/admin/ProductPicker';
+import { pickedFromCollection, type PickedProduct } from '@/lib/product-picker';
 import AdminCard from '@/components/admin/ui/AdminCard';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { CollectionSchema } from '@/schemas/admin';
 
@@ -24,13 +25,9 @@ export default function CollectionForm({ initialData }: CollectionFormProps) {
   const createMutation = useCreateCollection();
   const updateMutation = useUpdateCollection(initialData?._id || '');
   
-  const { data: productsData } = useAdminProducts({ limit: 1000 }); // fetch all for simple selection
-  const availableProducts = productsData?.products || [];
-
-  const [selectedProductIds, setSelectedProductIds] = useState<string[]>(
-    isEditing 
-      ? (initialData.products as (string | { _id: string })[]).map((p) => (typeof p === 'string' ? p : p._id))
-      : []
+  // Chosen products with enough detail to show them; an existing collection arrives populated
+  const [selectedProducts, setSelectedProducts] = useState<PickedProduct[]>(() =>
+    isEditing ? pickedFromCollection(initialData.products as (string | AdminProduct)[]) : []
   );
 
   const { register, handleSubmit, formState: { errors } } = useForm<CollectionFormData>({
@@ -46,7 +43,7 @@ export default function CollectionForm({ initialData }: CollectionFormProps) {
   const onSubmit = (data: CollectionFormData) => {
     const payload = {
       ...data,
-      products: selectedProductIds,
+      products: selectedProducts.map((p) => p._id),
     };
 
     if (isEditing) {
@@ -57,14 +54,6 @@ export default function CollectionForm({ initialData }: CollectionFormProps) {
   };
 
   const isPending = createMutation.isPending || updateMutation.isPending;
-
-  const toggleProduct = (productId: string) => {
-    setSelectedProductIds(prev => 
-      prev.includes(productId)
-        ? prev.filter(id => id !== productId)
-        : [...prev, productId]
-    );
-  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-4xl">
@@ -113,39 +102,7 @@ export default function CollectionForm({ initialData }: CollectionFormProps) {
             <h2 className="font-merriweather text-lg text-forest mb-4">Products in Collection</h2>
             <p className="font-montserrat text-xs text-forest/70 mb-4">Select products to include in this collection.</p>
             
-            <div className="max-h-96 overflow-y-auto border border-olive/20 rounded-sm divide-y divide-olive/10">
-              {availableProducts.map((product) => {
-                const isSelected = selectedProductIds.includes(product._id);
-                return (
-                  <div 
-                    key={product._id} 
-                    onClick={() => toggleProduct(product._id)}
-                    className={`flex items-center gap-4 p-3 cursor-pointer transition-colors ${isSelected ? 'bg-olive/10' : 'hover:bg-white/40'}`}
-                  >
-                    <div className="w-12 h-12 flex-shrink-0 rounded-sm border border-olive/15 overflow-hidden flex items-center justify-center bg-white">
-                      {product.images?.[0]?.url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={product.images[0].url} alt={product.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-[10px] text-forest/40">No img</span>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-merriweather text-sm text-forest font-semibold">{product.name}</p>
-                      <p className="font-montserrat text-xs text-forest/60">{product.category}</p>
-                    </div>
-                    <div className="w-6 h-6 border rounded-sm flex items-center justify-center border-olive/30 text-olive">
-                      {isSelected && <Plus className="size-4 rotate-45" />}
-                    </div>
-                  </div>
-                );
-              })}
-              {availableProducts.length === 0 && (
-                <div className="p-4 text-center font-montserrat text-sm text-forest/50">
-                  No products available.
-                </div>
-              )}
-            </div>
+            <ProductPicker selected={selectedProducts} onChange={setSelectedProducts} />
           </AdminCard>
         </div>
 

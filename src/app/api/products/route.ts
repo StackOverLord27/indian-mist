@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { imageUrls, type ProductFacetResult } from "@/types/product-facets";
 import dbConnect from "@/lib/db";
 import { Product } from "@/models/product.model";
+import { PRODUCT_SORT, withIdTieBreaker } from "@/lib/product-sort";
+import { escapeRegex } from "@/lib/pagination";
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     // Sorting
     const sortParam = searchParams.get("sort") || "featured";
-    let sortStage: Record<string, 1 | -1> = { order: 1, createdAt: -1 }; // Default (Featured)
+    let sortStage: Record<string, 1 | -1> = { ...PRODUCT_SORT }; // Default (Featured)
     
     if (sortParam === "newest") {
       sortStage = { createdAt: -1 };
@@ -36,12 +38,14 @@ export async function GET(request: NextRequest) {
       sortStage = { name: -1 };
     }
 
+    sortStage = withIdTieBreaker(sortStage);
+
     // Filtering
     const matchStage: Record<string, unknown> = {};
     const searchParam = searchParams.get("q");
     if (searchParam) {
       // Escape regex characters so user input is searched as plain text
-      const safeSearch = searchParam.slice(0, 80).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const safeSearch = escapeRegex(searchParam.slice(0, 80));
       matchStage.name = { $regex: safeSearch, $options: "i" };
     }
 

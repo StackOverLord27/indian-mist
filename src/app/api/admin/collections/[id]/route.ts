@@ -8,7 +8,9 @@ import { revalidateStorefront } from '@/lib/revalidate-storefront';
 
 export const GET = withAdmin(async (req, { params }) => {
   const { id } = await params;
-  const collection = await Collection.findById(id).populate('products').lean();
+  const collection = await Collection.findById(id)
+    .populate({ path: 'products', select: { name: 1, slug: 1, category: 1, images: { $slice: 1 } } })
+    .lean();
   if (!collection) {
     return errorResponse('Collection not found', 404);
   }

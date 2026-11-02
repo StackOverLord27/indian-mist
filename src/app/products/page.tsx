@@ -1,3 +1,4 @@
+import { PRODUCT_SORT, withIdTieBreaker } from "@/lib/product-sort";
 import dbConnect from "@/lib/db";
 import { imageUrls, type ProductFacetResult } from "@/types/product-facets";
 import { Product } from "@/models/product.model";
@@ -23,12 +24,14 @@ export default async function ProductsPage({
   const matchStage: Record<string, unknown> = {};
   if (initialCategory) matchStage.category = initialCategory;
 
-  let sortStage: Record<string, 1 | -1> = { order: 1, createdAt: -1 };
+  let sortStage: Record<string, 1 | -1> = { ...PRODUCT_SORT };
   if (initialSort === "newest") sortStage = { createdAt: -1 };
   else if (initialSort === "price-low") sortStage = { price: 1 };
   else if (initialSort === "price-high") sortStage = { price: -1 };
   else if (initialSort === "name-asc") sortStage = { name: 1 };
   else if (initialSort === "name-desc") sortStage = { name: -1 };
+  // Same tie-breaker as /api/products, so "load more" continues exactly where this page stops
+  sortStage = withIdTieBreaker(sortStage);
 
   const result = await Product.aggregate([
     ...(Object.keys(matchStage).length > 0 ? [{ $match: matchStage }] : []),

@@ -9,33 +9,37 @@ import { ProductSchema } from '@/schemas/admin';
 import { slugify, uniqueProductSlug } from '@/lib/slugify';
 import { productCandidate, stockFor } from '@/lib/product-fields';
 import { revalidateStorefront } from '@/lib/revalidate-storefront';
+import { parsePagination, paginationMeta, escapeRegex, searchTerm } from '@/lib/pagination';
+import { PRODUCT_SORT } from '@/lib/product-sort';
 
 const MAX_PRODUCT_IMAGES = 10;
 
+// Only what the list and the pickers show; images are cut to the first one.
+const LIST_PROJECTION = {
+  name: 1, slug: 1, category: 1, price: 1, badge: 1, isActive: 1, colorName: 1,
+  images: { $slice: 1 },
+} as const;
+
 export const GET = withAdmin(async (req) => {
   const { searchParams } = new URL(req.url);
-  const page = Math.max(1, Number(searchParams.get('page') ?? 1));
-  const limit = Math.min(50, Number(searchParams.get('limit') ?? 20));
-  const category = searchParams.get('category');
-  const search = searchParams.get('search');
+  const pagination = parsePagination(searchParams);
+  const category = searchParams.get('category')?.trim();
+  const search = searchTerm(searchParams);
 
   const filter: Record<string, unknown> = {};
   if (category) filter.category = category;
-  if (search) filter.name = { $regex: search, $options: 'i' };
+  if (search) filter.name = { $regex: escapeRegex(search), $options: 'i' };
 
   const [products, total] = await Promise.all([
-    Product.find(filter)
-      .sort({ order: 1, createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
+    Product.find(filter, LIST_PROJECTION)
+      .sort(PRODUCT_SORT)
+      .skip(pagination.skip)
+      .limit(pagination.limit)
       .lean(),
     Product.countDocuments(filter),
   ]);
 
-  return successResponse({
-    products, total, page,
-    totalPages: Math.ceil(total / limit),
-  });
+  return successResponse({ products, ...paginationMeta(total, pagination) });
 });
 
 /**

@@ -3,8 +3,12 @@
 import AdminProtectedRoute from '@/components/admin/AdminProtectedRoute';
 import StatusBadge from '@/components/admin/ui/StatusBadge';
 import { useAdminProducts, useDeleteProduct, useReorderProducts } from '@/hooks/admin/useAdminProducts';
-import { AdminProduct } from '@/types/admin';
-import { ArrowUp, ArrowDown, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { AdminProductSummary } from '@/types/admin';
+import Pagination from '@/components/admin/ui/Pagination';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useAdminCategories } from '@/hooks/admin/useAdminCategories';
+import { getApiErrorMessage } from '@/lib/admin-error';
+import { ArrowUp, ArrowDown, Pencil, Trash2, Loader2, Search } from 'lucide-react';
 import Link from 'next/link';
 import {
   AlertDialog,
@@ -17,10 +21,22 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+const PAGE_SIZE = 50;
 
 export default function AdminProductsPage() {
-  const { data, isLoading } = useAdminProducts({ limit: 200 });
+  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const [category, setCategory] = useState('');
+  const search = useDebouncedValue(searchInput.trim(), 300);
+  const { data, isLoading, isError, error, refetch, isPlaceholderData } = useAdminProducts({
+    page,
+    limit: PAGE_SIZE,
+    ...(search && { search }),
+    ...(category && { category }),
+  });
+  const { data: categoriesData } = useAdminCategories({ limit: 100 });
   const deleteMutation = useDeleteProduct();
   const reorderMutation = useReorderProducts();
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
@@ -29,15 +45,28 @@ export default function AdminProductsPage() {
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
-  const products: AdminProduct[] = data?.products || [];
+  const products: AdminProductSummary[] = data?.products || [];
+  const filtering = Boolean(search || category);
+  const offset = (page - 1) * PAGE_SIZE;
+  // Reordering only makes sense in the full list: a filtered page is not a slice of it
+  const canReorder = !filtering && !reorderMutation.isPending && !isPlaceholderData;
+
+  // Deleting the last product of a page (or another admin doing it) leaves this page past the
+  // end: go back to the last page that exists.
+  useEffect(() => {
+    if (data && !isPlaceholderData && data.totalPages >= 1 && page > data.totalPages) setPage(data.totalPages);
+  }, [data, isPlaceholderData, page]);
+
+  const reorder = (ids: string[]) => reorderMutation.mutate({ orderedIds: ids, offset });
 
   const handleMove = (index: number, direction: 'up' | 'down') => {
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (!canReorder) return;
     if (targetIndex < 0 || targetIndex >= products.length) return;
     const newOrder = [...products];
     const [moved] = newOrder.splice(index, 1);
     newOrder.splice(targetIndex, 0, moved);
-    reorderMutation.mutate(newOrder.map(p => p._id));
+    reorder(newOrder.map(p => p._id));
   };
 
   return (
@@ -52,8 +81,45 @@ export default function AdminProductsPage() {
         </Link>
       </div>
 
+      {/* Search + category filter */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-forest/40" />
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(e) => { setSearchInput(e.target.value); setPage(1); }}
+            maxLength={80}
+            placeholder="Search products by name"
+            aria-label="Search products by name"
+            className="w-full pl-9 pr-3 py-2 bg-transparent border border-olive/30 rounded-sm focus:outline-none focus:border-olive text-forest font-montserrat text-sm"
+          />
+        </div>
+        <select
+          value={category}
+          onChange={(e) => { setCategory(e.target.value); setPage(1); }}
+          aria-label="Filter by category"
+          className="px-3 py-2 bg-transparent border border-olive/30 rounded-sm focus:outline-none focus:border-olive text-forest font-montserrat text-sm"
+        >
+          <option value="">All categories</option>
+          {(categoriesData?.categories ?? []).map((c) => (
+            <option key={c._id} value={c.slug}>{c.name}</option>
+          ))}
+        </select>
+      </div>
+      {filtering && (
+        <p className="font-montserrat text-xs text-forest/60 mb-3">
+          Reordering is turned off while searching or filtering. Clear the search and filter to change the order.
+        </p>
+      )}
+
       {isLoading ? (
         <div className="flex justify-center p-12"><Loader2 className="size-8 animate-spin text-olive" /></div>
+      ) : isError ? (
+        <div className="bg-card rounded-md border border-olive/15 py-10 text-center">
+          <p className="font-montserrat text-sm text-copper mb-3">{getApiErrorMessage(error, 'Could not load products')}</p>
+          <button onClick={() => refetch()} className="text-xs font-montserrat uppercase tracking-wider text-olive hover:underline">Try again</button>
+        </div>
       ) : (
         <div className="bg-card rounded-md border border-olive/15 overflow-hidden">
           {/* Header */}
@@ -68,7 +134,9 @@ export default function AdminProductsPage() {
           </div>
 
           {products.length === 0 && (
-            <p className="text-center font-montserrat text-sm text-forest/50 py-10">No products found.</p>
+            <p className="text-center font-montserrat text-sm text-forest/50 py-10">
+              {filtering ? 'No products match your search.' : 'No products yet. Add your first product.'}
+            </p>
           )}
 
           {products.map((product, idx) => {
@@ -79,8 +147,9 @@ export default function AdminProductsPage() {
             return (
               <div
                 key={product._id}
-                draggable={!reorderMutation.isPending}
+                draggable={canReorder}
                 onDragStart={(e) => {
+                  if (!canReorder) { e.preventDefault(); return; }
                   setDraggedIdx(idx);
                   e.dataTransfer.effectAllowed = 'move';
                   // Transparent image to hide default drag ghost if desired, but default is fine
@@ -99,25 +168,26 @@ export default function AdminProductsPage() {
                   const newOrder = [...products];
                   const [moved] = newOrder.splice(draggedIdx, 1);
                   newOrder.splice(idx, 0, moved);
-                  reorderMutation.mutate(newOrder.map(p => p._id));
+                  reorder(newOrder.map(p => p._id));
                   setDraggedIdx(null);
                 }}
                 onDragEnd={() => {
                   setDraggedIdx(null);
                   setDragOverIdx(null);
                 }}
-                className={`grid grid-cols-[40px_56px_1fr_120px_100px_80px_100px] items-center px-4 py-3 border-b border-olive/10 last:border-b-0 hover:bg-warm/20 transition-all group cursor-grab active:cursor-grabbing ${
+                className={`grid grid-cols-[40px_56px_1fr_120px_100px_80px_100px] items-center px-4 py-3 border-b border-olive/10 last:border-b-0 hover:bg-warm/20 transition-all group ${canReorder ? 'cursor-grab active:cursor-grabbing' : ''} ${
                   isDragging ? 'opacity-50 scale-[0.99] bg-warm/40 shadow-inner' : ''
                 } ${
                   isDragOver ? (draggedIdx! < idx ? 'border-b-2 border-b-olive/50' : 'border-t-2 border-t-olive/50') : ''
                 }`}
               >
+                {/* Position in the full list (page offset included) */}
                 {/* Order controls */}
                 <div className="flex flex-col gap-0.5 cursor-pointer" onDragStart={e => e.preventDefault()} /* Prevent arrows from acting as drag targets individually */>
                   <button
                     type="button"
                     onClick={() => handleMove(idx, 'up')}
-                    disabled={idx === 0 || reorderMutation.isPending}
+                    disabled={idx === 0 || !canReorder}
                     className="p-0.5 text-forest/30 hover:text-forest disabled:opacity-20 transition-colors"
                     title="Move up"
                   >
@@ -126,7 +196,7 @@ export default function AdminProductsPage() {
                   <button
                     type="button"
                     onClick={() => handleMove(idx, 'down')}
-                    disabled={idx === products.length - 1 || reorderMutation.isPending}
+                    disabled={idx === products.length - 1 || !canReorder}
                     className="p-0.5 text-forest/30 hover:text-forest disabled:opacity-20 transition-colors"
                     title="Move down"
                   >
@@ -190,6 +260,18 @@ export default function AdminProductsPage() {
             );
           })}
         </div>
+      )}
+
+      {data && (
+        <Pagination
+          className="mt-4"
+          page={page}
+          totalPages={data.totalPages}
+          total={data.total}
+          limit={PAGE_SIZE}
+          isLoading={isPlaceholderData}
+          onPageChange={setPage}
+        />
       )}
     </AdminProtectedRoute>
   );

@@ -11,7 +11,7 @@ import AdminFormField, { inputClass } from '@/components/admin/ui/AdminFormField
 import ImageUploadZone from '@/components/admin/ui/ImageUploadZone';
 import { AdminProduct } from '@/types/admin';
 import { Loader2, X } from 'lucide-react';
-import { useAdminProducts, useCreateProduct, useUpdateProduct } from '@/hooks/admin/useAdminProducts';
+import { useColorGroups, useCreateProduct, useUpdateProduct } from '@/hooks/admin/useAdminProducts';
 import { useAdminCategories } from '@/hooks/admin/useAdminCategories';
 import * as categoryApi from '@/lib/admin-api/categories';
 import { buildProductFormData } from '@/lib/admin-api/product-form-data';
@@ -73,10 +73,8 @@ const CARE_ICONS = [
 // `duplicateOf` pre-fills a new product from an existing one (images and colour are not copied)
 export default function ProductForm({ product, duplicateOf }: { product?: AdminProduct; duplicateOf?: AdminProduct }) {
   const source = product ?? duplicateOf;
-  const { data: allProducts } = useAdminProducts({ limit: 50 });
-  const existingGroups = Array.from(
-    new Set((allProducts?.products ?? []).map((p) => p.colorGroup).filter((g): g is string => !!g)),
-  );
+  // Every colour group in use, from a small dedicated endpoint (not from a page of products)
+  const { data: existingGroups = [] } = useColorGroups();
 
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct(product?._id || '');

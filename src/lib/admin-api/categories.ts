@@ -1,8 +1,8 @@
 import { adminAxios } from '../admin-axios';
-import { AdminCategory } from '@/types/admin';
+import { AdminCategory, PaginationMeta } from '@/types/admin';
 
 export const fetchAdminCategories = async (filters?: { page?: number; limit?: number }) => {
-  const { data } = await adminAxios.get<{ categories: AdminCategory[], total: number }>('/api/admin/categories', { params: filters });
+  const { data } = await adminAxios.get<{ categories: AdminCategory[] } & PaginationMeta>('/api/admin/categories', { params: filters });
   return data;
 };
 
@@ -30,7 +30,7 @@ export const deleteCategory = async (id: string) => {
   return data;
 };
 
-export const reorderCategories = async (orderedIds: string[]) => {
-  const { data } = await adminAxios.put('/api/admin/categories/reorder', { orderedIds });
+export const reorderCategories = async ({ orderedIds, offset = 0 }: { orderedIds: string[]; offset?: number }) => {
+  const { data } = await adminAxios.put('/api/admin/categories/reorder', { orderedIds, offset });
   return data;
 };

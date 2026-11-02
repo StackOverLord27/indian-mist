@@ -13,6 +13,17 @@ export interface ProductImage {
   isCategoryCover?: boolean;
 }
 
+/** Same fields in every paged admin list response */
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+/** What the admin product list and the product pickers get: a few fields and only the first image */
+export type AdminProductSummary = Pick<AdminProduct, '_id' | 'name' | 'category' | 'price' | 'images' | 'isActive' | 'badge' | 'colorName'> & { slug?: string };
+
 export interface AdminProduct {
   _id: string; // Mongo ID
   name: string;
@@ -240,7 +251,10 @@ export interface AdminCollection {
   name: string;
   slug: string;
   description?: string;
+  /** Only on the single-collection response: the products with name, category and first image */
   products: string[] | AdminProduct[];
+  /** Only on the list response, which does not load the products */
+  productCount?: number;
   isActive: boolean;
   order: number;
 }

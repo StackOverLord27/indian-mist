@@ -1,9 +1,16 @@
 import { adminAxios } from '../admin-axios';
-import { AdminProduct } from '@/types/admin';
+import { AdminProduct, AdminProductSummary, PaginationMeta } from '@/types/admin';
 
-export const fetchAdminProducts = async (filters?: { category?: string; page?: number; limit?: number }) => {
-  const { data } = await adminAxios.get<{ products: AdminProduct[], total: number }>('/api/admin/products', { params: filters });
+export type AdminProductFilters = { category?: string; search?: string; page?: number; limit?: number };
+
+export const fetchAdminProducts = async (filters?: AdminProductFilters) => {
+  const { data } = await adminAxios.get<{ products: AdminProductSummary[] } & PaginationMeta>('/api/admin/products', { params: filters });
   return data;
+};
+
+export const fetchColorGroups = async () => {
+  const { data } = await adminAxios.get<{ colorGroups: string[] }>('/api/admin/products/color-groups');
+  return data.colorGroups;
 };
 
 export const fetchAdminProduct = async (id: string) => {
@@ -30,7 +37,8 @@ export const deleteProduct = async (id: string) => {
   return data;
 };
 
-export const reorderProducts = async (orderedIds: string[]) => {
-  const { data } = await adminAxios.put('/api/admin/products/reorder', { orderedIds });
+/** `orderedIds` are one page of products in their new order; `offset` is where that page starts in the full list */
+export const reorderProducts = async ({ orderedIds, offset }: { orderedIds: string[]; offset: number }) => {
+  const { data } = await adminAxios.put('/api/admin/products/reorder', { orderedIds, offset });
   return data;
 };

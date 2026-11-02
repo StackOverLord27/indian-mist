@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { getApiErrorMessage } from '@/lib/admin-error';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -8,6 +8,7 @@ export const useAdminBlogs = (filters?: { category?: string; status?: string; pa
   return useQuery({
     queryKey: ['admin-blogs', filters],
     queryFn: () => api.fetchAdminBlogs(filters),
+    placeholderData: keepPreviousData,
   });
 };
 

@@ -4,26 +4,26 @@ import { withAdmin, errorResponse, successResponse } from '@/lib/api-helpers';
 import { Collection } from '@/models/collection.model';
 import { CollectionSchema } from '@/schemas/admin';
 import { revalidateStorefront } from '@/lib/revalidate-storefront';
+import { parsePagination, paginationMeta } from '@/lib/pagination';
 
 export const GET = withAdmin(async (req) => {
   const { searchParams } = new URL(req.url);
-  const page = Math.max(1, Number(searchParams.get('page') ?? 1));
-  const limit = Math.min(50, Number(searchParams.get('limit') ?? 20));
+  const pagination = parsePagination(searchParams);
 
+  // The list only shows how many products each collection has, so count them in the database
+  // instead of loading the products.
   const [collections, total] = await Promise.all([
-    Collection.find({})
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .populate('products')
-      .lean(),
+    Collection.aggregate([
+      { $sort: { createdAt: -1, _id: 1 } },
+      { $skip: pagination.skip },
+      { $limit: pagination.limit },
+      { $addFields: { productCount: { $size: { $ifNull: ['$products', []] } } } },
+      { $project: { products: 0 } },
+    ]),
     Collection.countDocuments({}),
   ]);
 
-  return successResponse({
-    collections, total, page,
-    totalPages: Math.ceil(total / limit),
-  });
+  return successResponse({ collections, ...paginationMeta(total, pagination) });
 });
 
 export const POST = withAdmin(async (req) => {

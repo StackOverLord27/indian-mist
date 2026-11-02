@@ -2,8 +2,14 @@
 
 import type { AdminOrder } from "@/types/admin";
 import { getApiErrorMessage } from "@/lib/admin-error";
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient, type UseMutationResult } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient, keepPreviousData, type UseMutationResult } from "@tanstack/react-query";
+import Pagination from "@/components/admin/ui/Pagination";
+import type { PaginationMeta } from "@/types/admin";
+
+const PAGE_SIZE = 50;
+
+type OrdersResponse = { orders: AdminOrder[]; statusCounts: Record<string, number> } & PaginationMeta;
 import { adminAxios } from "@/lib/admin-axios";
 import { toast } from "react-hot-toast";
 import {
@@ -266,13 +272,22 @@ export default function AdminOrdersPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState("ALL");
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin", "orders", filter],
-    queryFn: async (): Promise<AdminOrder[]> => {
-      const res = await adminAxios.get(`/api/admin/orders?status=${filter}`);
-      return res.data.orders;
+  const [page, setPage] = useState(1);
+
+  const { data: response, isLoading, isError, error, refetch, isPlaceholderData } = useQuery({
+    queryKey: ["admin", "orders", filter, page],
+    queryFn: async (): Promise<OrdersResponse> => {
+      const res = await adminAxios.get("/api/admin/orders", { params: { status: filter, page, limit: PAGE_SIZE } });
+      return res.data;
     },
+    placeholderData: keepPreviousData,
   });
+  const data = response?.orders;
+
+  // The page may stop existing (an order moved to another status tab): go back to the last page
+  useEffect(() => {
+    if (response && !isPlaceholderData && response.totalPages >= 1 && page > response.totalPages) setPage(response.totalPages);
+  }, [response, isPlaceholderData, page]);
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -330,7 +345,7 @@ export default function AdminOrdersPage() {
         {tabs.map((tab) => (
           <button
             key={tab.value}
-            onClick={() => setFilter(tab.value)}
+            onClick={() => { setFilter(tab.value); setPage(1); }}
             className={`px-4 py-2 font-montserrat text-xs uppercase tracking-widest font-semibold transition-colors ${
               filter === tab.value
                 ? "border-b-2 border-forest text-forest"
@@ -338,6 +353,9 @@ export default function AdminOrdersPage() {
             }`}
           >
             {tab.label}
+            {response?.statusCounts && (
+              <span className="ml-1.5 text-[10px] opacity-60">({response.statusCounts[tab.value] ?? 0})</span>
+            )}
           </button>
         ))}
       </div>
@@ -372,6 +390,13 @@ export default function AdminOrdersPage() {
                   </p>
                 </TableCell>
               </TableRow>
+            ) : isError ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-12">
+                  <p className="font-montserrat text-sm text-copper mb-2">{getApiErrorMessage(error, "Could not load orders")}</p>
+                  <button onClick={() => refetch()} className="text-xs font-montserrat uppercase tracking-wider text-olive hover:underline">Try again</button>
+                </TableCell>
+              </TableRow>
             ) : !data || data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-12">
@@ -389,6 +414,17 @@ export default function AdminOrdersPage() {
           </TableBody>
         </Table>
       </div>
+
+      {response && (
+        <Pagination
+          page={page}
+          totalPages={response.totalPages}
+          total={response.total}
+          limit={PAGE_SIZE}
+          isLoading={isPlaceholderData}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

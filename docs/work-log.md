@@ -167,3 +167,18 @@ Before this prompt `/products/[slug]`, `/blogs*`, `/collections*` were all `ƒ` 
 
 ### Found, not fixed
 - Announcement removed for rotation: mobile carousel index is not reset when list shrinks (now clamped with modulo only).
+
+
+## Prompt 7 (pagination of admin lists)
+
+- Shared: `lib/pagination.ts` (parsePagination default 50 / max 100, never NaN/0/negative; paginationMeta; escapeRegex; searchTerm), `lib/product-sort.ts` (PRODUCT_SORT = order, createdAt desc, _id; used by admin list, reorder, /api/products and the /products first page; other public sorts get an _id tie-breaker), `lib/category-sort.ts`, `lib/reorder.ts` (reorderPage: ids must be exactly the items at `offset` of the full ordering, else 409; whole list renumbered in one bulkWrite).
+- Routes: admin products (pagination, name search, category filter, lean projection with first image), products/reorder (zod, offset, 409, fixed wrong 400 helper), products/color-groups (new), categories list + reorder, collections list (aggregate `productCount`, no populate) and `[id]` GET (light populate), blogs, orders (page + per-tab `statusCounts`).
+- UI: Pagination component, useDebouncedValue, ProductPicker (20/page, search, selections kept in parent with name/category/image), CollectionForm uses it, products page (search, category filter, pages of 50, reorder off while filtering, steps back when a page empties), blogs/collections/orders pages paged, ProductForm colour groups from the new endpoint; reorder hooks only touch the matching cached page and roll back on error.
+- Tests: tests/pagination.test.ts (24). scripts/seed-local.mjs (local DB only, refuses non-local hosts).
+
+### Found, not fixed
+- Admin orders list still returns `razorpaySignature` (and /api/profile orders).
+- Admin name search is an unanchored regex (cannot use an index): fine for admin; index work is Prompt 9.
+- Reordering moves items only inside the current page; moving a product to another page means dragging it page by page (or filter-free arrows at page edge are disabled).
+- Categories beyond 100 would be unreachable in the category page (single page by design).
+- Collection product order inside a collection is whatever the admin selected; picker keeps insertion order.
