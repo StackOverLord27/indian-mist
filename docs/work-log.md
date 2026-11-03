@@ -315,3 +315,8 @@ Scope: no new features. Gate, review of the whole branch, fix proven defects, wr
 - `proxy.ts` lets any valid customer token load the `/admin` page shell (the admin APIs refuse them); the HSTS header covers subdomains for 2 years.
 - `DEFAULT_CATEGORIES` ("Trail Stories", "Gear Guides", ...) are still offered in the blog category picker of the admin.
 - Sitemap refreshes hourly (a new product can take up to an hour to be listed), unlike the pages.
+
+## Dependency upgrade (after Prompt 13)
+Applied the tested path: zod 4.6.7, nodemailer 10.3.1 (needs Node >= 20), axios 1.21.0, @tiptap/react + starter-kit 3.32.2, then `npm audit fix`.
+`npm audit`: 0 high / 0 critical (21 low/moderate left, in the eslint toolchain). Typecheck clean, lint 0 errors, 355 unit tests pass.
+Not re-run after the upgrade: browser suite and `next build` (both passed on the identical versions in the earlier throwaway trial). Real e-mail send with nodemailer 10 still needs manual test 2.1.
