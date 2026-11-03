@@ -28,7 +28,12 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   experimental: {
-    proxyClientMaxBodySize: 52428800, // 50MB in bytes
+    // What this option does (see the Next.js docs): the proxy buffers each request body so the route
+    // can read it again, and bodies above this size are cut off at the limit. Set to Vercel's real
+    // request cap (4.5 MB, see src/lib/image-budget.ts REQUEST_LIMIT_BYTES) so local development
+    // behaves like production: an oversize upload is refused instead of quietly working. The upload
+    // routes also reject it up front from its Content-Length, with a readable 413 message.
+    proxyClientMaxBodySize: 4_500_000,
     agentUpgrade: "security",
   },
   turbopack: {

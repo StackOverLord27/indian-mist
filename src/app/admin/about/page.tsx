@@ -14,6 +14,8 @@ import ImageUploadZone from '@/components/admin/ui/ImageUploadZone';
 import toast from 'react-hot-toast';
 import { resolveAbout, type ResolvedAbout } from '@/lib/about-content';
 import { uploadAdminImage, discardUploadedImage } from '@/lib/admin-api/upload';
+import { getApiErrorMessage } from '@/lib/admin-error';
+import { prepareImage, ImagePrepareError } from '@/lib/image-prepare';
 
 const MAX_GALLERY = 5;
 
@@ -130,13 +132,15 @@ export default function AdminAboutPage() {
     try {
       const uploaded: AboutImage[] = [];
       for (const file of chosen) {
-        const { url, publicId } = await uploadImage(file);
+        // Each photo is its own request: shrink it to the standard size first
+        const { file: ready } = await prepareImage(file);
+        const { url, publicId } = await uploadImage(ready);
         uploaded.push({ url, publicId, alt: '' });
       }
       setImages([...images, ...uploaded]);
       toast.success(`${uploaded.length} photo${uploaded.length > 1 ? 's' : ''} uploaded. Save to publish.`);
-    } catch {
-      toast.error('Failed to upload image');
+    } catch (error) {
+      toast.error(error instanceof ImagePrepareError ? error.message : getApiErrorMessage(error, 'Failed to upload image'));
     } finally {
       setIsUploading(false);
       if (galleryInput.current) galleryInput.current.value = '';
@@ -237,8 +241,8 @@ export default function AdminAboutPage() {
                       dropPhoto(form.story.image.publicId);
                       patch('story', { image: { url, publicId, alt: form.story.image.alt } });
                       toast.success('Image uploaded. Save to publish.');
-                    } catch {
-                      toast.error('Failed to upload image');
+                    } catch (error) {
+                      toast.error(getApiErrorMessage(error, 'Failed to upload image'));
                     } finally {
                       setIsUploading(false);
                     }
@@ -409,8 +413,8 @@ export default function AdminAboutPage() {
                           dropPhoto(section.imagePublicId);
                           updateSection(idx, { imageUrl: url, imagePublicId: publicId });
                           toast.success('Image uploaded. Save to publish.');
-                        } catch {
-                          toast.error('Failed to upload image');
+                        } catch (error) {
+                          toast.error(getApiErrorMessage(error, 'Failed to upload image'));
                         } finally {
                           setIsUploading(false);
                         }

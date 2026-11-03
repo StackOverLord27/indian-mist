@@ -31,3 +31,6 @@ Without `E2E_REAL_WEBHOOK=1` the tests POST payloads signed with the webhook sec
 - Sign-in is rate limited (5/minute); sessions are created once by `e2e/global-setup.ts` through the real forms and reused for 8 minutes.
 - Test card used: Razorpay's documented Test Mode Visa debit `4100 2800 0000 1007`, any CVV, future expiry; on the mock bank page the tests press **Success** or **Failure**.
 - Each scenario reseeds products, settings and clears orders and holds; scenarios run one at a time.
+
+## Admin upload tests (`admin-uploads.e2e.ts`)
+They pick photos far above production's limits in the real admin forms and measure what the browser sends. The upload routes are answered by the test, so nothing is written to Cloudinary or the database. The photos are drawn in the browser (no fixtures).

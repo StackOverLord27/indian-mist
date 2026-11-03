@@ -220,3 +220,23 @@ INCIDENT (owner informed during the run): the owner's dev server on :3000 uses t
 Defect found and fixed: signing in through the form could bounce the customer back to the sign-in page (the navbar's prefetch of /profile, made while signed out, left a cached redirect that router.push replayed). Now a full page load to the (already validated) callbackUrl. Regression: e2e/signin.e2e.ts.
 
 Findings not fixed: after a failed payment Razorpay re-shows its "save card" prompt whose "Maybe later" button starts a NEW payment (test helper never clicks it); releaseReservation marks the hold RELEASED before the stock is restored (a reader can see the status first; a crash between the two loses the restock); a failed payment keeps the stock held until the window is closed or the 15 minutes pass (payment.failed does not release).
+
+
+## Prompt 10 (admin image uploads small enough for production)
+
+Verified background: Vercel's request body cap is ~4.5 MB; the product form sent up to 10 images in one multipart request, the server allowed 10 MB per file, and `proxyClientMaxBodySize: 50 MB` hid it locally. What that option really does (Next docs): the proxy buffers each body so the route can re-read it, and bodies above the limit are CUT OFF at the limit (not rejected). It is now 4.5 MB (4,500,000) so local dev behaves like production.
+
+Inventory (file input -> route): product form, multiple, one request (`/api/admin/products` POST, `[id]` PUT); category form (`/categories`, `[id]`); carousel, multiple but one request each (`/carousel`); About page story + extra sections (ImageUploadZone) and gallery (raw input) -> `/api/admin/upload`; homepage brand-story -> `/api/admin/upload`; blog cover, raw input (`/blogs`, `[id]`); size chart, raw input (`/size-chart`).
+
+Built: `src/lib/image-budget.ts` (pure rules + EXIF reader), `src/lib/image-prepare.ts` (canvas; no new dependency: native decode/encode, EXIF handled by the decoder, no extra admin bundle), `ImageUploadZone` (optimising state, previews of the compressed files, per-file errors, `onBusyChange` holds Save), `useImagePreparation` hook for the three single-file inputs, About gallery prepares each file. Profiles: standard (1800 px, 700 KB, floors 1000 px / q 0.5), size chart (2000 px, 1.5 MB, floors 1400 px / q 0.75). Several photos in one request share a 4 MB budget (each gets min(700 KB, (4,000,000 - 120,000)/n - 1,000)).
+Server: `validateImageFile` limit 10 MB -> 2 MB (above every client budget), magic-byte check kept; `assertRequestSize` (Content-Length, 413 BEFORE the body is read) called by `parseFormData`, i.e. every upload route, plus a total-size check after reading when no length was declared; `getApiErrorMessage` turns the platform's own non-JSON 413 into a readable toast; About/brand-story toasts now show the server's message.
+Config: `export const maxDuration = 60` in all 11 upload routes (replaces vercel.json, which is deleted: its keys cannot reliably address `[id]` routes, and Vercel's default is 300 s, so the old 30 s cap was lowering the limit).
+Cloudinary: server transformation unchanged (limit 2000 px, quality auto); storefront images use next/image with `sizes` and the default WebP optimiser, nothing to change.
+
+Tests: tests/image-budget.test.ts (20), tests/upload-limits.test.ts (9: limit, guard on all 11 routes before the body is read, over-limit file, missing-length fallback, toast text), e2e/admin-uploads.e2e.ts (13, real forms and browser, requests measured then answered by the test so nothing reaches Cloudinary). Mutation check: disabling the guard fails the route test.
+
+### Found, not fixed
+- Existing product photos already in Cloudinary are untouched (only new uploads are shrunk).
+- A browser without createImageBitmap/WebP encoding falls back (img decode, JPEG/PNG); not tested on Safari/old Android.
+- A tab left open on an OLD admin build still sends raw photos; the server now refuses them with a message asking to reload.
+- Pasting/dragging a HEIC photo is refused ("not a JPEG, PNG or WebP"), as before.

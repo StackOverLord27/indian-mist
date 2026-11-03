@@ -1,4 +1,6 @@
 export const runtime = 'nodejs';
+// Uploads to Cloudinary can take a while (up to 10 images in one request); allow a full minute
+export const maxDuration = 60;
 
 import mongoose from 'mongoose';
 import { withAdmin, parseFormData, validateImageFile, errorResponse, successResponse, validationError } from '@/lib/api-helpers';

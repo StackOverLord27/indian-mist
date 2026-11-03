@@ -1,4 +1,5 @@
  
+import { MAX_IMAGE_BYTES, REQUEST_LIMIT_BYTES, formatBytes } from '@/lib/image-budget';
 import dbConnect from './db';
 import type { NextRequest } from 'next/server';
 import mongoose from 'mongoose';
@@ -150,10 +151,26 @@ export function withDB(
   };
 }
 
+/**
+ * Refuses an upload that is too large BEFORE its body is read, going by the Content-Length the
+ * browser declared. Vercel itself rejects bodies above ~4.5 MB; this gives the same limit locally
+ * and a message the admin can act on. (A request with no declared length is checked once read.)
+ */
+export function assertRequestSize(req: Request, maxBytes: number = REQUEST_LIMIT_BYTES): void {
+  const declared = Number(req.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    throw new ApiError(
+      `This upload is too large (${formatBytes(declared)}; the limit is ${formatBytes(maxBytes)} per save). Use fewer or smaller images.`,
+      413,
+    );
+  }
+}
+
 export async function parseFormData(req: NextRequest): Promise<{
   fields: Record<string, string>;
   files: UploadedFile[];
 }> {
+  assertRequestSize(req);
   let formData: FormData;
   try {
     formData = await req.formData();
@@ -176,6 +193,10 @@ export async function parseFormData(req: NextRequest): Promise<{
     } else {
       fields[key] = value as string;
     }
+  }
+  const total = files.reduce((sum, f) => sum + f.size, 0);
+  if (total > REQUEST_LIMIT_BYTES) {
+    throw new ApiError(`These images are too large together (${formatBytes(total)}; the limit is ${formatBytes(REQUEST_LIMIT_BYTES)} per save). Use fewer or smaller images.`, 413);
   }
   return { fields, files };
 }
@@ -203,8 +224,11 @@ export function validateImageFile(file: {
   if (file.buffer && !looksLikeImage(file.buffer)) {
     return { valid: false, message: 'This file is not a valid image' };
   }
-  if (file.size > 10 * 1024 * 1024) {
-    return { valid: false, message: 'File must be under 10MB' };
+  if (file.size > MAX_IMAGE_BYTES) {
+    return {
+      valid: false,
+      message: `This image is ${formatBytes(file.size)}; the limit is ${formatBytes(MAX_IMAGE_BYTES)}. The admin shrinks photos automatically, so reload the page and pick it again.`,
+    };
   }
   return { valid: true };
 }

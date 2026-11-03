@@ -16,6 +16,10 @@ export function getApiErrorMessage(error: unknown, fallback = 'Something went wr
       return data.message;
     }
     if (typeof data?.error === 'string' && data.error) return data.error;
+    // The hosting platform's own "payload too large" answer is not JSON and has no message
+    if (error.response?.status === 413) {
+      return 'This upload is too large. Use fewer or smaller images and try again.';
+    }
   }
 
   if (error instanceof Error && error.message) return error.message;

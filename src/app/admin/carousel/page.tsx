@@ -19,6 +19,7 @@ export default function AdminCarouselPage() {
   const [altText, setAltText] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [uploadKey, setUploadKey] = useState(0);
+  const [optimisingImages, setOptimisingImages] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingAlt, setEditingAlt] = useState('');
 
@@ -92,6 +93,7 @@ export default function AdminCarouselPage() {
           multiple
           maxFiles={20}
           onFilesSelected={setFiles}
+          onBusyChange={setOptimisingImages}
         />
         <div className="mt-4 flex flex-col gap-4">
           <input 
@@ -102,7 +104,7 @@ export default function AdminCarouselPage() {
           />
           <Button 
             onClick={handleUpload} 
-            disabled={files.length === 0 || addMutation.isPending}
+            disabled={files.length === 0 || addMutation.isPending || optimisingImages}
             className="self-end bg-forest text-cornsilk hover:bg-olive transition-colors cursor-pointer"
           >
             {addMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

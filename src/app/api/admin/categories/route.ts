@@ -1,4 +1,6 @@
 export const runtime = "nodejs";
+// Uploads to Cloudinary can take a while (up to 10 images in one request); allow a full minute
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 import { NextRequest } from 'next/server';

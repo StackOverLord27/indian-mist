@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import { SiteSettings, HeroSettings, BrandStorySettings } from "@/types/admin";
 import ImageUploadZone from "@/components/admin/ui/ImageUploadZone";
 import { uploadAdminImage, discardUploadedImage } from "@/lib/admin-api/upload";
+import { getApiErrorMessage } from "@/lib/admin-error";
 import toast from "react-hot-toast";
 import { AVAILABLE_ICONS } from "@/lib/icon-map";
 import { settingsForSection } from "@/lib/admin-api/settings";
@@ -677,7 +678,7 @@ export default function AdminHomepageContentPage() {
                       handleBrandStoryChange("imagePublicId", publicId);
                       toast.success("Image uploaded. Save to publish.");
                     } catch (error) {
-                      toast.error("Failed to upload image");
+                      toast.error(getApiErrorMessage(error, "Failed to upload image"));
                     } finally {
                       setIsUploading(false);
                     }

@@ -9,6 +9,7 @@ import { useRef, useState, useEffect, use } from 'react';
 
 import BlogCategorySelect from '@/components/admin/BlogCategorySelect';
 import { buildBlogFormData } from '@/lib/admin-api/blog-form-data';
+import { useImagePreparation } from '@/hooks/admin/useImagePreparation';
 
 export default function AdminEditBlogPage({
   params,
@@ -50,8 +51,13 @@ export default function AdminEditBlogPage({
     }
   }, [blog, initialized]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const { prepare, optimising } = useImagePreparation();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0];
+    e.target.value = '';
+    if (!picked) return;
+    const file = await prepare(picked); // shrunk to the upload budget; null (with a toast) if impossible
     if (file) {
       setCoverFile(file);
       setCoverPreview(URL.createObjectURL(file));
@@ -186,7 +192,7 @@ export default function AdminEditBlogPage({
 
             <button
               type="submit"
-              disabled={updateBlog.isPending}
+              disabled={updateBlog.isPending || optimising}
               className="mt-4 w-full bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider py-3 rounded-sm hover:bg-olive transition-colors disabled:opacity-50"
             >
               {updateBlog.isPending ? 'Saving...' : 'Save Changes'}
