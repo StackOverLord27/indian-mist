@@ -22,7 +22,7 @@ export interface PaginationMeta {
 }
 
 /** What the admin product list and the product pickers get: a few fields and only the first image */
-export type AdminProductSummary = Pick<AdminProduct, '_id' | 'name' | 'category' | 'price' | 'images' | 'isActive' | 'badge' | 'colorName'> & { slug?: string };
+export type AdminProductSummary = Pick<AdminProduct, '_id' | 'name' | 'category' | 'price' | 'images' | 'badge' | 'colorName'> & { slug?: string };
 
 export interface AdminProduct {
   _id: string; // Mongo ID
@@ -37,7 +37,8 @@ export interface AdminProduct {
   colorHex?: string;
   colorGroup?: string;
   tags: string[];
-  badge?: 'New' | 'Sale' | '';
+  /** "Sold Out" is set by the shop itself when tracked stock reaches 0 */
+  badge?: 'New' | 'Sale' | 'Sold Out' | '';
   materials: string[];
   careInstructions?: { text: string; icon: string }[];
   shippingInfo?: {
@@ -47,7 +48,6 @@ export interface AdminProduct {
   images: ProductImage[];
   /** URL of the image shown on the category grid (one of `images`) */
   categoryCoverImage?: string;
-  isActive?: boolean;
   isFeatured?: boolean;
   trackInventory?: boolean;
   stockQuantity?: number;

@@ -18,11 +18,18 @@ import {
 import dbConnect from "@/lib/db";
 import { Product } from "@/models/product.model";
 import { Category as CategoryModel } from "@/models/category.model";
-import { getSiteSettings } from "@/lib/storefront-data";
+import { getSiteSettings, getCategoryNames, getCategoryCounts } from "@/lib/storefront-data";
+import { categoryLabel } from "@/lib/category-labels";
 import CarouselModel from "@/models/carousel.model";
 import { CarouselImage, SiteSettings } from "@/types/admin";
 
 export const revalidate = 60;
+
+/**
+ * The most featured products the home page shows. The section loads 8 at a time as you scroll
+ * (FeaturedProducts), so 24 is three batches; "View all" leads to the full catalogue.
+ */
+const FEATURED_LIMIT = 24;
 
 type ProductDoc = {
   _id?: string;
@@ -65,7 +72,8 @@ export default async function Home() {
   const results = await Promise.all([
     // 1. Featured products: products marked with isFeatured
     Product.find({ isFeatured: true })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: 1 })
+      .limit(FEATURED_LIMIT)
       .select("slug name category price badge images sizes")
       .lean(),
 
@@ -76,28 +84,17 @@ export default async function Home() {
       .select("slug name category description price badge images sizes")
       .lean(),
 
-    // 3. Category counts & images via actual Category collection
-    CategoryModel.aggregate([
-      { $match: { isHidden: { $ne: true } } },
-      { $sort: { isFeatured: -1, createdAt: -1 } },
-      {
-        $lookup: {
-          from: "products",
-          localField: "slug",
-          foreignField: "category",
-          as: "products"
-        }
-      },
-      {
-        $project: {
-          name: 1,
-          slug: 1,
-          image: 1,
-          isFeatured: 1,
-          count: { $size: "$products" }
-        }
-      }
-    ]),
+    // 3. The categories themselves (a small collection)
+    CategoryModel.find({ isHidden: { $ne: true } })
+      .sort({ isFeatured: -1, createdAt: -1 })
+      .select("name slug image isFeatured")
+      .lean(),
+
+    // 3b. How many products each category has (one grouped count, see getCategoryCounts)
+    getCategoryCounts(),
+
+    // 3c. Real category names, for the labels on the product cards
+    getCategoryNames(),
 
     // 4. Site settings for hero and branding
     getSiteSettings(),
@@ -108,11 +105,13 @@ export default async function Home() {
       .lean(),
   ]);
 
-  const [featuredDocs, arrivalDocs, categoryDocs, settingsDoc, carouselDocs] = JSON.parse(
+  const [featuredDocs, arrivalDocs, categoryRows, categoryCounts, categoryNames, settingsDoc, carouselDocs] = JSON.parse(
     JSON.stringify(results),
-  ) as [ProductDoc[], ProductDoc[], CategoryDoc[], SiteSettings | null, CarouselDoc[]];
+  ) as [ProductDoc[], ProductDoc[], Omit<CategoryDoc, "count">[], Record<string, number>, Record<string, string>, SiteSettings | null, CarouselDoc[]];
 
   // ─── Map DB results to UI types (no placeholder fallback)
+
+  const categoryDocs: CategoryDoc[] = categoryRows.map((c) => ({ ...c, count: categoryCounts[c.slug] ?? 0 }));
 
   let mappedFeatured: UIProduct[] = [];
   let mappedArrivals: UIArrival[] = [];
@@ -123,7 +122,7 @@ export default async function Home() {
       id: p.slug,
       productId: p._id,
       name: p.name,
-      category: p.category,
+      category: categoryLabel(categoryNames, p.category),
       price: formatPrice(p.price),
       badge: p.badge,
       sizes: Array.isArray(p.sizes) && p.sizes.length > 0 ? p.sizes : undefined,
@@ -140,7 +139,7 @@ export default async function Home() {
       id: p.slug,
       productId: p._id,
       name: p.name,
-      category: p.category,
+      category: categoryLabel(categoryNames, p.category),
       description: p.description ?? "",
       price: formatPrice(p.price),
       badge: p.badge,

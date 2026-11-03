@@ -240,3 +240,22 @@ Tests: tests/image-budget.test.ts (20), tests/upload-limits.test.ts (9: limit, g
 - A browser without createImageBitmap/WebP encoding falls back (img decode, JPEG/PNG); not tested on Safari/old Android.
 - A tab left open on an OLD admin build still sends raw photos; the server now refuses them with a message asking to reload.
 - Pasting/dragging a HEIC photo is refused ("not a JPEG, PNG or WebP"), as before.
+
+
+## Prompt 11 (database settings, query efficiency, storefront listings, small UI defects)
+
+- db.ts: maxPoolSize 10 -> 5, minPoolSize 0, maxIdleTimeMS 30 s (reasoning in the file: one pool per serverless instance vs 500 connections total on the free Atlas tier). Cached-promise pattern and failure reset kept.
+- Home: category counts are ONE grouped count (`getCategoryCounts`), no `$lookup` of every product; featured capped at 24 (FeaturedProducts loads 8 at a time, checked in a browser: stops at 24, "View all" -> /products); card labels use real category names.
+- /products: `lib/product-listing.ts` is the ONE builder used by the page (first 12) and /api/products (everything else); real names everywhere (SSR HTML checked); facets follow "all filters except its own" (a ticked filter stays visible with 0); public limits kept (<= 60, page <= 1000); sort ends in _id. Caching decision: none. `unstable_cache` is deprecated in Next 16 and `use cache` needs Cache Components (a whole-app rendering change); one aggregate per visit is cheap. If ever needed it goes in `getProductListing` only.
+- Collections: index = first 8 products per collection (2 queries total) + "View all in X" link; collection page = first 24 server-rendered (ISR kept) + "Load more" via new public `/api/collections/[slug]/products`. Deleting a product now also removes it from collections (it left dangling ids).
+- Blogs: 12 per batch; first batch in the cached page, "Load more" and the ?category= filter use new public `/api/blogs` (ISR kept; indexes below).
+- Indexes added (only for queries that exist): orders {promoCode,paymentStatus}, {paymentStatus,status,createdAt}, {paymentStatus,createdAt}; blogs {isPublished,publishedAt}, {isPublished,category,publishedAt}; collections {isActive,order}; products {order,createdAt,_id}. Verified with `explain` (IXSCAN, no COLLSCAN) in tests. Not added: Order{razorpayPaymentId} (no query uses it), anything for the /products `$facet` (a $facet branch cannot use an index; the whole catalogue is scanned, fine at hundreds of products).
+- Atlas check (read-only introspection of the app's user, nothing written): role `atlasAdmin@admin` (can create indexes), and Mongoose autoIndex has already built the existing indexes on production, so the new ones will be created on the first deploy's first requests (collections are tiny: 14 products, 6 orders, 1 blog, 1 collection). Owner note: that user is far more powerful than the app needs; a `readWrite` user on the IndianMist database is enough (also allows createIndex).
+- Small defects: fake Status column and `isActive` type removed from the admin product list; Cancel in ProductForm goes back to the product list; AdminTopBar titles for every admin page (tested); AdminProduct badge type includes "Sold Out"; dead empty arrays removed from homepage-data; `ProductModel.init()` hacks removed from the collection pages; admin orders and profile orders no longer send razorpaySignature (profile orders also capped at the latest 50, no payment id).
+- Measured with the real page functions on 260 products / 3 collections of 80 / 60 posts (query counts and what MongoDB returned, from the profiler): home 5 -> 7 queries, 93 -> 60 docs, 29 -> 18 KB; /collections 2 -> 3 queries, 203 -> 31 docs, 143 -> 12 KB; /collections/x 81 -> 29 docs, 57 -> 9 KB; /blogs 2 -> 3 queries, 62 -> 15 docs, 16 -> 4 KB; /products 1 -> 2 queries (names), same data. Counts rise by 1-2 small queries, the work per page no longer grows with catalogue size.
+- Tests: tests/storefront-listing.test.ts (24), e2e/storefront.e2e.ts (5).
+
+### Found, not fixed
+- /products with a category chosen now scans the whole catalogue for the facet counts (needed for correct facets; cheap at this size).
+- EstimatedDelivery (server component on the ISR product page) can show a date up to a minute old.
+- Audit E6/E7 (placeholder content as code defaults, settings upsert defaults) belong to the launch-content prompt; N6 (SEO) to the policy/SEO prompt.

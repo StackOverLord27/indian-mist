@@ -2,14 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import dbConnect from "@/lib/db";
 import { Collection } from "@/models/collection.model";
-import { Product as ProductModel } from "@/models/product.model";
-import { ProductCard } from "@/components/home/ProductCard";
-import { toCardProduct, type PopulatedCollection, type PopulatedProduct } from "@/lib/collection-products";
+import { CollectionProductGrid } from "@/components/collections/CollectionProductGrid";
+import { COLLECTION_PAGE_SIZE, getCollectionBatch } from "@/lib/collection-products";
 import type { Metadata } from "next";
 import { cache } from "react";
 
 // Built on the first visit, then cached (ISR). Saving a collection or product in the admin
-// refreshes it straight away (revalidateStorefront).
+// refreshes it straight away (revalidateStorefront). Only the first batch of products (24) is in
+// the cached page; "Load more" gets the rest from /api/collections/[slug]/products, so a big
+// collection costs one small query and the page stays cacheable.
 export const revalidate = 300;
 
 export function generateStaticParams() {
@@ -19,10 +20,10 @@ export function generateStaticParams() {
 // Cached per render: generateMetadata and the page both need the collection
 const getCollection = cache(async (slug: string) => {
   await dbConnect();
-  ProductModel.init();
+  // Only the list of product ids: the products themselves are loaded a batch at a time
   return Collection.findOne({ slug, isActive: true })
-    .populate("products")
-    .lean<PopulatedCollection>();
+    .select("name slug description products")
+    .lean<{ name: string; slug: string; description?: string; products: string[] }>();
 });
 
 export async function generateMetadata({
@@ -52,7 +53,7 @@ export default async function CollectionPage({
   if (!collection) notFound();
 
   const col = collection;
-  const products = (col.products || []).filter((p): p is PopulatedProduct => Boolean(p));
+  const batch = await getCollectionBatch(col.products ?? [], 1, COLLECTION_PAGE_SIZE);
 
   return (
     <div className="bg-cornsilk px-4 sm:px-6 md:px-12 lg:px-16 pt-12 pb-16 min-h-screen page-enter">
@@ -70,7 +71,7 @@ export default async function CollectionPage({
           </div>
         </header>
 
-        {products.length === 0 ? (
+        {batch.cards.length === 0 ? (
           <div className="py-24 text-center">
             <p className="font-merriweather text-xl text-forest mb-2">
               No products in this collection yet
@@ -80,11 +81,12 @@ export default async function CollectionPage({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-5 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map((p) => (
-              <ProductCard key={p._id.toString()} product={toCardProduct(p)} />
-            ))}
-          </div>
+          <CollectionProductGrid
+            slug={col.slug}
+            initialProducts={batch.cards}
+            initialHasMore={batch.hasMore}
+            pageSize={COLLECTION_PAGE_SIZE}
+          />
         )}
 
         <div className="mt-16 flex justify-center">

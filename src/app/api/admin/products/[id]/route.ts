@@ -5,6 +5,7 @@ export const maxDuration = 60;
 import mongoose from 'mongoose';
 import { withAdmin, parseFormData, validateImageFile, errorResponse, successResponse, validationError, ApiError } from '@/lib/api-helpers';
 import { Product } from '@/models/product.model';
+import { Collection } from '@/models/collection.model';
 import { uploadImage, deleteManyImages } from '@/lib/cloudinary';
 import { ProductSchema } from '@/schemas/admin';
 import { slugify } from '@/lib/slugify';
@@ -148,6 +149,9 @@ export const DELETE = withAdmin(async (req, context) => {
 
   // Document first; the images are only deleted once nothing points at them
   await product.deleteOne();
+  // Collections must not keep pointing at a product that no longer exists (they would show
+  // fewer products than they count, and the paged collection page would have gaps)
+  await Collection.updateMany({ products: product._id }, { $pull: { products: product._id } });
   if (publicIds.length) await deleteManyImages(publicIds);
 
   revalidateStorefront();

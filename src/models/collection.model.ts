@@ -23,6 +23,9 @@ const CollectionSchema: Schema = new Schema(
   { timestamps: true }
 );
 
+// Storefront: active collections in display order (navbar, /collections)
+CollectionSchema.index({ isActive: 1, order: 1 });
+
 // Auto-generate slug from name if not provided
 CollectionSchema.pre("validate", function (this: ICollection) {
   if (!this.slug && this.name) {

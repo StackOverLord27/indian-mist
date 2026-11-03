@@ -8,6 +8,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import AdminFormField, { inputClass } from '@/components/admin/ui/AdminFormField';
+import { useRouter } from 'next/navigation';
 import ImageUploadZone from '@/components/admin/ui/ImageUploadZone';
 import { AdminProduct } from '@/types/admin';
 import { Loader2, X } from 'lucide-react';
@@ -72,6 +73,7 @@ const CARE_ICONS = [
 
 // `duplicateOf` pre-fills a new product from an existing one (images and colour are not copied)
 export default function ProductForm({ product, duplicateOf }: { product?: AdminProduct; duplicateOf?: AdminProduct }) {
+  const router = useRouter();
   const source = product ?? duplicateOf;
   // Every colour group in use, from a small dedicated endpoint (not from a page of products)
   const { data: existingGroups = [] } = useColorGroups();
@@ -497,7 +499,7 @@ export default function ProductForm({ product, duplicateOf }: { product?: AdminP
           {isDirty && <span className="font-montserrat text-xs text-forest/60">Unsaved changes</span>}
         </div>
         <div className="flex gap-4">
-          <button type="button" className="font-montserrat text-xs font-semibold uppercase tracking-wider px-5 py-2.5 text-forest hover:bg-black/5 rounded-sm transition-colors">
+          <button type="button" onClick={() => router.push('/admin/products')} className="font-montserrat text-xs font-semibold uppercase tracking-wider px-5 py-2.5 text-forest hover:bg-black/5 rounded-sm transition-colors">
             Cancel
           </button>
           <button 

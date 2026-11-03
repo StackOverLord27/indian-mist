@@ -3,7 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { Calendar, Clock, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Calendar, Clock, ArrowRight, Loader2 } from "lucide-react";
 import type { BlogPostData } from "@/types/blog";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 
@@ -20,12 +21,24 @@ export function BlogsView({
   blogs: allBlogs,
   categories,
   category,
+  loading = false,
+  hasMore = false,
+  loadingMore = false,
+  loadError = false,
+  onLoadMore,
 }: {
   blogs: BlogPostData[];
   categories: string[];
   category?: string;
+  /** The first posts of a chosen category are being fetched */
+  loading?: boolean;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  loadError?: boolean;
+  onLoadMore?: () => void;
 }) {
-  const blogs = category ? allBlogs.filter((b) => b.category === category) : allBlogs;
+  // The posts are already the right ones for `category` (the server filters them)
+  const blogs = allBlogs;
 
   return (
     <>
@@ -59,7 +72,11 @@ export function BlogsView({
       )}
 
       {/* Blog grid */}
-      {blogs.length === 0 ? (
+      {loading ? (
+        <div className="py-24 flex justify-center" role="status" aria-label="Loading posts">
+          <Loader2 className="size-7 animate-spin text-olive/60" />
+        </div>
+      ) : blogs.length === 0 ? (
         <div className="py-24 text-center">
           <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-olive/10 flex items-center justify-center">
             <Clock className="size-7 text-olive/70" />
@@ -214,12 +231,89 @@ export function BlogsView({
         </>
       )}
 
+      {!loading && hasMore && (
+        <div className="mt-12 flex flex-col items-center gap-3">
+          <button
+            type="button"
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="inline-flex items-center gap-2 rounded-full border border-olive-leaf/30 px-6 py-3 font-montserrat text-xs font-semibold uppercase tracking-widest text-forest transition-colors hover:bg-forest hover:text-cornsilk disabled:opacity-60"
+          >
+            {loadingMore && <Loader2 className="size-3.5 animate-spin" />}
+            {loadingMore ? "Loading…" : "Load more posts"}
+          </button>
+          {loadError && <p className="font-montserrat text-xs text-copper">Couldn't load more posts. Please try again.</p>}
+        </div>
+      )}
     </>
   );
 }
 
-/** Reads ?category= in the browser, so the blogs page itself can be a cached (ISR) page. */
-export function BlogsIndex({ blogs, categories }: { blogs: BlogPostData[]; categories: string[] }) {
+type Batch = { key: string; blogs: BlogPostData[]; page: number; hasMore: boolean };
+
+/**
+ * Reads ?category= in the browser (so the blogs page itself stays a cached ISR page) and loads
+ * further batches from /api/blogs. With no category the first batch comes with the page.
+ */
+export function BlogsIndex({ blogs, categories, hasMore }: { blogs: BlogPostData[]; categories: string[]; hasMore: boolean }) {
   const category = useSearchParams().get("category") ?? undefined;
-  return <BlogsView blogs={blogs} categories={categories} category={category} />;
+  const key = category ?? "";
+
+  const [batch, setBatch] = useState<Batch>({ key: "", blogs, page: 1, hasMore });
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  const fetchPage = async (page: number): Promise<{ blogs: BlogPostData[]; hasMore: boolean }> => {
+    const params = new URLSearchParams({ page: String(page) });
+    if (category) params.set("category", category);
+    const res = await fetch(`/api/blogs?${params}`);
+    if (!res.ok) throw new Error("failed");
+    return res.json();
+  };
+
+  // A category was chosen (or cleared): get its first batch
+  useEffect(() => {
+    if (key === batch.key) return;
+    if (!category) {
+      setBatch({ key: "", blogs, page: 1, hasMore });
+      return;
+    }
+    let cancelled = false;
+    fetchPage(1)
+      .then((data) => { if (!cancelled) setBatch({ key, blogs: data.blogs, page: 1, hasMore: data.hasMore }); })
+      .catch(() => { if (!cancelled) setBatch({ key, blogs: [], page: 1, hasMore: false }); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    setLoadError(false);
+    try {
+      const data = await fetchPage(batch.page + 1);
+      setBatch((prev) => ({
+        ...prev,
+        page: prev.page + 1,
+        hasMore: data.hasMore,
+        blogs: [...prev.blogs, ...data.blogs.filter((b) => !prev.blogs.some((p) => p._id === b._id))],
+      }));
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  return (
+    <BlogsView
+      blogs={key === batch.key ? batch.blogs : []}
+      categories={categories}
+      category={category}
+      loading={key !== batch.key}
+      hasMore={key === batch.key && batch.hasMore}
+      loadingMore={loadingMore}
+      loadError={loadError}
+      onLoadMore={loadMore}
+    />
+  );
 }

@@ -1,30 +1,21 @@
 import { Suspense } from "react";
 import type { BlogPostData } from "@/types/blog";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
-import dbConnect from "@/lib/db";
-import { Blog } from "@/models/blog.model";
 import { BlogsIndex, BlogsView } from "@/components/blog/BlogsIndex";
+import { getPublishedBlogs, getPublishedBlogCategories } from "@/lib/blogs-list";
 
-// Cached page (the ?category= filter runs in the browser, see BlogsIndex). Saving a post in the
-// admin refreshes it straight away (revalidateStorefront). No pagination yet: later prompt.
+// Cached page. Saving a post in the admin refreshes it straight away (revalidateStorefront).
+// Only the newest 12 posts are in the cached page; "Load more" and the ?category= filter fetch
+// further batches from /api/blogs in the browser (BlogsIndex), which keeps the page cacheable.
 export const revalidate = 300;
 
 async function getBlogs() {
-  await dbConnect();
-
-  const [blogs, categories] = await Promise.all([
-    Blog.find({ isPublished: true })
-      .sort({ publishedAt: -1 })
-      .select("-content")
-      .lean(),
-    Blog.distinct("category", { isPublished: true }),
-  ]);
-
-  return { blogs: JSON.parse(JSON.stringify(blogs)) as BlogPostData[], categories: categories as string[] };
+  const [first, categories] = await Promise.all([getPublishedBlogs({ page: 1 }), getPublishedBlogCategories()]);
+  return { blogs: first.blogs, hasMore: first.hasMore, categories };
 }
 
 export default async function BlogsPage() {
-  const { blogs, categories } = await getBlogs();
+  const { blogs, categories, hasMore } = await getBlogs();
 
   return (
     <div className="bg-cornsilk min-h-screen page-enter">
@@ -61,7 +52,7 @@ export default async function BlogsPage() {
         />
 
         <Suspense fallback={<BlogsView blogs={blogs} categories={categories} />}>
-          <BlogsIndex blogs={blogs} categories={categories} />
+          <BlogsIndex blogs={blogs} categories={categories} hasMore={hasMore} />
         </Suspense>
       </div>
     </div>

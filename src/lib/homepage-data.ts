@@ -47,7 +47,4 @@ export const storyImage: HomeImage = {
   fallbackClassName: "bg-black-forest",
 };
 
-export const featuredProducts: Product[] = [];
-export const categories: Category[] = [];
-export const newestArrivals: Arrival[] = [];
 

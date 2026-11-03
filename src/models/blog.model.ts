@@ -41,6 +41,10 @@ const BlogSchema: Schema = new Schema(
   { timestamps: true }
 );
 
+// Public blog index: published posts newest first, with and without a category filter
+BlogSchema.index({ isPublished: 1, publishedAt: -1 });
+BlogSchema.index({ isPublished: 1, category: 1, publishedAt: -1 });
+
 // Auto-generate slug from title
 BlogSchema.pre("validate", function (this: IBlog) {
   if (!this.slug && this.title) {

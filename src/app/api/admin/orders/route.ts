@@ -18,6 +18,7 @@ export const GET = withAdmin(async (req: NextRequest) => {
 
     const [orders, total, grouped] = await Promise.all([
       Order.find(query)
+        .select('-razorpaySignature') // never needed by the page
         .sort({ createdAt: -1, _id: -1 })
         .skip(pagination.skip)
         .limit(pagination.limit)

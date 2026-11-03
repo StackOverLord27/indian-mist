@@ -84,6 +84,8 @@ const ProductSchema: Schema = new Schema(
 ProductSchema.index({ isFeatured: 1, createdAt: -1 });
 ProductSchema.index({ category: 1, order: 1, createdAt: -1 });
 ProductSchema.index({ createdAt: -1 });
+// The admin product list and the reorder route (lib/product-sort.ts PRODUCT_SORT, no filter)
+ProductSchema.index({ order: 1, createdAt: -1, _id: 1 });
 
 ProductSchema.pre("validate", function (this: IProduct) {
   if (!this.slug && this.name) {

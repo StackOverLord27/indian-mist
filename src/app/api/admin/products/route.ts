@@ -18,7 +18,7 @@ const MAX_PRODUCT_IMAGES = 10;
 
 // Only what the list and the pickers show; images are cut to the first one.
 const LIST_PROJECTION = {
-  name: 1, slug: 1, category: 1, price: 1, badge: 1, isActive: 1, colorName: 1,
+  name: 1, slug: 1, category: 1, price: 1, badge: 1, colorName: 1,
   images: { $slice: 1 },
 } as const;
 

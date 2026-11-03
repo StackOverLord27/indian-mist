@@ -93,6 +93,12 @@ const OrderSchema: Schema = new Schema(
 
 // Add compound index to make promo code validation instantaneous
 OrderSchema.index({ userId: 1, promoCode: 1 });
+// Total uses of a promo code (only PAID orders count): promo route, create-order, finalizeOrder
+OrderSchema.index({ promoCode: 1, paymentStatus: 1 });
+// Admin orders list: the PAID orders of one status tab, newest first, and the per-tab counts
+OrderSchema.index({ paymentStatus: 1, status: 1, createdAt: -1 });
+// ...and the "All orders" tab (PAID, newest first)
+OrderSchema.index({ paymentStatus: 1, createdAt: -1 });
 OrderSchema.index({ userId: 1, createdAt: -1 });
 
 if (process.env.NODE_ENV === "development") {

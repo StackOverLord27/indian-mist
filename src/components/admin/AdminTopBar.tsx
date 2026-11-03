@@ -5,6 +5,36 @@ import { Bell } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { User } from '@/types/admin';
 
+/** The heading for an admin page, from its address. Specific pages (new / edit) before their list. */
+export function adminPageTitle(pathname: string): string {
+  const rules: [RegExp, string][] = [
+    [/^\/admin\/products\/new/, 'Add Product'],
+    [/^\/admin\/products\/.+/, 'Edit Product'],
+    [/^\/admin\/products/, 'Products'],
+    [/^\/admin\/categories\/new/, 'Add Category'],
+    [/^\/admin\/categories\/.+/, 'Edit Category'],
+    [/^\/admin\/categories/, 'Categories'],
+    [/^\/admin\/collections\/new/, 'Add Collection'],
+    [/^\/admin\/collections\/.+/, 'Edit Collection'],
+    [/^\/admin\/collections/, 'Collections'],
+    [/^\/admin\/blogs\/new/, 'New Blog Post'],
+    [/^\/admin\/blogs\/.+/, 'Edit Blog Post'],
+    [/^\/admin\/blogs/, 'Blog Posts'],
+    [/^\/admin\/orders/, 'Orders'],
+    [/^\/admin\/pricing/, 'Pricing & Promos'],
+    [/^\/admin\/homepage/, 'Layout & Text'],
+    [/^\/admin\/contact/, 'Contact Page'],
+    [/^\/admin\/legal\/privacy/, 'Privacy Policy'],
+    [/^\/admin\/legal\/terms/, 'Terms & Conditions'],
+    [/^\/admin\/legal\/.+/, 'Legal Page'],
+    [/^\/admin\/announcements/, 'Announcements'],
+    [/^\/admin\/carousel/, 'Carousel'],
+    [/^\/admin\/about/, 'About Page'],
+    [/^\/admin\/settings/, 'Site Settings'],
+  ];
+  return rules.find(([pattern]) => pattern.test(pathname))?.[1] ?? 'Dashboard';
+}
+
 export default function AdminTopBar() {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
@@ -21,15 +51,7 @@ export default function AdminTopBar() {
     }
   }, []);
 
-  // Derive title from pathname
-  let title = 'Dashboard';
-  if (pathname.includes('/products/new')) title = 'Add Product';
-  else if (pathname.includes('/products/')) title = 'Edit Product';
-  else if (pathname.includes('/products')) title = 'Products';
-  else if (pathname.includes('/announcements')) title = 'Announcements';
-  else if (pathname.includes('/carousel')) title = 'Carousel';
-  else if (pathname.includes('/about')) title = 'About Page';
-  else if (pathname.includes('/settings')) title = 'Site Settings';
+  const title = adminPageTitle(pathname);
 
   return (
     <header className="h-14 bg-card border-b border-olive/10 flex items-center justify-between px-6 md:px-8">

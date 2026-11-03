@@ -1,23 +1,28 @@
+import Link from "next/link";
 import dbConnect from "@/lib/db";
 import { Collection } from "@/models/collection.model";
 import { ProductCard } from "@/components/home/ProductCard";
-import { toCardProduct, type PopulatedCollection } from "@/lib/collection-products";
-import { Product as ProductModel } from "@/models/product.model";
+import { COLLECTION_PREVIEW_SIZE, getProductsByIds, toCardProduct } from "@/lib/collection-products";
+import { getCategoryNames } from "@/lib/storefront-data";
 
 // Cached page. Saving a collection or product in the admin refreshes it straight away
-// (revalidateStorefront). No pagination yet: later prompt.
+// (revalidateStorefront). Each collection shows a preview of its first 8 products with a link to
+// its own page (which loads the rest in batches), so the page stays small however big the
+// collections are: two queries in total, whatever the number of collections.
 export const revalidate = 300;
 
 export default async function CollectionsPage() {
   await dbConnect();
 
-  // Ensure Product model is registered before populating
-  ProductModel.init();
-
   const collections = await Collection.find({ isActive: true })
-    .populate("products")
-    .sort({ order: 1, createdAt: 1 })
-    .lean<PopulatedCollection[]>();
+    .select("name slug description products")
+    .sort({ order: 1, createdAt: 1, _id: 1 })
+    .lean<{ _id: { toString(): string }; name: string; slug: string; description?: string; products?: string[] }[]>();
+
+  // ONE query for the preview products of every collection, then split them back up
+  const previewIds = collections.flatMap((c) => (c.products ?? []).slice(0, COLLECTION_PREVIEW_SIZE));
+  const [previewProducts, names] = await Promise.all([getProductsByIds(previewIds), getCategoryNames()]);
+  const byId = new Map(previewProducts.map((p) => [p._id.toString(), p]));
 
   return (
     <div className="bg-cornsilk px-4 sm:px-6 md:px-12 lg:px-16 pt-12 pb-16 min-h-screen page-enter">
@@ -46,8 +51,12 @@ export default async function CollectionsPage() {
       ) : (
         <div className="space-y-0">
           {collections.map((collection, index) => {
-            if (!collection.products || collection.products.length === 0)
-              return null;
+            const previewList = (collection.products ?? [])
+              .slice(0, COLLECTION_PREVIEW_SIZE)
+              .map((id) => byId.get(String(id)))
+              .filter((p): p is NonNullable<typeof p> => Boolean(p));
+            if (previewList.length === 0) return null;
+            const hasMore = (collection.products?.length ?? 0) > COLLECTION_PREVIEW_SIZE;
 
             const isEven = index % 2 === 0;
 
@@ -74,10 +83,20 @@ export default async function CollectionsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-                  {collection.products.filter((p) => p !== null).map((p) => (
-                    <ProductCard key={p._id.toString()} product={toCardProduct(p)} />
+                  {previewList.map((p) => (
+                    <ProductCard key={p._id.toString()} product={toCardProduct(p, names)} />
                   ))}
                 </div>
+                {hasMore && (
+                  <div className="mt-6">
+                    <Link
+                      href={`/collections/${collection.slug}`}
+                      className="font-montserrat text-xs font-semibold uppercase tracking-widest text-olive-leaf transition-opacity hover:opacity-70"
+                    >
+                      View all in {collection.name} →
+                    </Link>
+                  </div>
+                )}
               </section>
             );
           })}

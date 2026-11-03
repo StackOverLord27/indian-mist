@@ -27,7 +27,15 @@ export default async function dbConnect(): Promise<typeof mongoose> {
   if (!cache.promise) {
     cache.promise = mongoose.connect(getMongoUri(), {
       bufferCommands: false,
-      maxPoolSize: 10,
+      // Serverless: every Vercel function instance opens its OWN pool, and many instances can be
+      // alive at once during a traffic burst. The free Atlas tier allows 500 connections in total
+      // for the whole cluster, so the pool per instance is kept small (a request here runs a
+      // handful of queries, mostly in parallel with each other, so 5 is plenty) and idle
+      // connections are closed quickly instead of lingering after the instance goes quiet.
+      // Rough budget: 5 per instance x ~100 warm instances = 500, and idle ones are released.
+      maxPoolSize: 5,
+      minPoolSize: 0,
+      maxIdleTimeMS: 30_000,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 10000,
     });

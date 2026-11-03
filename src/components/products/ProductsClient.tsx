@@ -8,29 +8,11 @@ import { ProductCardSkeleton } from "@/components/ui/skeletons";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { ListingProduct, FacetItem as ListingFacet, ListingFacets } from "@/lib/product-listing";
 
-interface ProductItem {
-  id: string;
-  slug: string;
-  name: string;
-  category: string;
-  price: string;
-  images: string[];
-  badge?: "New" | "Sale" | "Sold Out";
-  hasSizes?: boolean;
-  sizes?: string[];
-}
-
-interface FacetItem {
-  name: string;
-  value: string;
-  count: number;
-}
-
-interface Facets {
-  categories: FacetItem[];
-  badges: FacetItem[];
-}
+type ProductItem = ListingProduct;
+type FacetItem = ListingFacet;
+type Facets = ListingFacets;
 
 const BATCH_SIZE = 12;
 
@@ -39,14 +21,14 @@ export default function ProductsClient({
   initialFacets,
   initialHasMore,
   initialTotal,
-  initialCategory,
+  initialCategories,
   initialSort,
 }: {
   initialProducts: ProductItem[],
   initialFacets: Facets,
   initialHasMore: boolean,
   initialTotal: number,
-  initialCategory?: string,
+  initialCategories: string[],
   initialSort?: string,
 }) {
   const [products, setProducts] = useState<ProductItem[]>(initialProducts);
@@ -58,7 +40,7 @@ export default function ProductsClient({
 
   // Filters, sort, and search
   const [sortBy, setSortBy] = useState(initialSort || "featured");
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategory ? [initialCategory] : []);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategories);
   const [selectedBadges, setSelectedBadges] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -313,7 +295,7 @@ export default function ProductsClient({
               id: product.slug,
               productId: product.id,
               name: product.name,
-              category: product.category,
+              category: product.categoryLabel,
               price: product.price,
               badge: product.badge,
               sizes: product.sizes,
