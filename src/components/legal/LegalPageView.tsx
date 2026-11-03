@@ -1,9 +1,10 @@
 import { cache } from "react";
+import { notFound } from "next/navigation";
 import dbConnect from "@/lib/db";
 import LegalPage from "@/models/legal-page.model";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { sanitizeRichText } from "@/lib/sanitize";
-import { LEGAL_DEFAULTS, type LegalSlug } from "@/lib/legal-pages";
+import { LEGAL_DEFAULTS, hasLegalText, isOptionalLegalSlug, type LegalSlug } from "@/lib/legal-pages";
 
 // Cached per render (the page title and the page body both ask for it). A database failure
 // throws on purpose, so a failed regeneration keeps the last good policy text instead of
@@ -20,6 +21,8 @@ export const getLegalPage = cache(async (slug: LegalSlug) => {
 
 export async function LegalPageView({ slug }: { slug: LegalSlug }) {
   const { title, content } = await getLegalPage(slug);
+  // An optional policy with no saved text is not a page
+  if (isOptionalLegalSlug(slug) && !hasLegalText(content)) notFound();
 
   return (
     <div className="bg-cornsilk min-h-screen">

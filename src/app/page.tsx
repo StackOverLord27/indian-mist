@@ -18,7 +18,6 @@ import {
 import dbConnect from "@/lib/db";
 import { Product } from "@/models/product.model";
 import { Category as CategoryModel } from "@/models/category.model";
-import { SHIPPING_THRESHOLD } from "@/lib/constants";
 import { getSiteSettings, getCategoryNames, getCategoryCounts } from "@/lib/storefront-data";
 import { categoryLabel } from "@/lib/category-labels";
 import CarouselModel from "@/models/carousel.model";
@@ -188,10 +187,7 @@ export default async function Home() {
         slides={mappedSlides}
         fallbackImage={heroImage}
       />
-      <TrustStrip
-        items={settingsDoc?.trustStripSettings?.items}
-        freeShippingThreshold={settingsDoc?.pricingSettings?.freeShippingThreshold ?? SHIPPING_THRESHOLD}
-      />
+      <TrustStrip items={settingsDoc?.trustStripSettings?.items} />
       <ScrollReveal>
         <FeaturedProducts products={mappedFeatured} />
       </ScrollReveal>

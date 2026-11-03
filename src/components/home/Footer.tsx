@@ -103,10 +103,13 @@ export function Footer({
   settings,
   categories = [],
   collections = [],
+  policies = [],
 }: {
   settings?: SiteSettings;
   categories?: NavItem[];
   collections?: NavItem[];
+  /** Refund / shipping policy pages that have text saved (only those are linked) */
+  policies?: { slug: string; title: string }[];
 }) {
   const pathname = usePathname();
 
@@ -187,7 +190,7 @@ export function Footer({
           <p className="font-montserrat text-xs font-light text-cornsilk/70">
             © 2026 Indian Mist. All rights reserved.
           </p>
-          <div className="flex justify-center gap-6">
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <Link
               href="/privacy-policy"
               className="font-montserrat text-[10px] font-medium uppercase tracking-widest text-cornsilk/75 transition-colors hover:text-cornsilk"
@@ -200,6 +203,15 @@ export function Footer({
             >
               Terms &amp; Conditions
             </Link>
+            {policies.map((policy) => (
+              <Link
+                key={policy.slug}
+                href={`/${policy.slug}`}
+                className="font-montserrat text-[10px] font-medium uppercase tracking-widest text-cornsilk/75 transition-colors hover:text-cornsilk"
+              >
+                {policy.title}
+              </Link>
+            ))}
           </div>
           <div className="flex flex-wrap justify-center gap-2 md:justify-end">
             {certifications.map((certification) => (

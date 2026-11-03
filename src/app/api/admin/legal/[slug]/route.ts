@@ -1,6 +1,7 @@
 export const runtime = 'nodejs';
 
 import { revalidatePath } from 'next/cache';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 import { z } from 'zod';
 import { withAdmin, successResponse, errorResponse, parseJsonBody, validationError } from '@/lib/api-helpers';
 import LegalPage from '@/models/legal-page.model';
@@ -33,5 +34,8 @@ export const PUT = withAdmin(async (req, { params }) => {
   );
 
   revalidatePath(`/${slug}`);
+  // The footer links and the sitemap list the optional policy pages only while they have text
+  revalidateStorefront();
+  revalidatePath('/sitemap.xml');
   return successResponse({ page });
 });

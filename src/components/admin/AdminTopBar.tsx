@@ -26,6 +26,8 @@ export function adminPageTitle(pathname: string): string {
     [/^\/admin\/contact/, 'Contact Page'],
     [/^\/admin\/legal\/privacy/, 'Privacy Policy'],
     [/^\/admin\/legal\/terms/, 'Terms & Conditions'],
+    [/^\/admin\/legal\/refund/, 'Refund Policy'],
+    [/^\/admin\/legal\/shipping/, 'Shipping Policy'],
     [/^\/admin\/legal\/.+/, 'Legal Page'],
     [/^\/admin\/announcements/, 'Announcements'],
     [/^\/admin\/carousel/, 'Carousel'],

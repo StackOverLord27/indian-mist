@@ -189,7 +189,7 @@ describe("empty settings: no placeholder claims anywhere", () => {
   });
 
   it("trust strip, eco section and brand story render nothing when empty", () => {
-    expect(render(createElement(TrustStrip, { items: [], freeShippingThreshold: 999 }))).toBe("");
+    expect(render(createElement(TrustStrip, { items: [] }))).toBe("");
     expect(render(createElement(TrustStrip, { items: [{ icon: "Leaf", title: "", subtitle: "" }] }))).toBe("");
     expect(render(createElement(EcoCommitmentSection, { settings: undefined }))).toBe("");
     expect(render(createElement(EcoCommitmentSection, { settings: { subtitle: "x", titleLine1: "y", items: [] } }))).toBe("");
@@ -206,20 +206,15 @@ describe("empty settings: no placeholder claims anywhere", () => {
     expect(html).not.toMatch(/Eco materials/i);
   });
 
-  it("only typed content shows; the free-shipping line comes from the real threshold", () => {
-    const strip = render(createElement(TrustStrip, { items: [{ icon: "Leaf", title: "Handmade", subtitle: "In small batches" }], freeShippingThreshold: 1499 }));
+  it("only typed content shows; the trust strip shows exactly what is typed, nothing fetched", () => {
+    const strip = render(createElement(TrustStrip, { items: [{ icon: "Leaf", title: "Handmade", subtitle: "In small batches" }] }));
     expect(strip).toContain("Handmade");
-    expect(strip).toContain("Free shipping");
-    expect(strip).toContain("₹1,499");
-    // an owner-written shipping point is respected; no second one is added
-    const own = render(createElement(TrustStrip, { items: [{ icon: "Truck", title: "Free delivery", subtitle: "Over ₹999" }], freeShippingThreshold: 1499 }));
-    expect(own).not.toContain("₹1,499");
-    // a hand-typed free-shipping figure is replaced by the real threshold (the live site had "Above ₹699" while checkout gives free shipping above ₹399)
-    const stale = render(createElement(TrustStrip, { items: [{ icon: "Truck", title: "Free shipping", subtitle: "Above ₹699" }], freeShippingThreshold: 399 }));
-    expect(stale).toContain("₹399");
-    expect(stale).not.toContain("₹699");
-    // the generated point never makes an empty strip appear
-    expect(render(createElement(TrustStrip, { items: [], freeShippingThreshold: 1499 }))).toBe("");
+    // no free-shipping point is added or rewritten: the owner's own wording (even an out-of-date figure) is shown as typed
+    expect(strip).not.toMatch(/free shipping/i);
+    const typed = render(createElement(TrustStrip, { items: [{ icon: "Truck", title: "Free shipping", subtitle: "Above ₹699" }] }));
+    expect(typed).toContain("Above ₹699");
+    const none = render(createElement(TrustStrip, { items: [{ icon: "Leaf", title: "Handmade", subtitle: "" }] }));
+    expect(none).not.toMatch(/free|shipping|₹/i);
     const eco = render(createElement(EcoCommitmentSection, { settings: { items: [{ icon: "TreePine", number: "7", label: "Things", description: "d" }] } }));
     expect(eco).toContain("Things");
     expect(eco).not.toContain("Our commitment");

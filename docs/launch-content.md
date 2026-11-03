@@ -14,7 +14,7 @@ Written by the launch-content pass. No policy text was written by code or by Cla
 
 What the owner/lawyer must supply: the four policy texts (privacy, terms, refunds/cancellations/returns, shipping), including the return/exchange window and conditions; the refund timeline and method; which shipping charges and free-shipping threshold apply (these come from Admin > Pricing: today shipping ₹99, free above ₹399); delivery times; a real business address, phone and e-mail on the contact page; the seller's legal/business name and GST details if Razorpay asks for them.
 
-Contradictions between the UI and the rules, found and removed: the cart said "Free returns within 30 days" and "Carbon-neutral delivery" (no policy states either); checkout said "PCI DSS compliant payment processing" (that is Razorpay's certification, not the shop's); the order-confirmation page promised "5-7 business days"; the product page promised "3-5 business days" for every product by default; the trust strip on the live site says "Free shipping, Above ₹699" while checkout gives free shipping above ₹399 (the strip now takes the figure from the pricing setting).
+Contradictions between the UI and the rules, found and removed: the cart said "Free returns within 30 days" and "Carbon-neutral delivery" (no policy states either); checkout said "PCI DSS compliant payment processing" (that is Razorpay's certification, not the shop's); the order-confirmation page promised "5-7 business days"; the product page promised "3-5 business days" for every product by default; the trust strip on the live site says "Free shipping, Above ₹699" while checkout gives free shipping above ₹399 (the owner edits the strip by hand; nothing in it is generated, see "Follow-up" below).
 
 ## 2. Saved content that still matches placeholder wording
 Run `node scripts/find-placeholder-content.mjs` (read-only). These were saved when the old code wrote its defaults into the database on the first settings save. They are NOT changed by this work (no migration); review them in the admin:
@@ -32,3 +32,8 @@ Run `node scripts/find-placeholder-content.mjs` (read-only). These were saved wh
 - Footer "© 2026 Indian Mist" (fixed year).
 - Blog category suggestions in the admin include "Sustainability".
 - Order e-mails and OTP e-mails (out of scope: postponed).
+
+## Follow-up: refund / shipping pages and the trust strip
+
+- **Refund & Cancellation Policy** (`/refund-policy`) and **Shipping & Delivery Policy** (`/shipping-policy`) are new page types in the same editor as Privacy and Terms (admin sidebar > Pages). They have NO default text: until the owner saves some, the page returns 404 and has no footer link and no sitemap entry. Saving text publishes it everywhere at once; saving the editor empty takes it down.
+- **Trust strip** is exactly what the owner types. The generated free-shipping point and the rewriting of a "Free shipping" subtitle were removed, so the owner keeps the strip and the pricing threshold in step by hand.

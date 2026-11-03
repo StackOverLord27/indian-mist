@@ -1,7 +1,7 @@
 import { getSiteUrl } from "@/lib/env";
 import { SITE_NAME } from "@/lib/seo";
 import type { Metadata } from "next";
-import { getSiteSettings, getNavCategories, getNavCollections } from "@/lib/storefront-data";
+import { getSiteSettings, getNavCategories, getNavCollections, getPublishedOptionalPolicies } from "@/lib/storefront-data";
 import { Merriweather, Montserrat } from "next/font/google";
 import "./globals.css";
 import { AnnouncementBar } from "@/components/home/AnnouncementBar";
@@ -49,10 +49,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [settings, navCategories, navCollections] = await Promise.all([
+  const [settings, navCategories, navCollections, policies] = await Promise.all([
     getSiteSettings(),
     getNavCategories(),
     getNavCollections(),
+    getPublishedOptionalPolicies(),
   ]);
   return (
     <html
@@ -70,7 +71,7 @@ export default async function RootLayout({
           <Navbar categories={navCategories} collections={navCollections} />
         </div>
         <main className="flex-1 w-full">{children}</main>
-        <Footer settings={settings ?? undefined} categories={navCategories} collections={navCollections} />
+        <Footer settings={settings ?? undefined} categories={navCategories} collections={navCollections} policies={policies} />
       </body>
     </html>
   );

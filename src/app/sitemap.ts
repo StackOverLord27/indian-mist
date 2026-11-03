@@ -4,6 +4,7 @@ import { getSiteUrl } from "@/lib/env";
 import { Product } from "@/models/product.model";
 import { Collection } from "@/models/collection.model";
 import { Blog } from "@/models/blog.model";
+import { getPublishedOptionalPolicies } from "@/lib/storefront-data";
 
 // Built from the database and refreshed hourly (and straight away after admin changes, like the
 // pages themselves). A database failure throws on purpose: a failed rebuild keeps the last good
@@ -30,10 +31,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = getSiteUrl();
   await dbConnect();
 
-  const [products, collections, blogs] = await Promise.all([
+  const [products, collections, blogs, policies] = await Promise.all([
     Product.find({}).select("slug updatedAt").sort({ _id: 1 }).limit(MAX_URLS).lean<Dated[]>(),
     Collection.find({ isActive: true }).select("slug updatedAt").sort({ _id: 1 }).limit(MAX_URLS).lean<Dated[]>(),
     Blog.find({ isPublished: true }).select("slug updatedAt").sort({ _id: 1 }).limit(MAX_URLS).lean<Dated[]>(),
+    getPublishedOptionalPolicies(),
   ]);
 
   const entry = (path: string, changeFrequency: "daily" | "weekly" | "monthly", priority: number, lastModified?: Date) => ({
@@ -45,6 +47,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...STATIC_PAGES.map((p) => entry(p.path, p.changeFrequency, p.priority)),
+    // refund / shipping policy pages exist only once the owner has saved text
+    ...policies.map((p) => entry(`/${p.slug}`, "monthly", 0.2)),
     ...products.map((p) => entry(`/products/${p.slug}`, "weekly", 0.8, p.updatedAt)),
     ...collections.map((c) => entry(`/collections/${c.slug}`, "weekly", 0.6, c.updatedAt)),
     ...blogs.map((b) => entry(`/blogs/${b.slug}`, "monthly", 0.5, b.updatedAt)),

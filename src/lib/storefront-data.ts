@@ -5,6 +5,8 @@ import { Category } from "@/models/category.model";
 import { Product as ProductModel } from "@/models/product.model";
 import { Collection } from "@/models/collection.model";
 import AnnouncementModel from "@/models/announcement.model";
+import LegalPage from "@/models/legal-page.model";
+import { LEGAL_DEFAULTS, OPTIONAL_LEGAL_SLUGS, hasLegalText, type OptionalLegalSlug } from "@/lib/legal-pages";
 import type { SiteSettings } from "@/types/admin";
 
 /*
@@ -73,4 +75,19 @@ export const getAnnouncementTexts = cache(async (): Promise<string[]> => {
     .select("text")
     .lean<{ text: string }[]>();
   return items.map((item) => item.text);
+});
+
+/**
+ * Which optional policy pages (refund, shipping) have text saved, so the footer and the sitemap
+ * link only to pages that exist. One small query. A database failure throws (see the note at the top).
+ */
+export const getPublishedOptionalPolicies = cache(async (): Promise<{ slug: OptionalLegalSlug; title: string }[]> => {
+  await dbConnect();
+  const docs = await LegalPage.find({ slug: { $in: [...OPTIONAL_LEGAL_SLUGS] } })
+    .select("slug title content")
+    .lean<{ slug: OptionalLegalSlug; title?: string; content?: string }[]>();
+  return OPTIONAL_LEGAL_SLUGS.flatMap((slug) => {
+    const doc = docs.find((d) => d.slug === slug);
+    return doc && hasLegalText(doc.content) ? [{ slug, title: doc.title?.trim() || LEGAL_DEFAULTS[slug].title }] : [];
+  });
 });

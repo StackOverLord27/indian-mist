@@ -87,6 +87,8 @@ export default function AdminSidebar() {
         { label: 'Contact Page', href: '/admin/contact', icon: Mail, exact: true },
         { label: 'Privacy Policy', href: '/admin/legal/privacy-policy', icon: FileText, exact: true },
         { label: 'Terms & Conditions', href: '/admin/legal/terms-and-conditions', icon: FileText, exact: true },
+        { label: 'Refund Policy', href: '/admin/legal/refund-policy', icon: FileText, exact: true },
+        { label: 'Shipping Policy', href: '/admin/legal/shipping-policy', icon: FileText, exact: true },
       ]
     }
   ];

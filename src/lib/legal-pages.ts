@@ -1,8 +1,26 @@
-export const LEGAL_SLUGS = ["privacy-policy", "terms-and-conditions"] as const;
+export const LEGAL_SLUGS = ["privacy-policy", "terms-and-conditions", "refund-policy", "shipping-policy"] as const;
 export type LegalSlug = (typeof LEGAL_SLUGS)[number];
 
 export function isLegalSlug(value: string): value is LegalSlug {
   return (LEGAL_SLUGS as readonly string[]).includes(value);
+}
+
+/**
+ * Pages with NO default text. They are legal documents (return window, refund timeline, delivery
+ * terms) that only the owner can write, so nothing is invented: until text is saved, the page
+ * does not exist on the site (404), has no footer link and is not in the sitemap. Saving empty
+ * text takes it down again.
+ */
+export const OPTIONAL_LEGAL_SLUGS = ["refund-policy", "shipping-policy"] as const satisfies readonly LegalSlug[];
+export type OptionalLegalSlug = (typeof OPTIONAL_LEGAL_SLUGS)[number];
+
+export function isOptionalLegalSlug(value: string): value is OptionalLegalSlug {
+  return (OPTIONAL_LEGAL_SLUGS as readonly string[]).includes(value);
+}
+
+/** True when saved page text has something a visitor could read (an empty editor saves "<p></p>") */
+export function hasLegalText(content: string | undefined | null): boolean {
+  return !!content && content.replace(/<[^>]*>/g, "").replace(/&nbsp;|\s/g, "").length > 0;
 }
 
 // Shown until an admin saves their own text
@@ -15,4 +33,6 @@ export const LEGAL_DEFAULTS: Record<LegalSlug, { title: string; content: string 
     title: "Terms & Conditions",
     content: `<h2>Using our website</h2><p>By using this website and placing an order, you agree to these terms. Please read them carefully.</p><h2>Orders and pricing</h2><p>All prices are in Indian Rupees. We reserve the right to cancel or refuse an order in case of stock or pricing errors, in which case you will be refunded in full.</p><h2>Shipping and returns</h2><p>Delivery times are estimates. Please contact us if there is a problem with your order.</p><h2>Changes</h2><p>We may update these terms from time to time. The latest version will always be available on this page.</p>`,
   },
+  "refund-policy": { title: "Refund & Cancellation Policy", content: "" },
+  "shipping-policy": { title: "Shipping & Delivery Policy", content: "" },
 };

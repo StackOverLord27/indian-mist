@@ -37,8 +37,9 @@ test.afterAll(() => closeDb());
 test("the owner can remove every trust, eco and tag item, and the home page then shows none of it", async ({ browser, page }) => {
   await page.goto("/");
   await expect(page.getByText("Handmade")).toBeVisible();
-  await expect(page.getByText("Free shipping")).toBeVisible();
-  await expect(page.getByText("On orders above ₹1,499")).toBeVisible(); // from the real pricing setting
+  // exactly the typed items: nothing about shipping is added from the pricing setting
+  await expect(page.getByText("Local makers")).toBeVisible();
+  await expect(page.getByText(/free shipping|On orders above/i)).toHaveCount(0);
   await expect(page.getByText("Things done")).toBeVisible();
   await expect(page.getByText("Tag One")).toBeVisible();
   await expect(page.getByText("BADGE", { exact: true })).toBeVisible();
@@ -71,7 +72,7 @@ test("the owner can remove every trust, eco and tag item, and the home page then
 
   await page.goto("/");
   await expect(page.getByText("Handmade")).toHaveCount(0);
-  await expect(page.getByText("Free shipping")).toHaveCount(0); // no strip at all, so no generated point either
+  await expect(page.getByText(/free shipping|Local makers/i)).toHaveCount(0); // no strip at all
   await expect(page.getByText("Things done")).toHaveCount(0);
   await expect(page.getByText("Tag One")).toHaveCount(0);
   await expect(page.getByText("BADGE", { exact: true })).toHaveCount(0);
@@ -102,4 +103,40 @@ test("search plumbing: sitemap, robots, canonical, Open Graph, structured data, 
   }
   const header = (await request.get("/api/settings")).headers()["x-robots-tag"];
   expect(header).toContain("noindex");
+});
+
+test("refund and shipping policy pages: hidden until the owner saves text in the admin, then linked everywhere", async ({ browser, page, request }) => {
+  const d = await db();
+  await d.collection("legalpages").deleteMany({});
+  const admin = await newContext(browser, "admin");
+  const a = await admin.newPage();
+  // a harmless save refreshes the cached footer (as any admin change does)
+  await admin.request.put("/api/admin/legal/privacy-policy", { data: { title: "Privacy Policy", content: "<p>Privacy text.</p>" } });
+
+  expect((await request.get("/refund-policy")).status()).toBe(404);
+  expect((await request.get("/shipping-policy")).status()).toBe(404);
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: /Refund|Shipping & Delivery/i })).toHaveCount(0);
+
+  await a.goto("/admin/legal/refund-policy");
+  await expect(a.getByText("This page is not on the site yet")).toBeVisible({ timeout: 20_000 });
+  await a.locator(".ProseMirror").click();
+  await a.keyboard.type("Returns accepted within seven days of delivery.");
+  await expect(a.getByText("This page is live")).toBeVisible();
+  await a.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(a.getByText("Page updated").first()).toBeVisible({ timeout: 20_000 });
+
+  await expect.poll(async () => (await request.get("/refund-policy")).status(), { timeout: 20_000 }).toBe(200);
+  await page.goto("/refund-policy");
+  await expect(page.getByText("Returns accepted within seven days of delivery.")).toBeVisible();
+  await expect(page.locator("footer").getByRole("link", { name: "Refund & Cancellation Policy" })).toBeVisible();
+  await expect(page.locator("footer").getByRole("link", { name: /Shipping & Delivery/ })).toHaveCount(0);
+  expect(await (await request.get("/sitemap.xml")).text()).toContain("/refund-policy");
+  expect((await request.get("/shipping-policy")).status()).toBe(404);
+
+  // sidebar entries exist for both
+  await a.goto("/admin");
+  await expect(a.getByRole("link", { name: "Refund Policy" })).toBeVisible();
+  await expect(a.getByRole("link", { name: "Shipping Policy" })).toBeVisible();
+  await admin.close();
 });
