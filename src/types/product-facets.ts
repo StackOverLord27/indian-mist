@@ -10,16 +10,6 @@ export type ProductFacetItem = {
   sizes?: string[];
 };
 
-export type FacetCategory = { _id: string; name?: string; count: number };
-export type FacetBadge = { _id?: string | null; count: number };
-
-export type ProductFacetResult = {
-  data?: ProductFacetItem[];
-  totalCount?: { count: number }[];
-  categories?: FacetCategory[];
-  badges?: FacetBadge[];
-};
-
 export const imageUrls = (images: ProductFacetItem["images"]): string[] =>
   (images ?? [])
     .map((img) => (typeof img === "string" ? img : img?.url))

@@ -22,14 +22,6 @@ export type PopulatedProduct = {
   images?: { url?: string; alt?: string }[];
 };
 
-export type PopulatedCollection = {
-  _id: { toString(): string };
-  name: string;
-  slug: string;
-  description?: string;
-  products?: (PopulatedProduct | null)[];
-};
-
 const formatPrice = (price: number) => `₹${price.toLocaleString("en-IN")}`;
 
 export function toCardProduct(p: PopulatedProduct, names?: Record<string, string>): Product {

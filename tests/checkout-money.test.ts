@@ -724,6 +724,17 @@ describe("razorpay webhook", () => {
     expect((await stockOf(p)).stockQuantity).toBe(2);
   });
 
+  it("a webhook secret saved with stray spaces or a newline (a common paste slip) still verifies", async () => {
+    vi.stubEnv("RAZORPAY_WEBHOOK_SECRET", `  ${WEBHOOK_SECRET}\n`);
+    const p = await product({ stockQuantity: 2 });
+    const { razorpayOrderId } = await startCheckout(U1, [{ productId: String(p._id) }]);
+    expect((await send(captured(razorpayOrderId))).status).toBe(200);
+    expect(await Order.countDocuments()).toBe(1);
+    vi.stubEnv("RAZORPAY_WEBHOOK_SECRET", "");
+    expect((await send(captured(razorpayOrderId))).status).toBe(503); // blank counts as not configured
+    vi.unstubAllEnvs();
+  });
+
   it("order.paid works when it comes first, and the later browser confirmation reuses the order", async () => {
     const p = await product({ stockQuantity: 2 });
     const { razorpayOrderId } = await startCheckout(U1, [{ productId: String(p._id) }]);

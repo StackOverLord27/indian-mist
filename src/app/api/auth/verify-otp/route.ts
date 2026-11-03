@@ -53,26 +53,32 @@ export async function POST(req: Request) {
       );
     }
 
-    // OTP is valid. Now we create the user in the database.
-    // The password stored in Redis is ALREADY hashed (bcrypt), so we
-    // must bypass the User model's pre-save hook to avoid double-hashing.
-    // We do this by creating the document and then setting the password
-    // field directly (isModified('password') will be true, but we skip
-    // the hook by using updateOne after initial save without password).
-    const newUser = new User({
-      name: otpData.name,
-      email: email,
-      isVerified: true,
-    });
+    if (!otpData.name || !otpData.password) {
+      // A sign-up code always carries both; anything else is not a sign-up in progress
+      return NextResponse.json({ error: "Invalid or expired OTP" }, { status: 400 });
+    }
 
-    // Save first without password (triggers pre-save but password is empty, hook skips)
-    await newUser.save();
-
-    // Set the pre-hashed password directly, bypassing the pre-save hook
-    await User.updateOne(
-      { _id: newUser._id },
-      { $set: { password: otpData.password } }
-    );
+    // OTP is valid. Create the user in ONE write, with the password already hashed (bcrypt, when
+    // the code was requested). insertMany does not run the model's save hook, which would hash
+    // the hash again. Before, the user was saved without a password and the password was set in
+    // a second write, so a crash in between left a verified account nobody could sign in to, and
+    // the same e-mail could not sign up again.
+    let newUser;
+    try {
+      [newUser] = await User.insertMany([
+        { name: otpData.name, email, password: otpData.password, isVerified: true },
+      ]);
+    } catch (error) {
+      // Two verifications at the same moment: the other one created the account
+      if ((error as { code?: number } | null)?.code === 11000) {
+        await deleteOtp("signup", email);
+        return NextResponse.json(
+          { error: "An account with this email already exists. Please sign in." },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     // Consume the OTP immediately so it cannot be replayed.
     await deleteOtp("signup", email);

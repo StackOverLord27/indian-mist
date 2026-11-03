@@ -1,3 +1,7 @@
+// Anyone can post here, so what is written to the log is cut short and has no line breaks or
+// other control characters (which could forge extra log lines).
+const clean = (value: unknown) => String(value).replace(/[\u0000-\u001f\u007f]/g, " ").slice(0, 200);
+
 // Browsers send a short report here whenever the content security policy blocks (or would block) something.
 export async function POST(req: Request) {
   try {
@@ -11,7 +15,7 @@ export async function POST(req: Request) {
       const blocked = e["blocked-uri"] ?? e.blockedURL ?? e["blockedURL"];
       const directive = e["violated-directive"] ?? e.effectiveDirective ?? e["effective-directive"];
       const page = e["document-uri"] ?? e.documentURL;
-      console.warn(`[csp] ${String(directive)} blocked ${String(blocked)} on ${String(page)}`);
+      console.warn(`[csp] ${clean(directive)} blocked ${clean(blocked)} on ${clean(page)}`);
     }
   } catch {
     // Reports are best-effort; ignore anything malformed

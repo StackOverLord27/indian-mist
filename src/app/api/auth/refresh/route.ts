@@ -10,9 +10,14 @@ import {
   signRefreshToken,
   hashToken,
   setTokenCookies,
+  setAccessTokenCookie,
   clearTokenCookies,
   REFRESH_TOKEN_MAX_AGE,
 } from "@/lib/auth-tokens";
+
+// A second refresh with a token that was exchanged this recently is treated as a parallel request
+// (two tabs), not as a replay. 10 s is long enough for a slow database round trip.
+const PARALLEL_REFRESH_GRACE_MS = 10_000;
 
 export async function POST(req: NextRequest) {
   // The refresh cookie has path "/" (see setTokenCookies for why), so the browser sends it with
@@ -40,15 +45,38 @@ export async function POST(req: NextRequest) {
     return res;
   }
 
-  // ── 2. Look up the hashed token in DB ────────────────────────────────────
+  // ── 2. Claim the token (one atomic step) ──────────────────────────────
+  // findOneAndUpdate with "not used yet" in the filter lets exactly ONE of several parallel
+  // requests (two tabs, the admin's retry queue) rotate this token; before, both could succeed,
+  // or the slower one looked like a replay and signed the user out everywhere.
   await dbConnect();
   const incomingHash = hashToken(rawToken);
-  const storedToken = await RefreshToken.findOne({ tokenHash: incomingHash });
+  const now = new Date();
+  const storedToken = await RefreshToken.findOneAndUpdate(
+    { tokenHash: incomingHash, usedAt: { $exists: false } },
+    { $set: { usedAt: now } },
+    { new: false },
+  );
 
   if (!storedToken) {
-    // Token not found — it was either already consumed (rotation) or never
-    // existed.  This is a REPLAY ATTACK signal: wipe the entire family so all
-    // other sessions derived from this login are also invalidated.
+    // Already used, or never existed. If it was used a moment ago, this is a parallel request
+    // from the same browser: the winner has set the new refresh cookie, so this request only
+    // gets a fresh access token (the refresh cookie is left alone).
+    const used = await RefreshToken.findOne({ tokenHash: incomingHash }).select("usedAt userId").lean();
+    if (used?.usedAt && now.getTime() - used.usedAt.getTime() <= PARALLEL_REFRESH_GRACE_MS) {
+      const user = await User.findById(payload.userId).select("email isVerified");
+      if (user?.isVerified) {
+        const res = NextResponse.json({ message: "Token refreshed successfully" }, { status: 200 });
+        setAccessTokenCookie(
+          res,
+          signAccessToken({ userId: String(user._id), email: user.email, role: roleForEmail(user.email) }),
+        );
+        return res;
+      }
+    }
+
+    // A used token outside the grace window, or one that does not exist, is a REPLAY signal:
+    // wipe the entire family so all sessions derived from this login are invalidated.
     console.warn(
       `[security] Refresh token replay detected — wiping family ${payload.family} for user ${payload.userId}`
     );
@@ -65,10 +93,7 @@ export async function POST(req: NextRequest) {
     return res;
   }
 
-  // ── 3. Consume the old token (delete it) ─────────────────────────────────
-  await RefreshToken.deleteOne({ _id: storedToken._id });
-
-  // ── 4. Fetch fresh user data (role, isVerified may have changed) ─────────
+  // ── 3. Fetch fresh user data (role, isVerified may have changed) ─────────
   const user = await User.findById(payload.userId).select(
     "email role isVerified"
   );

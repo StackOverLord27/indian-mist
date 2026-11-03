@@ -74,6 +74,12 @@ export async function sendContactMessageEmail(input: {
   }
 }
 
+/** "asha@example.com" -> "a***@example.com" */
+export function maskEmail(email: string): string {
+  const [local = "", domain = ""] = email.split("@");
+  return `${local.slice(0, 1)}***@${domain}`;
+}
+
 export async function sendOTPVerificationEmail(email: string, otp: string) {
   // Render OTP as a single styled block
   const digits = `<span style="display:inline-block;padding:12px 24px;text-align:center;letter-spacing:6px;font-size:32px;font-weight:700;font-family:'Georgia',serif;color:#3b4a2f;background:#f7f3e8;border:2px solid #c8b89a;border-radius:8px;">${otp}</span>`;
@@ -213,7 +219,8 @@ export async function sendOTPVerificationEmail(email: string, otp: string) {
       text,
       html,
     });
-    console.log(`[MAILER] OTP email sent to ${email}: ${info.messageId}`);
+    // The address is masked: logs are kept by the host and should not collect customers' e-mails
+    console.log(`[MAILER] OTP email sent to ${maskEmail(email)}: ${info.messageId}`);
     return true;
   } catch (error) {
     console.error("[MAILER] Error sending OTP email:", error);

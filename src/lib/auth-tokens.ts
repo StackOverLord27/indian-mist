@@ -10,7 +10,7 @@
  */
 
 import jwt from "jsonwebtoken";
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import type { NextResponse } from "next/server";
 import { getJwtAccessSecret, getJwtRefreshSecret, isProduction } from "@/lib/env";
 
@@ -43,7 +43,9 @@ export function signAccessToken(payload: AccessTokenPayload): string {
 }
 
 export function signRefreshToken(payload: RefreshTokenPayload): string {
-  return jwt.sign(payload, getJwtRefreshSecret(), { expiresIn: "7d", algorithm: JWT_ALGORITHM });
+  // A random id (jti) makes every token unique even when two are signed in the same second;
+  // without it, a refresh right after sign-in produced the identical string (and the same hash).
+  return jwt.sign(payload, getJwtRefreshSecret(), { expiresIn: "7d", algorithm: JWT_ALGORITHM, jwtid: randomUUID() });
 }
 
 // ─── Token verification ──────────────────────────────────────────────────────
@@ -100,6 +102,20 @@ export function setTokenCookies(
     // reach the page, where the client silently refreshes. A narrower path would hide the cookie
     // from those requests. It is httpOnly and sameSite "strict", so scripts and other sites
     // cannot read or send it.
+  });
+}
+
+/** Set only the access cookie (used when a parallel refresh already rotated the refresh cookie). */
+export function setAccessTokenCookie(
+  res: NextResponse | ReturnType<typeof import("next/server").NextResponse.json>,
+  accessToken: string
+): void {
+  (res as NextResponse).cookies.set("access_token", accessToken, {
+    httpOnly: true,
+    secure: isProduction(),
+    sameSite: "strict" as const,
+    path: "/",
+    maxAge: ACCESS_TOKEN_MAX_AGE,
   });
 }
 

@@ -5,6 +5,8 @@ export interface IRefreshToken extends Document {
   tokenHash: string; // SHA-256 hex of the raw refresh token — never store raw
   family: string;    // UUID shared across all rotations of one login session
   expiresAt: Date;
+  /** Set (atomically) the moment this token is exchanged for a new one; the token stays so a replay can be told apart from a parallel request */
+  usedAt?: Date;
 }
 
 const RefreshTokenSchema: Schema = new Schema({
@@ -24,6 +26,7 @@ const RefreshTokenSchema: Schema = new Schema({
     required: true,
     index: true,
   },
+  usedAt: { type: Date },
   // Explicit Date field used by MongoDB TTL so that expired tokens are
   // automatically reaped by the DB without any application-level cleanup.
   expiresAt: {

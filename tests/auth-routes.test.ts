@@ -25,6 +25,7 @@ import { setOtp } from "@/lib/otp-store";
 import { resetRedisForTests } from "@/lib/redis";
 import * as signin from "@/app/api/auth/signin/route";
 import * as signup from "@/app/api/auth/signup/route";
+import * as verifyOtpRoute from "@/app/api/auth/verify-otp/route";
 import * as refresh from "@/app/api/auth/refresh/route";
 import * as signout from "@/app/api/auth/signout/route";
 import * as requestOtp from "@/app/api/auth/forgot-password/request-otp/route";
@@ -96,6 +97,97 @@ describe("roles in tokens", () => {
     const res = await refresh.POST(post("/api/auth/refresh", {}, `refresh_token=${raw}`));
     expect(res.status).toBe(200);
     expect(verifyAccessToken(cookieValue(res, "access_token")!).role).toBe("user");
+  });
+});
+
+describe("refresh-token rotation under parallel requests (audit N1)", () => {
+  const refreshWith = (raw: string) => refresh.POST(post("/api/auth/refresh", {}, `refresh_token=${raw}`));
+
+  it("five parallel refreshes with one cookie: exactly one rotates, nobody is signed out", async () => {
+    const user = await makeUser("race@shop.com");
+    const raw = await session(String(user._id), "fam-race");
+
+    const results = await Promise.all(Array.from({ length: 5 }, () => refreshWith(raw)));
+    expect(results.map((r) => r.status)).toEqual([200, 200, 200, 200, 200]);
+
+    const rotated = results.map((r) => cookieValue(r, "refresh_token")).filter(Boolean) as string[];
+    expect(rotated).toHaveLength(1); // one new refresh token; the others only got an access token
+    for (const r of results) expect(verifyAccessToken(cookieValue(r, "access_token")!).role).toBe("user");
+
+    // the session is intact: exactly one unused token, and it works
+    expect(await RefreshToken.countDocuments({ family: "fam-race", usedAt: { $exists: false } })).toBe(1);
+    expect((await refreshWith(rotated[0])).status).toBe(200);
+  });
+
+  it("a token used long ago is a replay: 401 and the whole session is wiped", async () => {
+    const user = await makeUser("replay@shop.com");
+    const uid = String(user._id);
+    const raw = await session(uid, "fam-replay");
+    const newer = await refreshWith(raw);
+    const newToken = cookieValue(newer, "refresh_token")!;
+    await RefreshToken.updateOne({ tokenHash: hashToken(raw) }, { usedAt: new Date(Date.now() - 60_000) });
+
+    const replay = await refreshWith(raw);
+    expect(replay.status).toBe(401);
+    expect(replay.headers.getSetCookie().join(";")).toMatch(/refresh_token=;/);
+    expect(await RefreshToken.countDocuments({ family: "fam-replay" })).toBe(0);
+    expect((await refreshWith(newToken)).status).toBe(401); // the rotated token died with the session
+  });
+
+  it("a well-signed token that is not in the database is a replay too", async () => {
+    const user = await makeUser("ghost@shop.com");
+    const uid = String(user._id);
+    const raw = jwt.sign({ userId: uid, family: "fam-ghost", jti: randomUUID() }, process.env.JWT_REFRESH_SECRET!, { expiresIn: "7d", algorithm: "HS256" });
+    await session(uid, "fam-ghost");
+    expect((await refreshWith(raw)).status).toBe(401);
+    expect(await RefreshToken.countDocuments({ family: "fam-ghost" })).toBe(0);
+  });
+
+  it("sign-in followed at once by a refresh works (tokens are unique even within one second)", async () => {
+    await makeUser("fast@shop.com", "Fast-Passw0rd!");
+    const login = await signin.POST(post("/api/auth/signin", { email: "fast@shop.com", password: "Fast-Passw0rd!" }));
+    const first = cookieValue(login, "refresh_token")!;
+    const next = await refreshWith(first);
+    expect(next.status).toBe(200);
+    expect(cookieValue(next, "refresh_token")).not.toBe(first);
+  });
+});
+
+describe("sign-up verification (audit N2)", () => {
+  const verify = (email: string, otp: string) => verifyOtpRoute.POST(post("/api/auth/verify-otp", { email, otp }));
+  const hashed = () => bcrypt.hash("New-Passw0rd!", 4);
+
+  it("creates the account in one write, with the password hash stored exactly once, and signs the user in", async () => {
+    await setOtp("signup", "new@shop.com", "123456", "Nina", await hashed());
+    const res = await verify("new@shop.com", "123456");
+    expect(res.status).toBe(200);
+    expect(cookieValue(res, "access_token")).toBeTruthy();
+
+    const user = await User.findOne({ email: "new@shop.com" });
+    expect(user).toMatchObject({ name: "Nina", isVerified: true });
+    // not hashed twice: the password the user chose still matches
+    expect(await user!.comparePassword("New-Passw0rd!")).toBe(true);
+    // the code is used up
+    expect((await verify("new@shop.com", "123456")).status).toBe(400);
+    // and the new account can sign in
+    expect((await signin.POST(post("/api/auth/signin", { email: "new@shop.com", password: "New-Passw0rd!" }))).status).toBe(200);
+  });
+
+  it("two verifications at the same moment: one account, the other gets 409 (not a 500)", async () => {
+    await setOtp("signup", "twin@shop.com", "654321", "Tara", await hashed());
+    const [a, b] = await Promise.all([verify("twin@shop.com", "654321"), verify("twin@shop.com", "654321")]);
+    expect([a.status, b.status].sort()).toEqual([200, 409]);
+    expect(await User.countDocuments({ email: "twin@shop.com" })).toBe(1);
+    expect(await User.countDocuments({ email: "twin@shop.com", password: { $exists: true } })).toBe(1);
+  });
+
+  it("a wrong code creates nothing; a reset code cannot be used to sign up", async () => {
+    await setOtp("signup", "wrong@shop.com", "111111", "Wes", await hashed());
+    expect((await verify("wrong@shop.com", "222222")).status).toBe(400);
+    expect(await User.countDocuments({ email: "wrong@shop.com" })).toBe(0);
+    await setOtp("reset", "other@shop.com", "333333");
+    expect((await verify("other@shop.com", "333333")).status).toBe(400);
+    expect(await User.countDocuments({ email: "other@shop.com" })).toBe(0);
   });
 });
 

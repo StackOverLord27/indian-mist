@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import dbConnect from "@/lib/db";
 import { finalizeOrder } from "@/lib/finalize-order";
 import { isValidWebhookSignature } from "@/lib/razorpay-signature";
+import { getRazorpayWebhookSecret } from "@/lib/env";
 
 type RazorpayEvent = {
   event?: string;
@@ -16,9 +17,13 @@ type RazorpayEvent = {
 // Razorpay calls this when a payment succeeds, even if the customer closed the
 // browser before the checkout page could confirm it.
 export async function POST(req: NextRequest) {
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-  if (!secret) {
-    console.error("[razorpay webhook] RAZORPAY_WEBHOOK_SECRET is not set");
+  // Read through the env module like every other secret (trimmed, blank counts as missing); a
+  // secret pasted with a trailing space or newline would otherwise reject every genuine webhook
+  let secret: string;
+  try {
+    secret = getRazorpayWebhookSecret();
+  } catch (error) {
+    console.error("[razorpay webhook]", error instanceof Error ? error.message : "webhook secret is not configured");
     return Response.json({ message: "Webhook not configured" }, { status: 503 });
   }
 

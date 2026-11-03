@@ -21,11 +21,7 @@ import {
   encodeAttempts,
   fitWithin,
   formatBytes,
-  howManyFit,
-  perFileBudget,
   readJpegOrientation,
-  tooManyForOneSaveMessage,
-  MAX_IMAGE_BYTES,
 } from "./image-budget";
 
 export class ImagePrepareError extends Error {
@@ -35,7 +31,6 @@ export class ImagePrepareError extends Error {
   }
 }
 
-export type PrepareProgress = { index: number; total: number; name: string };
 
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
 
@@ -149,34 +144,4 @@ export async function prepareImage(file: File, opts: { profile?: ProfileName | I
   } finally {
     decoded.close();
   }
-}
-
-export type PrepareManyResult = { files: File[]; originalBytes: number; preparedBytes: number };
-
-/**
- * Prepares several files that will travel in ONE request: each gets a share of the request budget.
- * Throws ImagePrepareError when one cannot be made to fit; the message says how many to add per save.
- */
-export async function prepareImages(
-  files: File[],
-  opts: { profile?: ProfileName; sentTogether?: boolean; extraBytes?: number; onProgress?: (p: PrepareProgress) => void } = {},
-): Promise<PrepareManyResult> {
-  const profile = PROFILES[opts.profile ?? "standard"];
-  const budget = opts.sentTogether ? perFileBudget(profile, files.length, opts.extraBytes) : profile.budgetBytes;
-  const out: File[] = [];
-  for (const [index, file] of files.entries()) {
-    opts.onProgress?.({ index, total: files.length, name: file.name });
-    try {
-      out.push((await prepareImage(file, { profile, budgetBytes: budget })).file);
-    } catch (error) {
-      if (opts.sentTogether && files.length > 1 && error instanceof ImagePrepareError) {
-        const fit = howManyFit(out.map((f) => f.size), opts.extraBytes);
-        throw new ImagePrepareError(tooManyForOneSaveMessage(files.length, Math.max(fit, 1)), file.name);
-      }
-      throw error;
-    }
-  }
-  const tooBig = out.find((f) => f.size > MAX_IMAGE_BYTES);
-  if (tooBig) throw new ImagePrepareError(`"${tooBig.name}" is still too large after optimising.`, tooBig.name);
-  return { files: out, originalBytes: files.reduce((s, f) => s + f.size, 0), preparedBytes: out.reduce((s, f) => s + f.size, 0) };
 }
