@@ -259,3 +259,19 @@ Tests: tests/image-budget.test.ts (20), tests/upload-limits.test.ts (9: limit, g
 - /products with a category chosen now scans the whole catalogue for the facet counts (needed for correct facets; cheap at this size).
 - EstimatedDelivery (server component on the ISR product page) can show a date up to a minute old.
 - Audit E6/E7 (placeholder content as code defaults, settings upsert defaults) belong to the launch-content prompt; N6 (SEO) to the policy/SEO prompt.
+
+
+## Prompt 12 (launch content: policy check, SEO basics, placeholder removal)
+
+Full lists for the owner are in `docs/launch-content.md`.
+
+- Part A (check + wiring only, no policy text written): only Privacy and Terms exist, and neither is saved in the database (the live pages show the generic code defaults). Refund/Cancellation/Returns and Shipping policies are missing. Added links to Terms and Privacy next to the Pay button and under the sign-up button (footer already linked them). Removed UI claims that contradicted the rules (30-day returns, carbon-neutral delivery, PCI DSS, fixed delivery times).
+- Part B: `NEXT_PUBLIC_SITE_URL` (required in production, the build fails loudly without it; in .env.example and docs/env.md; set it for Production AND Preview), `sitemap.ts` (static pages + products + active collections + published posts, revalidated hourly), `robots.ts`, root metadata (metadataBase, title template, Open Graph/Twitter), `lib/seo.ts` helpers, canonical + Open Graph on products/collections/blog/legal/about/contact, Product JSON-LD (INR, availability from real stock), noindex on cart/checkout/profile/wishlist/signin/signup/forgot-password/admin (admin layout split into a server layout + `AdminShell`), `X-Robots-Tag` on /admin and /api. Note: Next replaces whole openGraph/twitter objects per page (no deep merge), hence `pageMetadata()`.
+- Part C: every hard-coded default/claim removed from schema, components and admin editors (list in docs/launch-content.md section 2/3). Sections with no admin content render nothing (trust strip, eco, brand story, hero text/buttons/badge, contact details, About values/CTA). Editors can delete every item and no longer fall back to examples (examples are placeholders). The free-shipping point is generated from the pricing threshold (the live strip said ₹699 while checkout gives free shipping above ₹399). `scripts/find-placeholder-content.mjs` is a read-only scan; saved data was NOT changed.
+- Found on production (read-only): placeholder contact address, hero subtitle/title/description, one eco item, brand-story subtitle and 13 of 14 products' default delivery text are saved in the database.
+- Tests: tests/launch-content.test.ts (18), e2e/launch-content.e2e.ts (2).
+- Process note: a command I ran with an unquoted variable briefly fell back to the .env database URI; it failed at URI parsing before connecting, nothing was read or written. Env values are now exported explicitly.
+
+### Found, not fixed
+- The legal editor supports only two page types; Refund and Shipping policy pages need a third/fourth type plus the owner's text.
+- Settings admin forms still send `contactPageSettings` etc. as a whole section (last write wins).

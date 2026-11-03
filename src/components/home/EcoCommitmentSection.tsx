@@ -18,54 +18,37 @@ interface EcoCommitmentProps {
   settings?: EcoCommitmentSettings;
 }
 
-const defaultStats: EcoStat[] = [
-  {
-    icon: "TreePine",
-    number: "12k+",
-    label: "Trees planted",
-    description: "Native saplings funded through every order.",
-  },
-  {
-    icon: "Recycle",
-    number: "100%",
-    label: "Recycled packaging",
-    description: "Mailers, tags, and inserts made to be reused.",
-  },
-  {
-    icon: "PackageCheck",
-    number: "0",
-    label: "Plastic used",
-    description: "Plastic-free shipping across our core catalog.",
-  },
-  {
-    icon: "HandHeart",
-    number: "1%",
-    label: "Revenue donated",
-    description: "Annual giving toward rewilding and maker welfare.",
-  },
-];
-
 export function EcoCommitmentSection({ settings }: EcoCommitmentProps) {
-  const subtitle = settings?.subtitle ?? "Our commitment";
-  const titleLine1 = settings?.titleLine1 ?? "Every order shapes a gentler ";
-  const titleLine2 = settings?.titleLine2 ?? "future.";
-  const displayItems = settings?.items && settings.items.length > 0 ? settings.items : defaultStats;
+  // Only figures and promises the admin typed are shown. No items means no section.
+  const items = (settings?.items ?? []).filter((i) => i.number?.trim() || i.label?.trim() || i.description?.trim());
+  if (items.length === 0) return null;
+
+  const subtitle = settings?.subtitle?.trim() ?? "";
+  const titleLine1 = settings?.titleLine1 ?? "";
+  const titleLine2 = settings?.titleLine2 ?? "";
+  const hasHeading = Boolean(titleLine1.trim() || titleLine2.trim());
 
   return (
     <section className="bg-black-forest px-6 py-16 md:px-12">
       <div className="mx-auto max-w-screen-2xl">
-      <div className="mx-auto max-w-3xl text-center">
-        <p className="font-sans text-2xs font-medium uppercase tracking-widest text-sunlit-clay">
-          {subtitle}
-        </p>
-        <h2 className="mt-4 font-serif text-3xl font-light leading-tight text-cornsilk">
-          {titleLine1}
-          <em className="font-light italic text-sunlit-clay">{titleLine2}</em>
-        </h2>
-      </div>
+      {(subtitle || hasHeading) && (
+        <div className="mx-auto max-w-3xl text-center">
+          {subtitle && (
+            <p className="font-sans text-2xs font-medium uppercase tracking-widest text-sunlit-clay">
+              {subtitle}
+            </p>
+          )}
+          {hasHeading && (
+            <h2 className="mt-4 font-serif text-3xl font-light leading-tight text-cornsilk">
+              {titleLine1}
+              {titleLine2 && <em className="font-light italic text-sunlit-clay">{titleLine2}</em>}
+            </h2>
+          )}
+        </div>
+      )}
 
-      <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {displayItems.map((stat, index) => {
+      <div className={`${subtitle || hasHeading ? "mt-10" : ""} grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4`}>
+        {items.map((stat, index) => {
           const IconComponent = IconMap[stat.icon as IconName] || IconMap.TreePine;
           
           return (

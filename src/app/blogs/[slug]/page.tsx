@@ -9,6 +9,7 @@ import { Blog } from "@/models/blog.model";
 import { Calendar, Clock, ArrowLeft, ArrowRight, User } from "lucide-react";
 import type { Metadata } from "next";
 import { cache } from "react";
+import { NOINDEX, pageMetadata, summarise } from "@/lib/seo";
 
 // Built on the first visit, then cached (ISR). Saving a post in the admin refreshes it straight
 // away (revalidateStorefront). Nothing is prebuilt, so the build does not read the posts.
@@ -48,12 +49,16 @@ export async function generateMetadata({
   const { slug } = await params;
   const data = await getBlogBySlug(slug);
 
-  if (!data) return { title: "Blog Post Not Found | Indian Mist" };
+  if (!data) return { title: "Blog Post Not Found", robots: NOINDEX };
 
-  return {
-    title: `${data.blog.title} | Indian Mist Blog`,
-    description: data.blog.excerpt,
-  };
+  return pageMetadata({
+    title: data.blog.title,
+    description: summarise(data.blog.excerpt),
+    path: `/blogs/${data.blog.slug}`,
+    image: data.blog.coverImage?.url || undefined,
+    type: "article",
+    publishedTime: data.blog.publishedAt,
+  });
 }
 
 export default async function BlogPostPage({

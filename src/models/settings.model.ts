@@ -14,32 +14,35 @@ const SettingsSchema = new mongoose.Schema({
     url: { type: String, default: '' },
     publicId: { type: String, default: '' },
   },
-  metaTitle: { type: String, default: 'Indian Mist' },
+  // No invented content in here. Every text below starts EMPTY: the storefront shows only what
+  // the admin has typed, and a section with nothing in it is not shown. (Defaults used to be
+  // written into the database by the first settings save; see docs/work-log.md.)
+  metaTitle: { type: String, default: '' },
   metaDescription: { type: String, default: '' },
   heroSettings: {
-    subtitle: { type: String, default: 'Summer 2026 Collection' },
-    titleLine1: { type: String, default: 'Born from the forest,' },
-    titleLine2: { type: String, default: 'made for the wild.' },
-    description: { type: String, default: 'Slow-made forest gear, apparel, and everyday eco goods for trails, travel, and the rituals that bring you back outside.' },
-    primaryButtonText: { type: String, default: 'Shop the collection →' },
-    primaryButtonLink: { type: String, default: '/products' },
-    secondaryButtonText: { type: String, default: 'Our story' },
-    secondaryButtonLink: { type: String, default: '/about' },
+    subtitle: { type: String, default: '' },
+    titleLine1: { type: String, default: '' },
+    titleLine2: { type: String, default: '' },
+    description: { type: String, default: '' },
+    primaryButtonText: { type: String, default: '' },
+    primaryButtonLink: { type: String, default: '' },
+    secondaryButtonText: { type: String, default: '' },
+    secondaryButtonLink: { type: String, default: '' },
     theme: { type: String, enum: ['forest', 'midnight', 'sunlit'], default: 'forest' },
     ecoBadge: {
-      text: { type: String, default: '100%' },
-      subtext: { type: String, default: 'Eco materials' },
+      text: { type: String, default: '' },
+      subtext: { type: String, default: '' },
       isVisible: { type: Boolean, default: true },
     },
   },
   brandStorySettings: {
-    subtitle: { type: String, default: 'OUR ROOTS' },
-    titleLine1: { type: String, default: 'We make things the forest would ' },
-    titleLine2: { type: String, default: 'keep.' },
-    description: { type: String, default: 'Indian Mist began with the simple belief that useful goods should leave less behind. Every pack, tee, pin, and page starts with better materials, durable making, and a supply chain we can explain.' },
-    tags: { type: String, default: 'Organic cotton, Natural dyes, Zero plastic, Fair trade' },
-    buttonText: { type: String, default: 'Read our story' },
-    buttonLink: { type: String, default: '/about' },
+    subtitle: { type: String, default: '' },
+    titleLine1: { type: String, default: '' },
+    titleLine2: { type: String, default: '' },
+    description: { type: String, default: '' },
+    tags: { type: String, default: '' },
+    buttonText: { type: String, default: '' },
+    buttonLink: { type: String, default: '' },
     imageUrl: { type: String, default: '' },
     // Cloudinary id of the image, so replacing it can delete the old file. Missing on old documents.
     imagePublicId: { type: String, default: '' },
@@ -51,19 +54,13 @@ const SettingsSchema = new mongoose.Schema({
         title: { type: String, default: '' },
         subtitle: { type: String, default: '' },
       }],
-      default: [
-        { icon: 'Truck', title: 'Free shipping', subtitle: 'Above ₹999' },
-        { icon: 'Leaf', title: '1 tree per order', subtitle: 'Planted with care' },
-        { icon: 'Recycle', title: 'Sustainable materials', subtitle: 'Low-impact goods' },
-        { icon: 'ShieldCheck', title: 'Easy returns', subtitle: 'Simple exchanges' },
-        { icon: 'Award', title: 'Ethically sourced', subtitle: 'Traceable makers' }
-      ]
+      default: [],
     }
   },
   ecoCommitmentSettings: {
-    subtitle: { type: String, default: 'Our commitment' },
-    titleLine1: { type: String, default: 'Every order shapes a gentler ' },
-    titleLine2: { type: String, default: 'future.' },
+    subtitle: { type: String, default: '' },
+    titleLine1: { type: String, default: '' },
+    titleLine2: { type: String, default: '' },
     items: {
       type: [{
         icon: { type: String, default: 'TreePine' },
@@ -71,12 +68,7 @@ const SettingsSchema = new mongoose.Schema({
         label: { type: String, default: '' },
         description: { type: String, default: '' },
       }],
-      default: [
-        { icon: 'TreePine', number: '12k+', label: 'Trees planted', description: 'Native saplings funded through every order.' },
-        { icon: 'Recycle', number: '100%', label: 'Recycled packaging', description: 'Mailers, tags, and inserts made to be reused.' },
-        { icon: 'PackageCheck', number: '0', label: 'Plastic used', description: 'Plastic-free shipping across our core catalog.' },
-        { icon: 'HandHeart', number: '1%', label: 'Revenue donated', description: 'Annual giving toward rewilding and maker welfare.' }
-      ]
+      default: [],
     }
   },
   pricingSettings: {
@@ -101,13 +93,13 @@ const SettingsSchema = new mongoose.Schema({
     },
   },
   contactPageSettings: {
-    title: { type: String, default: 'Contact Us' },
-    subtitle: { type: String, default: 'We would love to hear from you. Get in touch with us for any queries.' },
-    address: { type: String, default: '123 Forest Lane, Nature Valley, Earth 456789' },
-    phone: { type: String, default: '+91 98765 43210' },
-    whatsapp: { type: String, default: '+91 98765 43210' },
-    email: { type: String, default: 'hello@indianmist.com' },
-    businessHours: { type: String, default: 'Mon-Fri, 9:00 AM - 6:00 PM' },
+    title: { type: String, default: '' },
+    subtitle: { type: String, default: '' },
+    address: { type: String, default: '' },
+    phone: { type: String, default: '' },
+    whatsapp: { type: String, default: '' },
+    email: { type: String, default: '' },
+    businessHours: { type: String, default: '' },
     faqs: {
       type: [{ question: { type: String, required: true }, answer: { type: String, required: true } }],
       default: [],

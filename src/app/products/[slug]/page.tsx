@@ -7,6 +7,8 @@ import { RelatedProducts } from "@/components/product/RelatedProducts";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Metadata } from "next";
 import { getSiteSettings } from "@/lib/storefront-data";
+import { NOINDEX, pageMetadata, summarise, productJsonLd, jsonLdString, productInStock } from "@/lib/seo";
+import { getSiteUrl } from "@/lib/env";
 
 // Product pages are built on the first visit and then kept as ISR pages (nothing is prebuilt, so
 // the build does not read the database for them). Stock shown here is at most a minute old; the
@@ -23,15 +25,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const product = await getProductBySlug(slug);
 
   if (!product) {
-    return {
-      title: "Product Not Found | Indian Mist",
-    };
+    return { title: "Product Not Found", robots: NOINDEX };
   }
 
-  return {
-    title: `${product.name} | Indian Mist`,
-    description: product.description,
-  };
+  return pageMetadata({
+    title: product.name,
+    description: summarise(product.description),
+    path: `/products/${product.slug}`,
+    image: product.images[0],
+  });
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -48,8 +50,21 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     sizeChartUrl = settings?.sizeChart?.url || undefined;
   }
 
+  // Product structured data for search engines: price in INR, availability from the real stock
+  const jsonLd = productJsonLd({
+    name: product.name,
+    slug: product.slug,
+    description: product.description,
+    price: product.price,
+    images: product.images,
+    inStock: productInStock({ badge: product.badge, stock: product.stock, stockBySize: product.stockBySize }),
+    siteUrl: getSiteUrl(),
+    color: product.color?.name,
+  });
+
   return (
     <div className="bg-cornsilk min-h-screen page-enter">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pb-24 lg:pb-0">
         
         {/* Breadcrumb */}

@@ -65,8 +65,8 @@ const ProductSchema: Schema = new Schema(
     }],
     tags: [{ type: String }],
     shippingInfo: {
-      standard: { type: String, default: "3-5 business days" },
-      express: { type: String, default: "1-2 business days" },
+      standard: { type: String, default: "" },
+      express: { type: String, default: "" },
     },
     // Total units. For products with per-size stock this is kept equal to the sum of sizeStock.
     stockQuantity: { type: Number, default: 0 },

@@ -123,7 +123,7 @@ export function ProductTabs({ product }: { product: Product }) {
                   Standard Delivery
                 </h4>
                 <p className="font-montserrat text-xs text-muted-text font-normal leading-relaxed">
-                  {product.shippingInfo.standard}. Shipping calculated at checkout.
+                  {product.shippingInfo.standard ? `${product.shippingInfo.standard}. ` : ""}Shipping is calculated at checkout.
                 </p>
               </div>
             </div>

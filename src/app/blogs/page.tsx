@@ -3,6 +3,10 @@ import type { BlogPostData } from "@/types/blog";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { BlogsIndex, BlogsView } from "@/components/blog/BlogsIndex";
 import { getPublishedBlogs, getPublishedBlogCategories } from "@/lib/blogs-list";
+import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = pageMetadata({ title: "Journal", path: "/blogs" });
 
 // Cached page. Saving a post in the admin refreshes it straight away (revalidateStorefront).
 // Only the newest 12 posts are in the cached page; "Load more" and the ?category= filter fetch

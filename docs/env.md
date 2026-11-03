@@ -12,6 +12,7 @@ Vercel environments: **Production** (the live site), **Preview** (every branch/P
 |---|---|---|---|---|
 | `MONGODB_URI` | required | required | required | Also needed at **build** time. Use a separate database (or cluster) for Preview so previews can never touch live orders. |
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | required | required | required | Long random strings. Different per environment (tokens from one environment must not work in another). |
+| `NEXT_PUBLIC_SITE_URL` | **required** | **required** | optional (default `http://localhost:3000`) | The public address of the shop, for example `https://www.indianmist.com` (no path). Used for canonical links, Open Graph addresses, `sitemap.xml` and `robots.txt`. A wrong value puts the wrong address in search results, so production fails loudly when it is missing or not a valid `http(s)` address. Set it for the Production AND Preview environments in Vercel. |
 | `SUPER_ADMIN_EMAIL` | required | required | required | The admin account. Without it nobody is admin. |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | **required** | required | optional | See "Redis behaviour" below. Use a separate Redis database for Preview. |
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID` | live keys (`rzp_live_`) | test keys (`rzp_test_`) | test keys | `NEXT_PUBLIC_*` is baked into the browser bundle at build time: set it **before** building, and it must match `RAZORPAY_KEY_ID`. |

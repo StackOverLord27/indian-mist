@@ -410,6 +410,12 @@ export default function SignUpPage() {
                     </>
                   )}
                 </button>
+                <p className="text-center font-montserrat text-[11px] leading-relaxed text-forest/70">
+                  By creating an account you agree to our{" "}
+                  <Link href="/terms-and-conditions" className="underline hover:text-forest">Terms &amp; Conditions</Link>{" "}
+                  and{" "}
+                  <Link href="/privacy-policy" className="underline hover:text-forest">Privacy Policy</Link>.
+                </p>
               </form>
             )}
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2, Truck, Package } from "lucide-react";
+import { CheckCircle2, Package } from "lucide-react";
 
 interface CheckoutSuccessProps {
   orderId: string | null;
@@ -36,21 +36,6 @@ export function CheckoutSuccess({ orderId }: CheckoutSuccessProps) {
         )}
 
         <div className="mt-6 space-y-4">
-          {/* Delivery estimate */}
-          <div className="bg-card border border-olive/10 rounded-md p-4">
-            <div className="flex items-center gap-3">
-              <Truck className="size-5 text-olive" />
-              <div className="text-left">
-                <p className="font-montserrat text-xs font-semibold text-forest">
-                  Estimated Delivery
-                </p>
-                <p className="font-montserrat text-sm text-muted-text">
-                  5–7 business days
-                </p>
-              </div>
-            </div>
-          </div>
-
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
             <Link
               href="/"

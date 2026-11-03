@@ -143,8 +143,8 @@ export default function ProductForm({ product, duplicateOf }: { product?: AdminP
       sizeStock: Object.fromEntries((source?.sizeStock ?? []).map((s) => [s.size, s.quantity])),
       materials: source?.materials || [''],
       careInstructions: source?.careInstructions?.length ? source.careInstructions : [{ text: '', icon: 'droplets' }],
-      shippingStandard: source?.shippingInfo?.standard || '3-5 business days',
-      shippingExpress: source?.shippingInfo?.express || '1-2 business days',
+      shippingStandard: source?.shippingInfo?.standard || '',
+      shippingExpress: source?.shippingInfo?.express || '',
     }
   });
 

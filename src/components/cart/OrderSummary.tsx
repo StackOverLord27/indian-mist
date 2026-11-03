@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { LockKeyhole, RefreshCw, Leaf } from "lucide-react";
+import { LockKeyhole } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import { SHIPPING_THRESHOLD, SHIPPING_COST, GST_RATE } from "@/lib/constants";
 import { useCartStore } from "@/lib/cart-store";
@@ -116,26 +116,12 @@ export function OrderSummary({
         Proceed to Checkout
       </Button>
 
-      {/* Trust signals */}
-      <div className="mt-4 space-y-2">
-        <div className="flex items-center justify-center gap-1.5">
-          <LockKeyhole className="text-olive/80 size-[12px]" />
-          <span className="font-montserrat text-[10px] text-muted-text font-normal">
-            256-bit SSL encrypted checkout
-          </span>
-        </div>
-        <div className="flex items-center justify-center gap-1.5">
-          <RefreshCw className="text-olive/80 size-[12px]" />
-          <span className="font-montserrat text-[10px] text-muted-text font-normal">
-            Free returns within 30 days
-          </span>
-        </div>
-        <div className="flex items-center justify-center gap-1.5">
-          <Leaf className="text-olive/80 size-[12px]" />
-          <span className="font-montserrat text-[10px] text-muted-text font-normal">
-            Carbon-neutral delivery
-          </span>
-        </div>
+      {/* Only statements that are always true: the claims (returns window, carbon, etc.) are the shop's to make in its own policy pages */}
+      <div className="mt-4 flex items-center justify-center gap-1.5">
+        <LockKeyhole className="text-olive/80 size-[12px]" />
+        <span className="font-montserrat text-[10px] text-muted-text font-normal">
+          Secure checkout
+        </span>
       </div>
 
       {/* Payment methods */}

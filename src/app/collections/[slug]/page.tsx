@@ -6,6 +6,7 @@ import { CollectionProductGrid } from "@/components/collections/CollectionProduc
 import { COLLECTION_PAGE_SIZE, getCollectionBatch } from "@/lib/collection-products";
 import type { Metadata } from "next";
 import { cache } from "react";
+import { NOINDEX, pageMetadata, summarise } from "@/lib/seo";
 
 // Built on the first visit, then cached (ISR). Saving a collection or product in the admin
 // refreshes it straight away (revalidateStorefront). Only the first batch of products (24) is in
@@ -34,12 +35,13 @@ export async function generateMetadata({
   const { slug } = await params;
   const collection = await getCollection(slug);
 
-  if (!collection) return { title: "Collection Not Found" };
+  if (!collection) return { title: "Collection Not Found", robots: NOINDEX };
 
-  return {
-    title: `${collection.name} | Indian Mist`,
-    description: collection.description || undefined,
-  };
+  return pageMetadata({
+    title: collection.name,
+    description: summarise(collection.description),
+    path: `/collections/${collection.slug}`,
+  });
 }
 
 export default async function CollectionPage({

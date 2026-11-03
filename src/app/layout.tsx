@@ -1,3 +1,5 @@
+import { getSiteUrl } from "@/lib/env";
+import { SITE_NAME } from "@/lib/seo";
 import type { Metadata } from "next";
 import { getSiteSettings, getNavCategories, getNavCollections } from "@/lib/storefront-data";
 import { Merriweather, Montserrat } from "next/font/google";
@@ -29,9 +31,16 @@ const montserrat = Montserrat({
 export async function generateMetadata(): Promise<Metadata> {
   // A database failure must throw (see src/lib/storefront-data.ts), not fall back to defaults
   const settings = await getSiteSettings();
+  // What the admin typed, or just the shop's name: no invented tagline or description
+  const title = settings?.metaTitle?.trim() || SITE_NAME;
+  const description = settings?.metaDescription?.trim() || undefined;
   return {
-    title: settings?.metaTitle || "Indian Mist | Eco-friendly Forest Gear",
-    description: settings?.metaDescription || "Premium eco-friendly outdoor gear and products designed with nature in mind.",
+    // Canonical links, Open Graph addresses and the sitemap all start from the public site address
+    metadataBase: new URL(getSiteUrl()),
+    title: { default: title, template: `%s | ${SITE_NAME}` },
+    description,
+    openGraph: { type: "website", siteName: SITE_NAME, locale: "en_IN", title, description },
+    twitter: { card: "summary", title, description },
   };
 }
 

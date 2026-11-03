@@ -4,6 +4,10 @@ import { Collection } from "@/models/collection.model";
 import { ProductCard } from "@/components/home/ProductCard";
 import { COLLECTION_PREVIEW_SIZE, getProductsByIds, toCardProduct } from "@/lib/collection-products";
 import { getCategoryNames } from "@/lib/storefront-data";
+import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = pageMetadata({ title: "Collections", path: "/collections" });
 
 // Cached page. Saving a collection or product in the admin refreshes it straight away
 // (revalidateStorefront). Each collection shows a preview of its first 8 products with a link to

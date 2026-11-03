@@ -24,6 +24,7 @@ Object.assign(process.env, {
   RAZORPAY_KEY_ID: "rzp_test_unit",
   RAZORPAY_KEY_SECRET: "unit-secret",
   RAZORPAY_WEBHOOK_SECRET: "unit-webhook-secret",
+  NEXT_PUBLIC_SITE_URL: "https://shop.example.test",
   JWT_ACCESS_SECRET: "unit-access-secret",
   JWT_REFRESH_SECRET: "unit-refresh-secret",
 });

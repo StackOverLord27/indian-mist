@@ -12,18 +12,23 @@ type HeroSectionProps = {
 };
 
 export function HeroSection({ settings, slides = [], fallbackImage }: HeroSectionProps) {
-  const subtitle = settings?.subtitle || "Summer 2026 Collection";
-  const titleLine1 = settings?.titleLine1 || "Born from the forest,";
-  const titleLine2 = settings?.titleLine2 || "made for the wild.";
-  const description = settings?.description || "Slow-made forest gear, apparel, and everyday eco goods for trails, travel, and the rituals that bring you back outside.";
-  const primaryButtonText = settings?.primaryButtonText || "Shop the collection →";
+  // Only what the admin has typed is shown: nothing is invented here. The one thing every page
+  // needs is a heading, so with no title typed the shop's own name is used.
+  const subtitle = settings?.subtitle?.trim() ?? "";
+  const titleLine1 = settings?.titleLine1?.trim() ?? "";
+  const titleLine2 = settings?.titleLine2?.trim() ?? "";
+  const hasTitle = Boolean(titleLine1 || titleLine2);
+  const description = settings?.description?.trim() ?? "";
+  // A button is shown only when it has text; a missing link falls back to the obvious page
+  const primaryButtonText = settings?.primaryButtonText?.trim() ?? "";
   const primaryButtonLink = settings?.primaryButtonLink || "/products";
-  const secondaryButtonText = settings?.secondaryButtonText || "Our story";
+  const secondaryButtonText = settings?.secondaryButtonText?.trim() ?? "";
   const secondaryButtonLink = settings?.secondaryButtonLink || "/about";
 
-  const isEcoBadgeVisible = settings?.ecoBadge?.isVisible !== false;
-  const ecoBadgeText = settings?.ecoBadge?.text || "100%";
-  const ecoBadgeSubtext = settings?.ecoBadge?.subtext || "Eco materials";
+  const ecoBadgeText = settings?.ecoBadge?.text?.trim() ?? "";
+  const ecoBadgeSubtext = settings?.ecoBadge?.subtext?.trim() ?? "";
+  // The badge exists only when the admin typed something for it (and has not hidden it)
+  const isEcoBadgeVisible = settings?.ecoBadge?.isVisible !== false && Boolean(ecoBadgeText);
 
   const theme = settings?.theme || 'forest';
 
@@ -71,33 +76,51 @@ export function HeroSection({ settings, slides = [], fallbackImage }: HeroSectio
       {/* Text panel */}
       <div className={`flex min-h-[min(60vw,30rem)] flex-col justify-center px-6 py-12 md:min-h-120 md:px-12 transition-colors duration-500 ${currentTheme.bg}`}>
         <HeroTextReveal>
-          <p className={`flex items-center gap-4 font-sans text-2xs font-medium uppercase tracking-widest before:block before:h-px before:w-7 before:content-[''] ${currentTheme.subtitle}`}>
-            {subtitle}
-          </p>
-          <h1 className={`mt-7 max-w-xl font-serif text-3xl font-light leading-tight md:text-hero ${currentTheme.title}`}>
-            {titleLine1}
-            <br />
-            <em className={`font-light italic ${currentTheme.accent}`}>
-              {titleLine2}
-            </em>
+          {subtitle && (
+            <p className={`flex items-center gap-4 font-sans text-2xs font-medium uppercase tracking-widest before:block before:h-px before:w-7 before:content-[''] ${currentTheme.subtitle}`}>
+              {subtitle}
+            </p>
+          )}
+          <h1 className={`${subtitle ? "mt-7" : ""} max-w-xl font-serif text-3xl font-light leading-tight md:text-hero ${currentTheme.title}`}>
+            {hasTitle ? (
+              <>
+                {titleLine1}
+                {titleLine1 && titleLine2 && <br />}
+                {titleLine2 && (
+                  <em className={`font-light italic ${currentTheme.accent}`}>
+                    {titleLine2}
+                  </em>
+                )}
+              </>
+            ) : (
+              "Indian Mist"
+            )}
           </h1>
-          <p className={`mt-6 max-w-md font-sans text-sm font-light leading-6 ${currentTheme.description}`}>
-            {description}
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href={primaryButtonLink}
-              className={`inline-flex h-11 items-center justify-center rounded-full px-6 font-sans text-xs font-medium uppercase tracking-wide transition-opacity hover:opacity-85 ${currentTheme.primaryBtn}`}
-            >
-              {primaryButtonText}
-            </Link>
-            <Link
-              href={secondaryButtonLink}
-              className={`inline-flex h-11 items-center justify-center rounded-full border px-6 font-sans text-xs font-medium uppercase tracking-wide transition-opacity hover:opacity-75 ${currentTheme.secondaryBtn}`}
-            >
-              {secondaryButtonText}
-            </Link>
-          </div>
+          {description && (
+            <p className={`mt-6 max-w-md font-sans text-sm font-light leading-6 ${currentTheme.description}`}>
+              {description}
+            </p>
+          )}
+          {(primaryButtonText || secondaryButtonText) && (
+            <div className="mt-8 flex flex-wrap gap-3">
+              {primaryButtonText && (
+                <Link
+                  href={primaryButtonLink}
+                  className={`inline-flex h-11 items-center justify-center rounded-full px-6 font-sans text-xs font-medium uppercase tracking-wide transition-opacity hover:opacity-85 ${currentTheme.primaryBtn}`}
+                >
+                  {primaryButtonText}
+                </Link>
+              )}
+              {secondaryButtonText && (
+                <Link
+                  href={secondaryButtonLink}
+                  className={`inline-flex h-11 items-center justify-center rounded-full border px-6 font-sans text-xs font-medium uppercase tracking-wide transition-opacity hover:opacity-75 ${currentTheme.secondaryBtn}`}
+                >
+                  {secondaryButtonText}
+                </Link>
+              )}
+            </div>
+          )}
         </HeroTextReveal>
       </div>
 
@@ -125,9 +148,11 @@ export function HeroSection({ settings, slides = [], fallbackImage }: HeroSectio
               <p className="font-serif text-2xl font-bold leading-none text-olive-leaf sm:text-3xl">
                 {ecoBadgeText}
               </p>
-              <p className="mt-1 font-sans text-2xs font-medium uppercase tracking-widest text-black-forest/80">
-                {ecoBadgeSubtext}
-              </p>
+              {ecoBadgeSubtext && (
+                <p className="mt-1 font-sans text-2xs font-medium uppercase tracking-widest text-black-forest/80">
+                  {ecoBadgeSubtext}
+                </p>
+              )}
             </div>
           </div>
         )}

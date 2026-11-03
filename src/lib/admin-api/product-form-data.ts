@@ -68,8 +68,8 @@ export function buildProductFormData(data: ProductFormValues, images: ProductIma
   formData.append('materials', JSON.stringify(data.materials.filter((s) => s.trim())));
   formData.append('careInstructions', JSON.stringify(data.careInstructions.filter((c) => c.text.trim())));
   formData.append('shippingInfo', JSON.stringify({
-    standard: data.shippingStandard || '3-5 business days',
-    express: data.shippingExpress || '1-2 business days',
+    standard: data.shippingStandard || '',
+    express: data.shippingExpress || '',
   }));
 
   images.newFiles.forEach((file) => formData.append('images', file));

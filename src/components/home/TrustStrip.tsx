@@ -1,4 +1,5 @@
 import { IconMap, type IconName } from "@/lib/icon-map";
+import { formatPrice } from "@/lib/utils";
 
 export interface TrustStripItemProps {
   icon: string;
@@ -8,20 +9,33 @@ export interface TrustStripItemProps {
 
 interface TrustStripProps {
   items?: TrustStripItemProps[];
+  /**
+   * The real free-shipping threshold from the pricing settings. A "Free shipping" point is added
+   * to the strip from it (so the figure can never be out of date) unless the admin already
+   * wrote one of their own. It never makes an otherwise empty strip appear.
+   */
+  freeShippingThreshold?: number;
 }
 
-const defaultTrustItems: TrustStripItemProps[] = [
-  { icon: "Truck", title: "Free shipping", subtitle: "Above ₹999" },
-  { icon: "Leaf", title: "1 tree per order", subtitle: "Planted with care" },
-  { icon: "Recycle", title: "Sustainable materials", subtitle: "Low-impact goods" },
-  { icon: "ShieldCheck", title: "Easy returns", subtitle: "Simple exchanges" },
-  { icon: "Award", title: "Ethically sourced", subtitle: "Traceable makers" },
-];
+export function TrustStrip({ items = [], freeShippingThreshold }: TrustStripProps) {
+  // Only what the admin typed: an item with no text is not shown, and no items means no strip
+  const written = (items ?? []).filter((i) => i.title?.trim() || i.subtitle?.trim());
+  if (written.length === 0) return null;
 
-export function TrustStrip({ items = defaultTrustItems }: TrustStripProps) {
-  const displayItems = items && items.length > 0 ? items : defaultTrustItems;
+  // The free-shipping point is a FACT the shop knows (the threshold in the pricing settings), so
+  // it is always written from that: a figure typed by hand would go wrong the day the threshold
+  // changes. An item titled "Free shipping" keeps the owner's wording and icon but gets the real figure.
+  const freeShippingSubtitle = (): string | null =>
+    freeShippingThreshold === undefined ? null : freeShippingThreshold > 0 ? `On orders above ${formatPrice(freeShippingThreshold)}` : "On every order";
+  const isFreeShipping = (i: TrustStripItemProps) => /free\s+shipping/i.test(i.title ?? "");
+  const withFacts = written.map((i) => (isFreeShipping(i) && freeShippingSubtitle() ? { ...i, subtitle: freeShippingSubtitle() as string } : i));
 
-  if (displayItems.length === 0) return null;
+  // No free-shipping point of any kind written by the owner: add the real one
+  const mentionsShipping = withFacts.some((i) => /shipping|delivery/i.test(`${i.title} ${i.subtitle}`));
+  const displayItems: TrustStripItemProps[] =
+    freeShippingThreshold && freeShippingThreshold > 0 && !mentionsShipping
+      ? [{ icon: "Truck", title: "Free shipping", subtitle: freeShippingSubtitle() as string }, ...withFacts]
+      : withFacts;
 
   return (
     <section className="bg-warm-mist">

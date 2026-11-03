@@ -1,6 +1,10 @@
 import { getProductListing, parseListingQuery, LISTING_PAGE_SIZE } from "@/lib/product-listing";
 import ProductsClient from "@/components/products/ProductsClient";
 import { PageEnter } from "@/components/ui/PageEnter";
+import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = pageMetadata({ title: "All Products", description: "Browse our full range.", path: "/products" });
 
 // This page reads searchParams (?category=, ?sort=), so it is rendered on every request. A
 // `revalidate` export would be ignored. Caching decision (docs checked): `unstable_cache` is

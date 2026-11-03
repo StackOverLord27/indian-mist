@@ -30,6 +30,32 @@ function required(name: string): string {
 
 export const isProduction = () => process.env.NODE_ENV === "production";
 
+// ─── Public site address ───────────────────────────────────────────────────
+
+/**
+ * The public address of the shop (for example https://www.example.com), without a trailing slash.
+ * Used for canonical links, Open Graph URLs, sitemap.xml and robots.txt. Required in production
+ * (a wrong one would put the wrong address in search results); in development it defaults to
+ * http://localhost:3000.
+ */
+export function getSiteUrl(): string {
+  const raw = read("NEXT_PUBLIC_SITE_URL");
+  if (!raw) {
+    if (isProduction()) throw new EnvError("NEXT_PUBLIC_SITE_URL");
+    return "http://localhost:3000";
+  }
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new EnvError("NEXT_PUBLIC_SITE_URL", "is not a valid address (example: https://www.example.com)");
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new EnvError("NEXT_PUBLIC_SITE_URL", "must start with https:// (or http:// for local use)");
+  }
+  return url.origin;
+}
+
 // ─── Database ───────────────────────────────────────────────────────────────
 
 export const getMongoUri = () => required("MONGODB_URI");

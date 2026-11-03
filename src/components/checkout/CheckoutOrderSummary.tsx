@@ -1,9 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { getImageSrc } from "@/lib/utils";
 import {
   LockKeyhole,
-  ShieldCheck,
   Package,
   Loader2,
   Tag,
@@ -273,20 +273,20 @@ export function CheckoutOrderSummary({
           )}
         </button>
 
-        {/* Trust signals */}
-        <div className="mt-4 space-y-2">
-          <div className="flex items-center justify-center gap-1.5">
-            <LockKeyhole className="text-olive/80 size-3" />
-            <span className="font-montserrat text-[10px] text-muted-text">
-              Secured by Razorpay · 256-bit SSL encryption
-            </span>
-          </div>
-          <div className="flex items-center justify-center gap-1.5">
-            <ShieldCheck className="text-olive/80 size-3" />
-            <span className="font-montserrat text-[10px] text-muted-text">
-              PCI DSS compliant payment processing
-            </span>
-          </div>
+        {/* Terms and privacy: linked where the customer pays */}
+        <p className="mt-3 text-center font-montserrat text-[10px] leading-relaxed text-muted-text">
+          By paying you agree to our{" "}
+          <Link href="/terms-and-conditions" className="underline hover:text-forest">Terms &amp; Conditions</Link>{" "}
+          and{" "}
+          <Link href="/privacy-policy" className="underline hover:text-forest">Privacy Policy</Link>.
+        </p>
+
+        {/* Only what is always true: who processes the payment */}
+        <div className="mt-4 flex items-center justify-center gap-1.5">
+          <LockKeyhole className="text-olive/80 size-3" />
+          <span className="font-montserrat text-[10px] text-muted-text">
+            Secured by Razorpay
+          </span>
         </div>
 
         {/* Payment methods */}

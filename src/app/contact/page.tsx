@@ -4,27 +4,38 @@ import { ContactForm } from "@/components/contact/ContactForm";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Mail, MapPin, Phone, Clock, Plus, ChevronRight } from "lucide-react";
 import { FaInstagram, FaFacebook, FaXTwitter, FaYoutube, FaWhatsapp } from "react-icons/fa6";
+import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = pageMetadata({ title: "Contact Us", path: "/contact" });
 
 // Longer than the home page: contact details rarely change, and saving them in the admin
 // refreshes this page straight away (revalidateStorefront).
 export const revalidate = 600;
 
+// Only the page's own heading is structural. Address, phone, e-mail and hours are shown when the
+// admin has entered them and are otherwise left out: no stand-in details are ever displayed.
 const DEFAULT_CONTACT: Required<ContactPageSettings> = {
   title: "Contact Us",
-  subtitle:
-    "Questions about an order, a product, or just want to say hello? Send us a message and a real person will get back to you.",
-  address: "123 Forest Lane, Nature Valley, Earth 456789",
-  phone: "+91 98765 43210",
-  whatsapp: "+91 98765 43210",
-  email: "hello@indianmist.com",
-  businessHours: "Mon–Fri, 9:00 AM – 6:00 PM",
+  subtitle: "",
+  address: "",
+  phone: "",
+  whatsapp: "",
+  email: "",
+  businessHours: "",
   faqs: [],
 };
 
 export default async function ContactPage() {
   const settings = await getSiteSettings();
 
-  const c: Required<ContactPageSettings> = { ...DEFAULT_CONTACT, ...settings?.contactPageSettings };
+  const saved = settings?.contactPageSettings;
+  const c: Required<ContactPageSettings> = {
+    ...DEFAULT_CONTACT,
+    ...saved,
+    // an empty saved title still needs a heading
+    title: saved?.title?.trim() || DEFAULT_CONTACT.title,
+  };
 
   const faqs = (c.faqs ?? []).filter((f) => f.question?.trim() && f.answer?.trim());
 
@@ -36,14 +47,15 @@ export default async function ContactPage() {
     { key: "youtube", url: socialLinks.youtube, icon: FaYoutube, label: "YouTube" },
   ].filter((s) => s.url);
 
-  const whatsappUrl = `https://wa.me/${(c.whatsapp || c.phone).replace(/[^0-9]/g, "")}?text=Hi%20Indian%20Mist!`;
+  const whatsappDigits = (c.whatsapp || c.phone).replace(/[^0-9]/g, "");
+  const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits}?text=Hi%20Indian%20Mist!` : "";
 
   const details = [
     { icon: MapPin, label: "Visit us", value: c.address, href: undefined as string | undefined },
     { icon: Phone, label: "Call us", value: c.phone, href: `tel:${c.phone}` },
     { icon: Mail, label: "Email us", value: c.email, href: `mailto:${c.email}` },
     { icon: Clock, label: "Business hours", value: c.businessHours, href: undefined as string | undefined },
-  ];
+  ].filter((d) => d.value?.trim());
 
   return (
     <div className="bg-cornsilk min-h-screen">
@@ -59,13 +71,16 @@ export default async function ContactPage() {
         <h1 className="font-merriweather text-3xl md:text-4xl font-normal text-forest mt-2 mb-2">
           {c.title}
         </h1>
-        <p className="font-montserrat text-sm font-light text-muted-text max-w-xl">
-          {c.subtitle}
-        </p>
+        {c.subtitle.trim() && (
+          <p className="font-montserrat text-sm font-light text-muted-text max-w-xl">
+            {c.subtitle}
+          </p>
+        )}
 
         {/* Details come first on mobile, form first on desktop */}
         <div className="mt-10 grid gap-8 lg:grid-cols-5 lg:gap-12">
           <aside className="order-1 space-y-5 lg:order-2 lg:col-span-2">
+            {whatsappUrl && (
             <a
               href={whatsappUrl}
               target="_blank"
@@ -85,7 +100,9 @@ export default async function ContactPage() {
               </span>
               <ChevronRight className="size-5 shrink-0 transition-transform group-hover:translate-x-1" aria-hidden="true" />
             </a>
+            )}
 
+            {details.length > 0 && (
             <div className="divide-y divide-olive/10 rounded-md border border-olive/15 bg-card-bg">
               {details.map(({ icon: Icon, label, value, href }) => (
                 <div key={label} className="flex items-start gap-4 p-5">
@@ -107,6 +124,7 @@ export default async function ContactPage() {
                 </div>
               ))}
             </div>
+            )}
 
             {socials.length > 0 && (
               <div className="rounded-md border border-olive/15 bg-warm p-5">

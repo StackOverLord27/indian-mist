@@ -18,10 +18,15 @@ import {
 import dbConnect from "@/lib/db";
 import { Product } from "@/models/product.model";
 import { Category as CategoryModel } from "@/models/category.model";
+import { SHIPPING_THRESHOLD } from "@/lib/constants";
 import { getSiteSettings, getCategoryNames, getCategoryCounts } from "@/lib/storefront-data";
 import { categoryLabel } from "@/lib/category-labels";
 import CarouselModel from "@/models/carousel.model";
 import { CarouselImage, SiteSettings } from "@/types/admin";
+import type { Metadata } from "next";
+
+// Same page whichever way it was reached (www, tracking parameters...)
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export const revalidate = 60;
 
@@ -183,7 +188,10 @@ export default async function Home() {
         slides={mappedSlides}
         fallbackImage={heroImage}
       />
-      <TrustStrip items={settingsDoc?.trustStripSettings?.items} />
+      <TrustStrip
+        items={settingsDoc?.trustStripSettings?.items}
+        freeShippingThreshold={settingsDoc?.pricingSettings?.freeShippingThreshold ?? SHIPPING_THRESHOLD}
+      />
       <ScrollReveal>
         <FeaturedProducts products={mappedFeatured} />
       </ScrollReveal>

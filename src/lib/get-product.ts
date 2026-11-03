@@ -86,8 +86,9 @@ export const getProductBySlug = cache(async (slug: string): Promise<Product | nu
     tags: p.tags || [],
     relatedProductIds: [],
     shippingInfo: {
-      standard: p.shippingInfo?.standard || "3-5 business days",
-      express: p.shippingInfo?.express || "1-2 business days",
+      // Only a delivery time the admin typed for this product; none is invented
+      standard: p.shippingInfo?.standard || "",
+      express: p.shippingInfo?.express || "",
     }
   };
 });

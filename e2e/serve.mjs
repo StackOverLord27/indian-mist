@@ -28,6 +28,7 @@ const env = {
   JWT_ACCESS_SECRET: "e2e-only-access-secret-not-a-real-secret-0123456789",
   JWT_REFRESH_SECRET: "e2e-only-refresh-secret-not-a-real-secret-0123456789",
   SUPER_ADMIN_EMAIL: "e2e-admin@example.test",
+  NEXT_PUBLIC_SITE_URL: `http://localhost:${PORT}`,
   NODE_ENV: "production",
 };
 

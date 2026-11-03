@@ -41,6 +41,12 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // Belt and braces for search engines: the admin and the API are never to be indexed
+      // (the admin pages also say so themselves, and robots.txt disallows both)
+      ...["/admin/:path*", "/api/:path*"].map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      })),
       {
         source: "/(.*)",
         headers: [

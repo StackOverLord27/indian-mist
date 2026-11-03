@@ -154,7 +154,7 @@ export default function ProductsClient({
         <div className="space-y-2 max-w-prose">
           <h1 className="font-merriweather text-3xl md:text-4xl font-normal text-forest">All Products</h1>
           <p className="font-montserrat text-sm font-light text-muted-text mt-2 max-w-prose">
-            Discover our complete range of sustainable, high-performance gear.
+            Browse our full range.
           </p>
         </div>
 
