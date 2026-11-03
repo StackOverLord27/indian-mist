@@ -41,3 +41,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Playwright end-to-end artifacts (screenshots, traces, videos, saved sign-in state)
+/e2e-artifacts/

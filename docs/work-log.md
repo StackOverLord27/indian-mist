@@ -207,3 +207,16 @@ Verified correct, unchanged: atomic claim per line, sorted claim order, per-size
 - verify-payment/webhook do not compare the paid amount with the order total (Razorpay enforces amount = order amount).
 - Webhook replay protection relies on finalizeOrder idempotency, there is no event-id store.
 - Mongo unique index on orders.razorpayOrderId must exist in production (Mongoose autoIndex creates it; confirm on Atlas).
+
+
+## Prompt 9 (end-to-end payment tests, Playwright + Razorpay Test Mode)
+
+Setup: `@playwright/test` (devDependency), `e2e/` (specs `*.e2e.ts`, support code, README), `playwright.config.ts`, scripts `test:e2e` and `seed:e2e`, artifacts in gitignored `e2e-artifacts/`. App under test = production build on a LOCAL throwaway database `indianmist_e2e` (`e2e/serve.mjs`; refuses non-local hosts and non-`rzp_test_` keys; never reads MONGODB_URI from .env). Shared dev Upstash Redis (owner confirmed dev); tests delete the pending-order keys they create.
+
+Scenarios 1-9 + a sign-in regression: all pass against Razorpay's real Test Mode Checkout window, in real-webhook mode (`E2E_PORT=3000 E2E_REAL_WEBHOOK=1`, Razorpay delivering to the owner's tunnel) and, for 4/5a/5b, in signed-payload mode.
+
+INCIDENT (owner informed during the run): the owner's dev server on :3000 uses the Atlas production database from .env and shares the dev Upstash. After the owner made the tunnel public and corrected the webhook path, Razorpay's real webhook for my test payments reached that server, which created PAID orders in production for local test product ids (customer "Ada Customer", e2e-customer-a@example.test, total 1200; no stock changed because the product ids do not exist there). Up to 4: order_TvUvP2hZm99gQK, order_TvUuoD3hxz5Dz1, order_TvUj5xQPXdFlfJ, order_TvUiOkty1r37OL. I did not touch Atlas; the owner removes them. Afterwards the owner stopped that server and the e2e app ran on :3000 with the local database.
+
+Defect found and fixed: signing in through the form could bounce the customer back to the sign-in page (the navbar's prefetch of /profile, made while signed out, left a cached redirect that router.push replayed). Now a full page load to the (already validated) callbackUrl. Regression: e2e/signin.e2e.ts.
+
+Findings not fixed: after a failed payment Razorpay re-shows its "save card" prompt whose "Maybe later" button starts a NEW payment (test helper never clicks it); releaseReservation marks the hold RELEASED before the stock is restored (a reader can see the status first; a crash between the two loses the restock); a failed payment keeps the stock held until the window is closed or the 15 minutes pass (payment.failed does not release).
