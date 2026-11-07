@@ -140,7 +140,7 @@ export default function AdminBlogsPage() {
                   <h3 className="font-merriweather text-sm text-forest truncate">
                     {blog.title}
                   </h3>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
                     <span
                       className={`inline-block font-montserrat text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-sm ${
                         blog.isPublished

@@ -5,6 +5,7 @@ import { ProductCard } from "@/components/home/ProductCard";
 import { COLLECTION_PREVIEW_SIZE, getProductsByIds, toCardProduct } from "@/lib/collection-products";
 import { getCategoryNames } from "@/lib/storefront-data";
 import type { Metadata } from "next";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({ title: "Collections", path: "/collections" });
@@ -29,9 +30,11 @@ export default async function CollectionsPage() {
   const byId = new Map(previewProducts.map((p) => [p._id.toString(), p]));
 
   return (
-    <div className="bg-cornsilk px-4 sm:px-6 md:px-12 lg:px-16 pt-12 pb-16 min-h-screen page-enter">
+    <div className="bg-cornsilk min-h-screen pb-16 page-enter">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 pt-6">
+      <Breadcrumb className="pb-2" items={[{ label: "Home", href: "/" }, { label: "Collections" }]} />
       {/* Page header with a thin green accent */}
-      <header className="mb-14 pb-8 border-b border-olive/20">
+      <header className="mt-2 mb-10 pb-8 border-b border-olive/20">
         <div className="space-y-2 max-w-prose">
           <h1 className="font-merriweather text-3xl md:text-4xl font-normal text-forest">
             Curated Collections
@@ -42,9 +45,10 @@ export default async function CollectionsPage() {
           </p>
         </div>
       </header>
+      </div>
 
       {collections.length === 0 ? (
-        <div className="py-24 text-center">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 py-24 text-center">
           <p className="font-merriweather text-xl text-forest mb-2">
             No collections found
           </p>
@@ -67,8 +71,9 @@ export default async function CollectionsPage() {
             return (
               <section
                 key={collection._id.toString()}
-                className={`py-12 ${isEven ? "" : "bg-warm-mist/40"} -mx-4 px-4 sm:-mx-6 sm:px-6 md:-mx-12 md:px-12 lg:-mx-16 lg:px-16`}
+                className={`py-12 ${isEven ? "" : "bg-warm-mist/40"}`}
               >
+                <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16">
                 <div className="mb-6 flex items-baseline gap-4">
                   {/* Faint index number in forest green */}
                   <span className="font-merriweather text-5xl font-normal text-forest/10 select-none leading-none">
@@ -101,6 +106,7 @@ export default async function CollectionsPage() {
                     </Link>
                   </div>
                 )}
+                </div>
               </section>
             );
           })}

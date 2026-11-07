@@ -22,7 +22,7 @@ import {
 import { useEffect, useState } from 'react';
 import { User } from '@/types/admin';
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ open = false, onNavigate }: { open?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -94,7 +94,11 @@ export default function AdminSidebar() {
   ];
 
   return (
-    <aside className="w-60 bg-forest shrink-0 flex flex-col h-full">
+    <aside
+      className={`fixed inset-y-0 left-0 z-40 w-60 bg-forest shrink-0 flex flex-col transition-transform duration-200 lg:static lg:z-auto lg:h-full lg:translate-x-0 ${
+        open ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
       <div className="p-6 border-b border-white/5">
         <h1 className="font-merriweather text-cornsilk text-xl">Indian Mist</h1>
         <p className="font-montserrat text-[10px] text-clay uppercase tracking-widest mt-1">Admin</p>
@@ -115,6 +119,7 @@ export default function AdminSidebar() {
                   <li key={j}>
                     <Link
                       href={item.href}
+                      onClick={onNavigate}
                       className={`font-montserrat text-xs font-medium uppercase tracking-wide px-4 py-2.5 transition-colors flex items-center gap-3 ${
                         isActive 
                           ? 'bg-white/10 text-cornsilk border-l-2 border-clay' 

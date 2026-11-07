@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Bell } from 'lucide-react';
+import { Bell, Menu } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { User } from '@/types/admin';
 
@@ -37,7 +37,7 @@ export function adminPageTitle(pathname: string): string {
   return rules.find(([pattern]) => pattern.test(pathname))?.[1] ?? 'Dashboard';
 }
 
-export default function AdminTopBar() {
+export default function AdminTopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
 
@@ -56,12 +56,22 @@ export default function AdminTopBar() {
   const title = adminPageTitle(pathname);
 
   return (
-    <header className="h-14 bg-card border-b border-olive/10 flex items-center justify-between px-6 md:px-8">
-      <h2 className="font-merriweather text-lg font-normal text-forest">
-        {title}
-      </h2>
-      
-      <div className="flex items-center gap-4">
+    <header className="h-14 bg-card border-b border-olive/10 flex items-center justify-between gap-3 px-4 sm:px-6 md:px-8">
+      <div className="flex min-w-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={onMenuClick}
+          className="-ml-1 flex size-9 shrink-0 items-center justify-center rounded-full text-forest hover:bg-olive/10 lg:hidden"
+          aria-label="Open menu"
+        >
+          <Menu className="size-5" />
+        </button>
+        <h2 className="truncate font-merriweather text-lg font-normal text-forest">
+          {title}
+        </h2>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-4">
         <button className="text-forest/60 hover:text-forest transition-colors">
           <Bell className="size-5" />
         </button>

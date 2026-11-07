@@ -74,7 +74,7 @@ export function HeroSection({ settings, slides = [], fallbackImage }: HeroSectio
   return (
     <section className="grid min-h-120 w-full grid-cols-1 lg:grid-cols-2">
       {/* Text panel */}
-      <div className={`flex min-h-[min(60vw,30rem)] flex-col justify-center px-6 py-12 md:min-h-120 md:px-12 transition-colors duration-500 ${currentTheme.bg}`}>
+      <div className={`flex min-h-[min(60vw,30rem)] flex-col justify-center py-12 pl-4 pr-4 sm:pl-6 sm:pr-6 md:min-h-120 md:pl-10 md:pr-10 lg:pl-[max(4rem,calc((100vw-80rem)/2+4rem))] lg:pr-16 transition-colors duration-500 ${currentTheme.bg}`}>
         <HeroTextReveal>
           {subtitle && (
             <p className={`flex items-center gap-4 font-sans text-2xs font-medium uppercase tracking-widest before:block before:h-px before:w-7 before:content-[''] ${currentTheme.subtitle}`}>

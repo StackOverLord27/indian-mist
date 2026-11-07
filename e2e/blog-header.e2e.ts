@@ -28,17 +28,23 @@ const breadcrumbBox = async (page: Page, path: string) => {
   return { top: Math.round(box.y), left: Math.round(box.x) };
 };
 
-for (const [name, size] of [["phone", { width: 390, height: 844 }], ["desktop", { width: 1280, height: 900 }]] as const) {
-  test(`the breadcrumb on /blogs is at the same top and left as on /about (${name})`, async ({ page }) => {
+// Every page that has a breadcrumb in the same place (the "seamless" rule): same top and left edge as /about
+const PAGES = ["/blogs", "/contact", "/collections", "/products"];
+
+for (const [name, size] of [["phone", { width: 390, height: 844 }], ["tablet", { width: 768, height: 900 }], ["desktop", { width: 1280, height: 900 }], ["wide", { width: 1920, height: 1000 }]] as const) {
+  test(`the breadcrumb on /blogs, /contact, /collections and /products is at the same top and left as on /about (${name})`, async ({ page }) => {
     await page.setViewportSize(size);
     const about = await breadcrumbBox(page, "/about");
     const blogs = await breadcrumbBox(page, "/blogs");
     expect(blogs).toEqual(about);
-    // and it is above the green header
+    // on /blogs it is above the green header
     const header = await page.locator("h1").first().boundingBox();
     expect(blogs.top).toBeLessThan(header!.y);
-    // no sideways scroll
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    for (const path of PAGES) {
+      expect(await breadcrumbBox(page, path), path).toEqual(about);
+      // no sideways scroll (the navbar used to overflow at tablet width)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${path} overflows`).toBe(true);
+    }
   });
 }
 

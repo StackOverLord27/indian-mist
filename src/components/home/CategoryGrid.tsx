@@ -10,8 +10,8 @@ export function CategoryGrid({ categories }: CategoryGridProps) {
   if (!categories || categories.length === 0) return null;
 
   return (
-    <section className="bg-cornsilk px-6 py-16 md:px-12">
-      <div className="mx-auto max-w-screen-2xl">
+    <section className="bg-cornsilk py-16">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16">
         <div className="mb-8">
           <h2 className="font-serif text-2xl font-light text-black-forest md:text-3xl">
             Shop by category

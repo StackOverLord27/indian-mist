@@ -29,8 +29,8 @@ export function EcoCommitmentSection({ settings }: EcoCommitmentProps) {
   const hasHeading = Boolean(titleLine1.trim() || titleLine2.trim());
 
   return (
-    <section className="bg-black-forest px-6 py-16 md:px-12">
-      <div className="mx-auto max-w-screen-2xl">
+    <section className="bg-black-forest py-16">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16">
       {(subtitle || hasHeading) && (
         <div className="mx-auto max-w-3xl text-center">
           {subtitle && (

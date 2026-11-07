@@ -6,6 +6,7 @@ import { CollectionProductGrid } from "@/components/collections/CollectionProduc
 import { COLLECTION_PAGE_SIZE, getCollectionBatch } from "@/lib/collection-products";
 import type { Metadata } from "next";
 import { cache } from "react";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { NOINDEX, pageMetadata, summarise } from "@/lib/seo";
 
 // Built on the first visit, then cached (ISR). Saving a collection or product in the admin
@@ -58,9 +59,17 @@ export default async function CollectionPage({
   const batch = await getCollectionBatch(col.products ?? [], 1, COLLECTION_PAGE_SIZE);
 
   return (
-    <div className="bg-cornsilk px-4 sm:px-6 md:px-12 lg:px-16 pt-12 pb-16 min-h-screen page-enter">
-      <div className="mx-auto max-w-screen-2xl">
-        <header className="mb-10 pb-8 border-b border-olive/20">
+    <div className="bg-cornsilk pb-16 min-h-screen page-enter">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 pt-6">
+        <Breadcrumb
+          className="pb-2"
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Collections", href: "/collections" },
+            { label: col.name },
+          ]}
+        />
+        <header className="mt-2 mb-10 pb-8 border-b border-olive/20">
           <div className="space-y-2 max-w-prose">
             <h1 className="font-merriweather text-3xl md:text-4xl font-normal text-forest">
               {col.name}

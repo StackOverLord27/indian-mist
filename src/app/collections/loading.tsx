@@ -3,17 +3,21 @@ import { ProductCardSkeleton } from "@/components/ui/skeletons";
 
 export default function CollectionsLoading() {
   return (
-    <div className="bg-cornsilk px-4 sm:px-6 md:px-12 lg:px-16 pt-12 pb-16 min-h-screen">
-      <header className="mb-14 pb-8 border-b border-olive/20">
+    <div className="bg-cornsilk pb-16 min-h-screen">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 pt-6">
+      <Skeleton className="h-4 w-32 mb-4" />
+      <header className="mt-2 mb-10 pb-8 border-b border-olive/20">
         <div className="space-y-3 max-w-prose">
           <Skeleton className="h-9 w-64" />
           <Skeleton className="h-4 w-96 max-w-full" />
         </div>
       </header>
+      </div>
 
       <div className="space-y-0">
         {Array.from({ length: 2 }).map((_, i) => (
-          <section key={i} className={`py-12 ${i % 2 !== 0 ? "bg-warm-mist/40" : ""} -mx-4 px-4 sm:-mx-6 sm:px-6 md:-mx-12 md:px-12 lg:-mx-16 lg:px-16`}>
+          <section key={i} className={`py-12 ${i % 2 !== 0 ? "bg-warm-mist/40" : ""}`}>
+            <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16">
             <div className="mb-6 flex items-baseline gap-4">
               <Skeleton className="h-12 w-10" />
               <div className="space-y-2">
@@ -25,6 +29,7 @@ export default function CollectionsLoading() {
               {Array.from({ length: 4 }).map((_, j) => (
                 <ProductCardSkeleton key={j} />
               ))}
+            </div>
             </div>
           </section>
         ))}

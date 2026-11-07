@@ -122,8 +122,8 @@ export function Footer({
   const footerColumns = buildFooterColumns(categories, collections);
 
   return (
-    <footer className="bg-forest px-6 pb-7 pt-13 md:px-12">
-      <div className="mx-auto max-w-screen-2xl">
+    <footer className="bg-forest pb-7 pt-13">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16">
         {/* Top grid — brand + nav columns */}
         <div
           className={`grid grid-cols-2 gap-10 ${footerColumns.length > 3 ? "md:grid-cols-4 lg:grid-cols-6" : "md:grid-cols-4 lg:grid-cols-5"}`}

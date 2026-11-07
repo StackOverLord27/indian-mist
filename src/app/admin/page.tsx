@@ -52,13 +52,13 @@ export default function AdminDashboardPage() {
           </ul>
         </div>
       )}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-5 gap-4 mb-8">
         {stats.map((stat, i) => {
           const Icon = stat.icon;
           return (
             <AdminCard key={i} className="relative overflow-hidden">
-              <Icon className="absolute top-4 right-4 text-olive/20 size-12" />
-              <div className="relative z-10">
+              <Icon className="absolute top-4 right-4 text-olive/20 size-9" />
+              <div className="relative z-10 pr-10">
                 <p className="font-montserrat text-xs uppercase tracking-wider text-forest/60 mb-1">{stat.label}</p>
                 <p className="font-merriweather text-3xl text-forest">{stat.value}</p>
               </div>

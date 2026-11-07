@@ -39,7 +39,7 @@ export default async function BlogsPage() {
                               radial-gradient(circle at 80% 50%, rgba(96,108,56,0.3) 0%, transparent 50%)`,
           }} />
         </div>
-        <div className="relative max-w-6xl mx-auto px-6 md:px-12 lg:px-16 py-16 md:py-20">
+        <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 py-16 md:py-20">
           {header.eyebrow && (
             <p className="font-montserrat text-xs uppercase tracking-[0.3em] text-clay mb-3">
               {header.eyebrow}
@@ -56,7 +56,7 @@ export default async function BlogsPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 md:px-12 lg:px-16 pt-10 pb-20">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 pt-10 pb-20">
         <Suspense fallback={<BlogsView blogs={blogs} categories={categories} />}>
           <BlogsIndex blogs={blogs} categories={categories} hasMore={hasMore} />
         </Suspense>

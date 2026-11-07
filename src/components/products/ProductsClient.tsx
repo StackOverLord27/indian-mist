@@ -8,6 +8,7 @@ import { ProductCardSkeleton } from "@/components/ui/skeletons";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import type { ListingProduct, FacetItem as ListingFacet, ListingFacets } from "@/lib/product-listing";
 
 type ProductItem = ListingProduct;
@@ -148,9 +149,10 @@ export default function ProductsClient({
   };
 
   return (
-    <div className="bg-cornsilk px-4 sm:px-6 md:px-12 lg:px-16 pt-12 pb-8 min-h-screen">
-      <div className="mx-auto max-w-screen-2xl">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
+    <div className="bg-cornsilk pb-8 min-h-screen">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 pt-6">
+      <Breadcrumb className="pb-2" items={[{ label: "Home", href: "/" }, { label: "All Products" }]} />
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mt-2 mb-8 gap-6">
         <div className="space-y-2 max-w-prose">
           <h1 className="font-merriweather text-3xl md:text-4xl font-normal text-forest">All Products</h1>
           <p className="font-montserrat text-sm font-light text-muted-text mt-2 max-w-prose">

@@ -18,7 +18,7 @@ export function TrustStrip({ items = [] }: TrustStripProps) {
 
   return (
     <section className="bg-warm-mist">
-      <div className="mx-auto max-w-screen-2xl overflow-x-auto sm:overflow-x-visible hide-scrollbar">
+      <div className="mx-auto w-full max-w-7xl overflow-x-auto sm:overflow-x-visible hide-scrollbar">
         <div className="flex min-w-max sm:min-w-0 sm:flex-wrap sm:justify-center divide-x divide-olive-leaf/20">
           {displayItems.map((item, index) => {
             const IconComponent = IconMap[item.icon as IconName] || IconMap.Leaf;

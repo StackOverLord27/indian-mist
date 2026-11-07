@@ -82,7 +82,7 @@ function DesktopNavLink({
         href={link.href}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "font-sans text-sm font-normal uppercase tracking-widest transition-all",
+          "whitespace-nowrap font-sans text-sm font-normal uppercase tracking-wider transition-all xl:tracking-widest",
           isActive
             ? "text-olive-leaf underline underline-offset-8 decoration-2 decoration-olive-leaf"
             : "text-black-forest/85 hover:opacity-100 hover:text-black-forest"
@@ -99,7 +99,7 @@ function DesktopNavLink({
         href={link.href}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "inline-flex items-center gap-1 font-sans text-sm font-normal uppercase tracking-widest transition-all",
+          "inline-flex items-center gap-1 whitespace-nowrap font-sans text-sm font-normal uppercase tracking-wider transition-all xl:tracking-widest",
           isActive
             ? "text-olive-leaf underline underline-offset-8 decoration-2 decoration-olive-leaf"
             : "text-black-forest/85 hover:opacity-100 hover:text-black-forest"
@@ -265,7 +265,7 @@ export function Navbar({
         scrolled && "shadow-sm"
       )}
     >
-      <div className="mx-auto flex h-16 w-full max-w-screen-2xl items-center justify-between gap-4 px-4 md:px-12">
+      <div className="flex h-16 items-center justify-between gap-4 mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16">
         {/* ── Logo ── */}
         <Link
           href="/"
@@ -282,8 +282,8 @@ export function Navbar({
           />
         </Link>
 
-        {/* ── Desktop nav links (md+) ── */}
-        <div className="hidden items-center gap-8 md:flex">
+        {/* ── Desktop nav links (lg+) ── */}
+        <div className="hidden items-center gap-5 lg:flex xl:gap-8">
           {navLinks.map((link) => (
             <DesktopNavLink
               key={link.name}
@@ -338,10 +338,10 @@ export function Navbar({
             <User className="size-5" aria-hidden="true" />
           </Link>
 
-          {/* ── Hamburger — mobile only, hidden md+ ── */}
+          {/* ── Hamburger — shown below lg ── */}
           <Sheet open={mobileOpen} onOpenChange={handleOpenChange}>
             <SheetTrigger
-              className="flex size-9 items-center justify-center rounded-full text-black-forest transition-opacity hover:opacity-70 md:hidden"
+              className="flex size-9 items-center justify-center rounded-full text-black-forest transition-opacity hover:opacity-70 lg:hidden"
               aria-label="Open navigation menu"
             >
               <Menu className="size-5" aria-hidden="true" />

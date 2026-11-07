@@ -40,9 +40,10 @@ export function ProductCardSkeleton() {
 // ─────────────────────────────────────────────────────────────────────────────
 export function ProductsGridSkeleton({ count = 12 }: { count?: number }) {
   return (
-    <div className="bg-cornsilk px-4 sm:px-6 md:px-12 lg:px-16 pt-12 pb-8 min-h-screen">
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 bg-cornsilk pt-6 pb-8 min-h-screen">
+      <Skeleton className="h-4 w-32 mb-4" />
       {/* Page header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mt-2 mb-8 gap-6">
         <div className="space-y-3">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-80" />
@@ -76,7 +77,7 @@ export function HomeSkeleton() {
       <Skeleton className="w-full h-[60vh] md:h-[80vh] rounded-none" />
 
       {/* Featured products section */}
-      <section className="bg-cornsilk px-4 py-16 sm:px-6 md:px-12">
+      <section className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 bg-cornsilk py-16">
         <div className="mb-8 flex items-end justify-between gap-6">
           <Skeleton className="h-7 w-52" />
           <Skeleton className="h-3 w-16" />

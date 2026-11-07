@@ -54,9 +54,9 @@ export default function AdminCategoriesPage() {
       {isLoading ? (
         <div className="flex justify-center p-12"><Loader2 className="size-8 animate-spin text-olive" /></div>
       ) : (
-        <div className="bg-card rounded-md border border-olive/15 overflow-hidden">
+        <div className="bg-card rounded-md border border-olive/15 overflow-x-auto">
           {/* Header */}
-          <div className="grid grid-cols-[40px_80px_1fr_120px_80px_100px] items-center px-4 py-2.5 border-b border-olive/15 bg-warm/30">
+          <div className="grid min-w-[640px] grid-cols-[40px_80px_1fr_120px_80px_100px] items-center px-4 py-2.5 border-b border-olive/15 bg-warm/30">
             <span className="font-montserrat text-[10px] uppercase tracking-wider text-forest/60">#</span>
             <span className="font-montserrat text-[10px] uppercase tracking-wider text-forest/60">Image</span>
             <span className="font-montserrat text-[10px] uppercase tracking-wider text-forest/60">Name</span>
@@ -102,7 +102,7 @@ export default function AdminCategoriesPage() {
                   setDraggedIdx(null);
                   setDragOverIdx(null);
                 }}
-                className={`grid grid-cols-[40px_80px_1fr_120px_80px_100px] items-center px-4 py-3 border-b border-olive/10 last:border-b-0 hover:bg-warm/20 transition-all cursor-grab active:cursor-grabbing ${
+                className={`grid min-w-[640px] grid-cols-[40px_80px_1fr_120px_80px_100px] items-center px-4 py-3 border-b border-olive/10 last:border-b-0 hover:bg-warm/20 transition-all cursor-grab active:cursor-grabbing ${
                   isDragging ? 'opacity-50 scale-[0.99] bg-warm/40 shadow-inner' : ''
                 } ${
                   isDragOver ? (draggedIdx! < idx ? 'border-b-2 border-b-olive/50' : 'border-t-2 border-t-olive/50') : ''

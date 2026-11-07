@@ -26,13 +26,13 @@ export async function LegalPageView({ slug }: { slug: LegalSlug }) {
 
   return (
     <div className="bg-cornsilk min-h-screen">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 pb-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-20">
         <Breadcrumb className="pb-2" items={[{ label: "Home", href: "/" }, { label: title }]} />
         <h1 className="font-merriweather text-3xl md:text-4xl font-normal text-forest mt-2 mb-8">
           {title}
         </h1>
         <article
-          className="prose max-w-none font-montserrat text-forest/90 leading-[1.85]
+          className="prose max-w-3xl font-montserrat text-forest/90 leading-[1.85]
             prose-headings:font-merriweather prose-headings:text-forest prose-headings:font-normal
             prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-3
             prose-p:mb-4 prose-p:text-[15px]
