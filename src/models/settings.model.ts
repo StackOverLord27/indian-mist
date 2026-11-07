@@ -92,6 +92,14 @@ const SettingsSchema = new mongoose.Schema({
       default: []
     },
   },
+  // Header of the /blogs page. Deliberately NO defaults: "never saved" (a missing field) shows the
+  // wording kept in src/lib/blog-page-header.ts, "saved empty" hides the line, and an upsert made
+  // by another page's save must not turn the first into the second.
+  blogPageSettings: {
+    eyebrow: { type: String },
+    heading: { type: String },
+    subtitle: { type: String },
+  },
   contactPageSettings: {
     title: { type: String, default: '' },
     subtitle: { type: String, default: '' },

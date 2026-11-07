@@ -19,6 +19,7 @@ export const SETTINGS_SECTIONS = {
   general: ['tagline', 'contactEmail', 'footerNote', 'metaTitle', 'metaDescription', 'socialLinks'],
   homepage: ['heroSettings', 'brandStorySettings', 'trustStripSettings', 'ecoCommitmentSettings'],
   contact: ['contactPageSettings'],
+  blogs: ['blogPageSettings'],
   pricing: ['pricingSettings'],
 } as const satisfies Record<string, readonly (keyof SiteSettings)[]>;
 

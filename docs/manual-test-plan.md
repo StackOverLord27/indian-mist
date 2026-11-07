@@ -180,7 +180,7 @@ The browser suite checked the shrinking in the browser, but it never sent files 
 3. Home page newsletter bar (near the bottom of the home page) > subscribe with an e-mail; subscribe again with the same e-mail in different capitals. Expected: first "subscribed", second "already subscribed", only one subscriber stored.
 
 ### 5.6 Blogs, About, Contact page content [MANUAL look]
-Write a short blog post with a cover photo, publish it, view it, unpublish it (it must disappear from `/blogs` and its address must give "not found"). Fill in the Contact page details and the About page, view both.
+Write a short blog post with a cover photo, publish it, view it, unpublish it (it must disappear from `/blogs` and its address must give "not found"). Fill in the Contact page details and the About page, view both. Then Admin > Blog Posts > "Blog page header": the form starts with the current wording; change the three texts, save, open `/blogs` (it changes at once); empty all three, save: the small line and the sentence disappear and the heading reads "Blog". Check that the breadcrumb on `/blogs` is in the same place as on `/about`, on a phone and a laptop.
 
 ---
 

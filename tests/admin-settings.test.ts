@@ -43,6 +43,7 @@ const fullDocument = (): SiteSettings & Record<string, unknown> => ({
   ecoCommitmentSettings: { subtitle: "Commit", titleLine1: "X", titleLine2: "Y", items: [{ icon: "Recycle", number: "1", label: "L", description: "D" }] },
   pricingSettings: { shippingCost: 99, freeShippingThreshold: 999, gstRate: 0, showPricesInclusiveOfGst: false, promoCodes: [] },
   contactPageSettings: { title: "Contact", email: "hello@shop.test", faqs: [{ question: "Q?", answer: "A." }] },
+  blogPageSettings: { eyebrow: "Journal", heading: "Notes", subtitle: "Stories." },
 });
 
 describe("validation", () => {
@@ -170,6 +171,7 @@ describe("each admin page saves only the sections it owns", () => {
     if (section === "homepage") edited.heroSettings!.titleLine1 = "Edited";
     if (section === "contact") edited.contactPageSettings!.title = "Edited";
     if (section === "pricing") edited.pricingSettings!.shippingCost = 123;
+    if (section === "blogs") edited.blogPageSettings!.heading = "Edited";
     const payload = settingsForSection(edited, section);
     expect(Object.keys(payload).sort()).toEqual([...SETTINGS_SECTIONS[section]].sort());
 

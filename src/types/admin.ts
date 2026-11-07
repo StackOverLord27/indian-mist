@@ -198,6 +198,13 @@ export interface ContactPageSettings {
   faqs?: { question: string; answer: string }[];
 }
 
+/** Header of the /blogs page. A field that was never saved is absent. */
+export interface BlogPageSettings {
+  eyebrow?: string;
+  heading?: string;
+  subtitle?: string;
+}
+
 export interface SiteSettings {
   _id?: string;
   tagline?: string;
@@ -234,6 +241,7 @@ export interface SiteSettings {
   };
   pricingSettings?: PricingSettings;
   contactPageSettings?: ContactPageSettings;
+  blogPageSettings?: BlogPageSettings;
 }
 
 export interface AdminCategory {

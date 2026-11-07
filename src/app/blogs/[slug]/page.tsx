@@ -84,9 +84,9 @@ export default async function BlogPostPage({
   return (
     <div className="bg-cornsilk min-h-screen page-enter">
       {/* Breadcrumb section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 pt-6 pb-2">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-2">
         <Breadcrumb
-          className="pt-2 pb-2"
+          className="pb-2"
           items={[
             { label: "Home", href: "/" },
             { label: "Blog", href: "/blogs" },

@@ -9,6 +9,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import Pagination from '@/components/admin/ui/Pagination';
+import BlogPageHeaderCard from '@/components/admin/BlogPageHeaderCard';
 
 const PAGE_SIZE = 50;
 
@@ -55,6 +56,8 @@ export default function AdminBlogsPage() {
           New Post
         </Link>
       </div>
+
+      <BlogPageHeaderCard />
 
       {/* Filter tabs */}
       <div className="flex gap-1 mb-6">

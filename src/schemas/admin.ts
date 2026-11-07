@@ -318,6 +318,15 @@ export const SettingsSchema = z.object({
     })
     .optional(),
 
+  // Header of the /blogs page (no defaults here: a missing field means "never saved")
+  blogPageSettings: z
+    .object({
+      eyebrow: text(100).optional(),
+      heading: text(200).optional(),
+      subtitle: text(500).optional(),
+    })
+    .optional(),
+
   // Contact page
   contactPageSettings: z
     .object({

@@ -5,6 +5,8 @@ import { BlogsIndex, BlogsView } from "@/components/blog/BlogsIndex";
 import { getPublishedBlogs, getPublishedBlogCategories } from "@/lib/blogs-list";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
+import { getSiteSettings } from "@/lib/storefront-data";
+import { resolveBlogHeader } from "@/lib/blog-page-header";
 
 export const metadata: Metadata = pageMetadata({ title: "Journal", path: "/blogs" });
 
@@ -19,10 +21,16 @@ async function getBlogs() {
 }
 
 export default async function BlogsPage() {
-  const { blogs, categories, hasMore } = await getBlogs();
+  const [{ blogs, categories, hasMore }, settings] = await Promise.all([getBlogs(), getSiteSettings()]);
+  const header = resolveBlogHeader(settings?.blogPageSettings);
 
   return (
     <div className="bg-cornsilk min-h-screen page-enter">
+      {/* Breadcrumb: same wrapper and spacing as /about, above the header */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-4">
+        <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Blog" }]} />
+      </div>
+
       {/* Hero header */}
       <div className="relative bg-forest overflow-hidden">
         <div className="absolute inset-0 opacity-10">
@@ -32,29 +40,23 @@ export default async function BlogsPage() {
           }} />
         </div>
         <div className="relative max-w-6xl mx-auto px-6 md:px-12 lg:px-16 py-16 md:py-20">
-          <p className="font-montserrat text-xs uppercase tracking-[0.3em] text-clay mb-3">
-            Indian Mist Journal
-          </p>
+          {header.eyebrow && (
+            <p className="font-montserrat text-xs uppercase tracking-[0.3em] text-clay mb-3">
+              {header.eyebrow}
+            </p>
+          )}
           <h1 className="font-merriweather text-3xl md:text-5xl font-normal text-cornsilk leading-tight">
-            From the Trail
+            {header.heading}
           </h1>
-          <p className="font-montserrat text-sm font-light text-cornsilk/80 mt-3 max-w-lg">
-            Stories, guides, and notes from the Indian Mist community — exploring the
-            outdoors responsibly.
-          </p>
+          {header.subtitle && (
+            <p className="font-montserrat text-sm font-light text-cornsilk/80 mt-3 max-w-lg">
+              {header.subtitle}
+            </p>
+          )}
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-6 md:px-12 lg:px-16 pt-10 pb-20">
-        {/* Breadcrumb */}
-        <Breadcrumb
-          className="mb-8"
-          items={[
-            { label: "Home", href: "/" },
-            { label: "Blog" },
-          ]}
-        />
-
         <Suspense fallback={<BlogsView blogs={blogs} categories={categories} />}>
           <BlogsIndex blogs={blogs} categories={categories} hasMore={hasMore} />
         </Suspense>
