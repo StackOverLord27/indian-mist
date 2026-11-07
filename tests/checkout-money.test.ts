@@ -22,7 +22,7 @@ import {
   resetSweepThrottleForTests,
   HOLD_MINUTES,
   consumeHold,
-  settleStockForPaidOrder,
+  settleOrderStock,
   PENDING_ORDER_TTL_SECONDS,
 } from "@/lib/stock-reservation";
 import { finalizeOrder } from "@/lib/finalize-order";
@@ -289,7 +289,9 @@ describe("expired holds", () => {
     const { razorpayOrderId } = await startCheckout(U1, [{ productId: String(p._id), quantity: 2 }]);
     expect(await consumeHold(razorpayOrderId)).toBe(true);
     expect(await consumeHold(razorpayOrderId)).toBe(false); // second time: nothing to do
-    const note = await settleStockForPaidOrder(razorpayOrderId, [{ productId: p._id as never, quantity: 2 }]);
+    const pending = (await fakeRedis.get(`pending_order_${razorpayOrderId}`)) as Record<string, unknown>;
+    const order = await Order.create({ ...pending, status: "PROCESSING", paymentStatus: "PAID", stockSettled: false, razorpayOrderId, razorpayPaymentId: "pay_x" });
+    const note = await settleOrderStock(order._id);
     expect(note).toBeNull();
     expect((await stockOf(p)).stockQuantity).toBe(1); // 3 - 2, once
   });

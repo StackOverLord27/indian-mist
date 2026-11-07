@@ -1,6 +1,8 @@
 import type { HydratedDocument } from "mongoose";
 import { Order, type IOrder } from "@/models/order.model";
-import { settleStockForPaidOrder, consumeHold } from "@/lib/stock-reservation";
+import { settleOrderStock, consumeHold } from "@/lib/stock-reservation";
+import { addReviewNote } from "@/lib/review-note";
+import { UnmatchedPayment } from "@/models/unmatched-payment.model";
 import { requireRedis } from "@/lib/redis";
 import { findPromo, countPaidPromoUses } from "@/lib/promo";
 import Settings from "@/models/settings.model";
@@ -17,47 +19,64 @@ type FinalizeResult =
   | { ok: false; status: number; message: string };
 
 /**
- * Things the shop should look at are saved on the order as a note. The customer has paid,
- * so the order always stands:
- *  - a promo code used beyond its limit (two checkouts opened at once can both pass the limit check)
- *  - stock that ran out after the hold on it expired
+ * A promo code used beyond its limit (two checkouts opened at once can both pass the limit check)
+ * is saved on the order as a note for the shop. The customer has paid, so the order always stands.
+ * (The stock note is saved by settleOrderStock itself.)
  */
-async function recordReviewNotes(order: HydratedDocument<IOrder>, stockNote: string | null) {
-  const notes: string[] = stockNote ? [stockNote] : [];
-
+async function recordPromoReviewNote(order: HydratedDocument<IOrder>) {
   try {
-    if (order.promoCode) {
-      const settings = await Settings.findOne().lean<SiteSettings>();
-      const promo = findPromo(settings?.pricingSettings?.promoCodes, order.promoCode);
+    if (!order.promoCode) return;
+    const settings = await Settings.findOne().lean<SiteSettings>();
+    const promo = findPromo(settings?.pricingSettings?.promoCodes, order.promoCode);
+    if (!promo) return;
 
-      if (promo) {
-        // Other PAID orders only: this order itself does not count against its own code
-        const others = { excludeOrderId: order._id };
-        const maxPerUser = promo.maxUsesPerUser ?? 1;
-        const reasons: string[] = [];
+    // Other PAID orders only: this order itself does not count against its own code
+    const others = { excludeOrderId: order._id };
+    const maxPerUser = promo.maxUsesPerUser ?? 1;
+    const reasons: string[] = [];
 
-        if (maxPerUser > 0 && (await countPaidPromoUses(order.promoCode, { ...others, userId: String(order.userId) })) >= maxPerUser) {
-          reasons.push(`this customer already used it ${maxPerUser} time(s)`);
-        }
-        if (promo.maxUses && promo.maxUses > 0 && (await countPaidPromoUses(order.promoCode, others)) >= promo.maxUses) {
-          reasons.push(`it passed its total limit of ${promo.maxUses} uses`);
-        }
-        if (reasons.length) {
-          notes.push(`Promo code ${order.promoCode} was used beyond its limit: ${reasons.join(" and ")}.`);
-        }
-      }
+    if (maxPerUser > 0 && (await countPaidPromoUses(order.promoCode, { ...others, userId: String(order.userId) })) >= maxPerUser) {
+      reasons.push(`this customer already used it ${maxPerUser} time(s)`);
+    }
+    if (promo.maxUses && promo.maxUses > 0 && (await countPaidPromoUses(order.promoCode, others)) >= promo.maxUses) {
+      reasons.push(`it passed its total limit of ${promo.maxUses} uses`);
+    }
+    if (reasons.length) {
+      await addReviewNote(order._id, `Promo code ${order.promoCode} was used beyond its limit: ${reasons.join(" and ")}.`);
     }
   } catch (error) {
+    // The customer has paid; losing the note must not fail the order
     console.error("[finalizeOrder] promo review check failed:", error);
   }
+}
 
-  if (notes.length) {
-    try {
-      await Order.updateOne({ _id: order._id }, { reviewNote: notes.join(" ") });
-    } catch (error) {
-      // The customer has paid; losing the note must not fail the order
-      console.error("[finalizeOrder] saving the review note failed:", error);
-    }
+/**
+ * When the payment event says how much was paid, it must match the order total. A mismatch is
+ * never a reason to fail the order (the customer has paid): it adds a note for the shop.
+ */
+async function checkPaidAmount(order: HydratedDocument<IOrder>, paidAmountPaise: number | undefined) {
+  if (typeof paidAmountPaise !== "number" || !Number.isFinite(paidAmountPaise)) return;
+  const expected = Math.round(order.totalAmount * 100);
+  if (paidAmountPaise === expected) return;
+  try {
+    await addReviewNote(
+      order._id,
+      `Amount mismatch: Razorpay reports ₹${(paidAmountPaise / 100).toFixed(2)} paid, the order total is ₹${(expected / 100).toFixed(2)}. Check the payment in Razorpay before shipping.`,
+    );
+  } catch (error) {
+    console.error("[finalizeOrder] saving the amount note failed:", error);
+  }
+}
+
+/** The payment is now an order: any record of it as "unmatched" is resolved. */
+async function resolveUnmatched(razorpayOrderId: string, orderId: unknown) {
+  try {
+    await UnmatchedPayment.updateOne(
+      { razorpayOrderId, resolvedAt: { $exists: false } },
+      { $set: { resolvedAt: new Date(), resolvedOrderId: orderId } },
+    );
+  } catch (error) {
+    console.error("[finalizeOrder] resolving the unmatched payment failed:", error);
   }
 }
 
@@ -70,21 +89,29 @@ export async function finalizeOrder(opts: {
   razorpayPaymentId: string;
   razorpaySignature?: string;
   userId?: string;
+  /** Where the confirmation came from (saved with an unmatched payment) */
+  source?: "webhook" | "verify-payment";
+  /** The amount the payment event reports, in paise (the webhook carries it) */
+  paidAmountPaise?: number;
 }): Promise<FinalizeResult> {
-  const { razorpayOrderId, razorpayPaymentId, razorpaySignature, userId } = opts;
+  const { razorpayOrderId, razorpayPaymentId, razorpaySignature, userId, paidAmountPaise } = opts;
+  const source = opts.source ?? "verify-payment";
 
   const existing = await Order.findOne({ razorpayOrderId });
   if (existing) {
     if (userId && String(existing.userId) !== userId) {
       return { ok: false, status: 403, message: "This order belongs to another account" };
     }
-    // The order exists. If an earlier run stopped before settling its stock hold, finish that now
+    // The order exists. If an earlier run stopped before settling its stock, finish that now
     // (safe to repeat, and a no-op when there is nothing left to do).
     try {
-      await consumeHold(razorpayOrderId);
+      if (existing.stockSettled === false) await settleOrderStock(existing._id);
+      else await consumeHold(razorpayOrderId);
     } catch (error) {
-      console.error("[finalizeOrder] settling an earlier hold failed:", error);
+      console.error("[finalizeOrder] settling the stock of an earlier run failed:", error);
     }
+    await checkPaidAmount(existing, paidAmountPaise);
+    await resolveUnmatched(razorpayOrderId, existing._id);
     return { ok: true, order: existing, alreadyProcessed: true };
   }
 
@@ -93,8 +120,27 @@ export async function finalizeOrder(opts: {
   const key = `pending_order_${razorpayOrderId}`;
   const raw = await redis.get(key);
   if (!raw) {
-    // A paid-but-no-order case: nothing can be rebuilt. Make it visible in the logs.
+    // A paid-but-no-order case: nothing can be rebuilt. Save it where the admin dashboard shows it
+    // (the log line is only a backup).
     console.error(`[finalizeOrder] payment ${razorpayPaymentId} for ${razorpayOrderId}: pending order not found`);
+    try {
+      await UnmatchedPayment.updateOne(
+        { razorpayOrderId },
+        {
+          $setOnInsert: {
+            razorpayPaymentId,
+            source,
+            ...(typeof paidAmountPaise === "number" && { amount: paidAmountPaise / 100 }),
+          },
+          $inc: { seen: 1 },
+        },
+        { upsert: true },
+      );
+    } catch (error) {
+      // Not recorded: answer with a server error so the webhook is retried (nothing else keeps this payment visible)
+      console.error("[finalizeOrder] saving the unmatched payment failed:", error);
+      return { ok: false, status: 500, message: "Order session expired or not found. If you were charged, contact support." };
+    }
     return {
       ok: false,
       status: 404,
@@ -119,6 +165,7 @@ export async function finalizeOrder(opts: {
       promoCode: pending.promoCode ?? undefined,
       status: "PROCESSING",
       paymentStatus: "PAID",
+      stockSettled: false, // set by settleOrderStock; a repair pass finishes it if the process stops first
       razorpayOrderId,
       razorpayPaymentId,
       razorpaySignature,
@@ -126,16 +173,19 @@ export async function finalizeOrder(opts: {
   } catch (error) {
     if ((error as { code?: number } | null)?.code === 11000) {
       const dup = await Order.findOne({ razorpayOrderId });
-      if (dup) return { ok: true, order: dup, alreadyProcessed: true };
+      if (dup) {
+        // The other request is settling it; if that request died, the repair pass will
+        return { ok: true, order: dup, alreadyProcessed: true };
+      }
     }
     throw error; // the pending order is untouched, so a retry can still complete it
   }
 
-  let stockNote: string | null = null;
   try {
-    stockNote = await settleStockForPaidOrder(razorpayOrderId, order.items);
+    await settleOrderStock(order._id);
   } catch (error) {
-    // The customer has already paid, so never fail the order over a stock update
+    // The customer has already paid, so never fail the order over a stock update.
+    // The order stays stockSettled: false and the repair pass settles it.
     console.error("[finalizeOrder] stock settle failed:", error);
   }
   // Stock and "Sold Out" badges changed: refresh the product pages. The customer has paid, so a
@@ -145,7 +195,9 @@ export async function finalizeOrder(opts: {
   } catch (error) {
     console.error("[finalizeOrder] revalidation failed:", error);
   }
-  await recordReviewNotes(order, stockNote);
+  await recordPromoReviewNote(order);
+  await checkPaidAmount(order, paidAmountPaise);
+  await resolveUnmatched(razorpayOrderId, order._id);
 
   // The order is saved: the pending copy is no longer needed. A leftover one only expires later.
   try {

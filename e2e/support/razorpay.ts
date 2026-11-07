@@ -21,11 +21,27 @@ export function trackRazorpayOrders(page: Page) {
   });
 }
 export async function cleanRedis() {
-  if (!created.size) return;
   const { Redis } = require("@upstash/redis");
   const redis = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
   for (const id of created) await redis.del(`pending_order_${id}`);
   created.clear();
+  await resetCheckoutLimits();
+}
+
+/**
+ * The "checkouts started per hour" counters (10 per account, 30 per address): a full run starts
+ * far more checkouts than that from one test account, so every scenario begins with them cleared
+ * (dev Upstash only, see README).
+ */
+export async function resetCheckoutLimits() {
+  const { Redis } = require("@upstash/redis");
+  const redis = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
+  let cursor: string | number = 0;
+  do {
+    const [next, found] = (await redis.scan(cursor, { match: "checkout_start:*", count: 200 })) as [string, string[]];
+    if (found.length) await redis.del(...found);
+    cursor = next;
+  } while (String(cursor) !== "0");
 }
 
 /** Click "Pay Securely" and wait for Razorpay's real Checkout window. Returns the create-order response. */

@@ -33,6 +33,7 @@ export const POST = withDB(async (req: NextRequest) => {
     razorpayPaymentId,
     razorpaySignature,
     userId,
+    source: "verify-payment",
   });
 
   if (!result.ok) return errorResponse(result.message, result.status);

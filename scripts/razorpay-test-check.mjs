@@ -168,6 +168,8 @@ try {
     const { Redis } = await import("@upstash/redis").catch(() => ({ Redis: require("@upstash/redis").Redis }));
     const redis = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
     for (const id of createdIds.filter(Boolean)) await redis.del(`pending_order_${id}`);
+    // the "checkouts started per hour" counters of the two test accounts and of this machine's address
+    await redis.del(`checkout_start:user:${userA}`, `checkout_start:user:${userB}`, "checkout_start:ip:unknown");
   } catch { /* nothing to clean or Redis not reachable from the script */ }
   await mongoose.disconnect();
 }

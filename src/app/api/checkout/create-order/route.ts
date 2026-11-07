@@ -10,6 +10,8 @@ import {
 } from "@/lib/stock-reservation";
 import { normalizePromoCode, findPromo, countPaidPromoUses, promoDiscount } from "@/lib/promo";
 import { requireRedis } from "@/lib/redis";
+import { allowCheckoutStart } from "@/lib/attempt-limit";
+import { getClientIp } from "@/lib/client-ip";
 import type { SiteSettings } from "@/types/admin";
 import { NextRequest } from "next/server";
 import mongoose from "mongoose";
@@ -205,6 +207,12 @@ export const POST = withDB(async (req: NextRequest) => {
   const totalAmount = totalPaise / 100;
 
   if (!Number.isSafeInteger(totalPaise) || totalPaise < 100) return errorResponse("Order total is too low", 400);
+
+  // ─── Limit how often one account / address can start a checkout ──────────
+  // Every start holds stock for 15 minutes, so unlimited starts could keep products off sale.
+  if (!(await allowCheckoutStart(userId, getClientIp(req)))) {
+    return errorResponse("You have started checkout several times in the last hour. Please complete one of those payments or try again a little later.", 429);
+  }
 
   // ─── Hold the stock for this checkout ─────────────────────────────────────
   // The stock is taken in one atomic step, so two shoppers can never both get the last unit.

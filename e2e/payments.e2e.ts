@@ -2,7 +2,7 @@ import { test, expect, type Browser, type BrowserContext, type Page } from "@pla
 import { resetShop, product, ordersFor, reservations, closeDb, db, oid, type Seeded } from "./support/db.ts";
 import { newContext, putInBag, openCheckout } from "./support/shop.ts";
 import {
-  startPayment, enterCard, submitCard, chooseOutcome, dismissCheckout, trackRazorpayOrders, cleanRedis, checkoutClosed,
+  startPayment, enterCard, submitCard, chooseOutcome, dismissCheckout, trackRazorpayOrders, cleanRedis, resetCheckoutLimits, checkoutClosed,
   webhookPayload, sendSignedWebhook, REAL_WEBHOOK, checkoutFrame,
 } from "./support/razorpay.ts";
 
@@ -10,6 +10,7 @@ let shop: Seeded;
 
 test.beforeEach(async () => {
   shop = await resetShop();
+  await resetCheckoutLimits();
 });
 test.afterAll(async () => {
   await cleanRedis();

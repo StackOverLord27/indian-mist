@@ -53,3 +53,21 @@ export async function allowOtpEmail(purpose: "signup" | "reset", email: string):
   const count = await incrementWithWindow(requireRedis(), `otp_send:${purpose}:${email}`, OTP_EMAIL_WINDOW_SEC);
   return count <= OTP_EMAILS_PER_ADDRESS;
 }
+
+// ─── Starting a checkout holds stock for 15 minutes ──────────────────────────
+
+export const CHECKOUT_STARTS_PER_ACCOUNT = 10;
+export const CHECKOUT_STARTS_PER_IP = 30; // higher: shared networks (offices, mobile carriers) are many shoppers
+export const CHECKOUT_START_WINDOW_SEC = 60 * 60;
+
+/**
+ * Call before holding stock for a checkout. Returns false once this account (or this address)
+ * has started its allowance of checkouts within the last hour. Money path: always needs Redis and
+ * throws when it cannot answer (the checkout then fails instead of running unlimited).
+ */
+export async function allowCheckoutStart(userId: string, ip: string): Promise<boolean> {
+  const redis = requireRedis();
+  const account = await incrementWithWindow(redis, `checkout_start:user:${userId}`, CHECKOUT_START_WINDOW_SEC);
+  const address = await incrementWithWindow(redis, `checkout_start:ip:${ip}`, CHECKOUT_START_WINDOW_SEC);
+  return account <= CHECKOUT_STARTS_PER_ACCOUNT && address <= CHECKOUT_STARTS_PER_IP;
+}

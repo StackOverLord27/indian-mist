@@ -1,7 +1,8 @@
-import type { Types } from "mongoose";
+import mongoose, { type ClientSession, type Types } from "mongoose";
 import { Product } from "@/models/product.model";
 import { StockReservation } from "@/models/stock-reservation.model";
 import { Order } from "@/models/order.model";
+import { addReviewNote } from "@/lib/review-note";
 
 // How long stock is held for a checkout before it is returned to sale.
 // This is deliberately SHORT and separate from PENDING_ORDER_TTL_SECONDS below: a hold only keeps
@@ -18,6 +19,18 @@ export const PENDING_ORDER_TTL_SECONDS = 24 * 60 * 60;
 
 type Id = string | Types.ObjectId;
 
+/**
+ * Runs several database writes as ONE all-or-nothing step (a Mongo transaction; Atlas and the
+ * local test container are replica sets). The callback may run again after a transient conflict,
+ * so it must only touch the database, through the session it is given.
+ */
+export function inTransaction<T>(fn: (session: ClientSession) => Promise<T>): Promise<T> {
+  return mongoose.connection.transaction(fn) as Promise<T>;
+}
+
+/** A paid order younger than this is left to the request that is still creating it. */
+const UNSETTLED_GRACE_MS = 2 * 60 * 1000;
+
 export type ReserveItem = { productId: string; size?: string; quantity: number };
 type StockLine = { productId: Id; size?: string; quantity: number };
 
@@ -33,7 +46,7 @@ const NO_SIZE_STOCK = { $or: [{ sizeStock: { $exists: false } }, { sizeStock: { 
  * is left. Uses the size's own count when the product tracks stock per size, otherwise the
  * product total. Returns false when there is not enough.
  */
-async function claim(line: StockLine): Promise<boolean> {
+async function claim(line: StockLine, session?: ClientSession): Promise<boolean> {
   if (line.size) {
     const bySize = await Product.findOneAndUpdate(
       {
@@ -42,36 +55,40 @@ async function claim(line: StockLine): Promise<boolean> {
         sizeStock: { $elemMatch: { size: line.size, quantity: { $gte: line.quantity } } },
       },
       { $inc: { "sizeStock.$.quantity": -line.quantity, stockQuantity: -line.quantity } },
+      { session },
     );
     if (bySize) return true;
   }
   const total = await Product.findOneAndUpdate(
     { _id: line.productId, trackInventory: true, stockQuantity: { $gte: line.quantity }, ...NO_SIZE_STOCK },
     { $inc: { stockQuantity: -line.quantity } },
+    { session },
   );
   return !!total;
 }
 
 /** Puts units back, on the size's count when the product tracks per size. */
-export async function restoreStock(lines: StockLine[]) {
+export async function restoreStock(lines: StockLine[], session?: ClientSession) {
   for (const line of lines) {
     if (line.size) {
       const bySize = await Product.updateOne(
         { _id: line.productId, trackInventory: true, "sizeStock.size": line.size },
         { $inc: { "sizeStock.$.quantity": line.quantity, stockQuantity: line.quantity } },
+        { session },
       );
       if (bySize.matchedCount > 0) continue;
     }
     await Product.updateOne(
       { _id: line.productId, trackInventory: true },
       { $inc: { stockQuantity: line.quantity } },
+      { session },
     );
   }
 }
 
 /** How many units of this line are left, or null when stock is not tracked. */
-async function unitsLeft(line: StockLine): Promise<{ name: string; left: number } | null> {
-  const product = await Product.findById(line.productId).select("name trackInventory stockQuantity sizeStock").lean();
+async function unitsLeft(line: StockLine, session?: ClientSession): Promise<{ name: string; left: number } | null> {
+  const product = await Product.findById(line.productId).select("name trackInventory stockQuantity sizeStock").session(session ?? null).lean();
   if (!product || !product.trackInventory) return null;
   const entry = line.size ? product.sizeStock?.find((s) => s.size === line.size) : undefined;
   return { name: product.name, left: entry ? entry.quantity : (product.sizeStock?.length ? 0 : product.stockQuantity ?? 0) };
@@ -134,16 +151,28 @@ export async function attachRazorpayOrder(reservationId: string, razorpayOrderId
 }
 
 /**
- * Returns held stock exactly once, even if called several times at once: the status change from
- * ACTIVE is a single atomic step and only the caller that wins it restores the stock.
+ * Returns held stock exactly once, even if called several times at once. The status change from
+ * ACTIVE and the restocking are ONE transaction: a crash can neither leave a RELEASED hold whose
+ * stock was never returned, nor return it twice.
+ *
+ * A hold whose Razorpay order has already become an order is not released: that stock was sold.
  */
 export async function releaseReservation(filter: Record<string, unknown>): Promise<boolean> {
-  const released = await StockReservation.findOneAndUpdate(
-    { ...filter, status: "ACTIVE" },
-    { status: "RELEASED" },
-  );
+  const released = await inTransaction(async (session) => {
+    const held = await StockReservation.findOne({ ...filter, status: "ACTIVE" }).session(session);
+    if (!held) return null;
+    if (held.razorpayOrderId && (await Order.exists({ razorpayOrderId: held.razorpayOrderId }).session(session))) return null;
+    // Same transaction: the status change only sticks if the stock goes back
+    const claimed = await StockReservation.findOneAndUpdate(
+      { _id: held._id, status: "ACTIVE" },
+      { status: "RELEASED" },
+      { session },
+    );
+    if (!claimed) return null;
+    await restoreStock(claimed.items, session);
+    return claimed;
+  });
   if (!released) return false;
-  await restoreStock(released.items);
   // Stock is back on sale: an automatic "Sold Out" label set while it was all held no longer applies
   await clearSoldOutWhereInStock(released.items.map((i) => i.productId));
   return true;
@@ -178,15 +207,49 @@ export async function releaseExpiredReservations(): Promise<number> {
       .limit(100)
       .lean();
     for (const r of expired) {
-      if (r.razorpayOrderId && (await Order.exists({ razorpayOrderId: r.razorpayOrderId }))) {
-        await consumeHold(r.razorpayOrderId);
+      const paid = r.razorpayOrderId
+        ? await Order.findOne({ razorpayOrderId: r.razorpayOrderId }).select("_id stockSettled").lean()
+        : null;
+      if (paid) {
+        // Paid: finish settling it (new orders), or just make the hold permanent (older orders)
+        if (paid.stockSettled === false) await settleOrderStock(paid._id);
+        else await consumeHold(r.razorpayOrderId!);
         continue;
       }
       if (await releaseReservation({ _id: r._id })) count++;
     }
     if (expired.length < 100) break;
   }
+  try {
+    await repairUnsettledOrders();
+  } catch (error) {
+    console.error("[stock] repairing unsettled orders failed:", error);
+  }
   return count;
+}
+
+/**
+ * Paid orders whose stock was never settled (the process stopped right after the order was
+ * saved) are finished here. Exactly once: settleOrderStock only acts on stockSettled === false.
+ */
+export async function repairUnsettledOrders(): Promise<number> {
+  const stuck = await Order.find({
+    stockSettled: false,
+    createdAt: { $lt: new Date(Date.now() - UNSETTLED_GRACE_MS) },
+  })
+    .select("_id")
+    .limit(50)
+    .lean();
+  let repaired = 0;
+  for (const o of stuck) {
+    try {
+      await settleOrderStock(o._id);
+      repaired++;
+    } catch (error) {
+      console.error(`[stock] settling order ${String(o._id)} failed:`, error);
+    }
+  }
+  return repaired;
 }
 
 // ─── Lazy sweep ────────────────────────────────────────────────────────────────
@@ -234,44 +297,84 @@ export async function clearSoldOutWhereInStock(productIds: Id[]) {
 }
 
 /**
- * Called once a payment is confirmed. Normally the stock was already held at checkout,
- * so the hold just becomes permanent. If the hold had expired, the stock is taken now;
- * if it ran out in the meantime the shopper has still paid, so the order is kept and
- * a note for the shop is returned.
+ * Called once a payment is confirmed and the order exists. Normally the stock was already held at
+ * checkout, so the hold just becomes permanent. If the hold had expired, the stock is taken now;
+ * if it ran out in the meantime the shopper has still paid, so the order is kept and a note for
+ * the shop is saved on it.
+ *
+ * Everything happens in ONE transaction together with the order's stockSettled flag, so a crash
+ * leaves the order unsettled (a repair pass finishes it) and a repeat or a parallel call does
+ * nothing. The units really taken from stock are recorded on each order line (deductedQuantity),
+ * which is what cancelling gives back. Returns the shop note, or null.
  */
-export async function settleStockForPaidOrder(
-  razorpayOrderId: string,
-  items: { productId: Id; selectedSize?: string; quantity: number; name?: string }[],
-): Promise<string | null> {
-  if (await consumeHold(razorpayOrderId)) return null;
+export async function settleOrderStock(orderId: Id): Promise<string | null> {
+  const note = await inTransaction(async (session) => {
+    const order = await Order.findOneAndUpdate(
+      { _id: orderId, stockSettled: false },
+      { $set: { stockSettled: true } },
+      { session, returnDocument: "after" },
+    );
+    if (!order) return null; // already settled (or an older order)
 
-  // The hold was already made permanent (by an earlier call, or by the sweep, which does that for
-  // a paid order): the stock is settled, taking it again would count the order twice.
-  if (await StockReservation.exists({ razorpayOrderId, status: "CONSUMED" })) return null;
-
-  const shortages: string[] = [];
-  for (const item of items) {
-    const line = { productId: item.productId, size: item.selectedSize, quantity: item.quantity };
-    if (await claim(line)) continue;
-
-    const info = await unitsLeft(line);
-    if (!info) continue;
-    const label = `${info.name}${item.selectedSize ? ` (${item.selectedSize})` : ""}`;
-    shortages.push(`${label} (ordered ${item.quantity}, only ${info.left} were left)`);
-    // Whatever was left is gone: zero it and keep the product total in step
-    if (item.selectedSize) {
-      await Product.updateOne(
-        { _id: item.productId, "sizeStock.size": item.selectedSize },
-        { $set: { "sizeStock.$.quantity": 0 }, $inc: { stockQuantity: -info.left } },
-      );
-    } else {
-      await Product.updateOne({ _id: item.productId }, { $set: { stockQuantity: 0 } });
+    // The hold of this checkout: active now, or made permanent earlier
+    let heldItems: { productId: Id; size?: string; quantity: number }[] | null = null;
+    if (order.razorpayOrderId) {
+      const hold =
+        (await StockReservation.findOneAndUpdate(
+          { razorpayOrderId: order.razorpayOrderId, status: "ACTIVE" },
+          { status: "CONSUMED" },
+          { session },
+        )) ??
+        (await StockReservation.findOne({ razorpayOrderId: order.razorpayOrderId, status: "CONSUMED" }).session(session));
+      heldItems = hold?.items ?? null;
     }
-  }
 
-  await markSoldOutWhereEmpty(items.map((i) => i.productId));
+    const shortages: string[] = [];
+    const sets: Record<string, number> = {};
+    for (const [index, item] of order.items.entries()) {
+      const line = { productId: item.productId, size: item.selectedSize, quantity: item.quantity };
 
-  return shortages.length
-    ? `Paid after the stock hold expired and stock ran out: ${shortages.join("; ")}. Decide whether to fulfil or refund.`
-    : null;
+      if (heldItems) {
+        // Taken at checkout (untracked products were never part of the hold)
+        sets[`items.${index}.deductedQuantity`] = heldItems
+          .filter((h) => String(h.productId) === String(item.productId) && (h.size ?? "") === (item.selectedSize ?? ""))
+          .reduce((n, h) => n + h.quantity, 0);
+        continue;
+      }
+
+      if (await claim(line, session)) {
+        sets[`items.${index}.deductedQuantity`] = item.quantity;
+        continue;
+      }
+      const info = await unitsLeft(line, session);
+      if (!info) {
+        sets[`items.${index}.deductedQuantity`] = 0; // stock is not tracked (or the product is gone)
+        continue;
+      }
+      const label = `${info.name}${item.selectedSize ? ` (${item.selectedSize})` : ""}`;
+      shortages.push(`${label} (ordered ${item.quantity}, only ${info.left} were left)`);
+      sets[`items.${index}.deductedQuantity`] = info.left;
+      // Whatever was left is gone: zero it and keep the product total in step
+      if (item.selectedSize) {
+        await Product.updateOne(
+          { _id: item.productId, "sizeStock.size": item.selectedSize },
+          { $set: { "sizeStock.$.quantity": 0 }, $inc: { stockQuantity: -info.left } },
+          { session },
+        );
+      } else {
+        await Product.updateOne({ _id: item.productId }, { $set: { stockQuantity: 0 } }, { session });
+      }
+    }
+
+    if (Object.keys(sets).length) await Order.updateOne({ _id: order._id }, { $set: sets }, { session });
+    const shortageNote = shortages.length
+      ? `Paid after the stock hold expired and stock ran out: ${shortages.join("; ")}. Decide whether to fulfil or refund.`
+      : null;
+    if (shortageNote) await addReviewNote(order._id, shortageNote, session);
+    return { productIds: order.items.map((i) => i.productId), shortageNote };
+  });
+
+  if (!note) return null;
+  await markSoldOutWhereEmpty(note.productIds);
+  return note.shortageNote;
 }

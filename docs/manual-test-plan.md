@@ -123,6 +123,13 @@ Skip unless you want to see it: two browsers, one unit, both press Pay. Expected
 1. Admin > Orders > open the paid order > change status Processing > Shipped > Delivered (shown on the "Completed" tab). Expected: the tab counts update; the customer sees the new status on Profile > Orders.
 2. Cancel a paid order. Expected: status Cancelled, stock goes back **once**, a product that had been marked Sold Out becomes buyable. Try to cancel/change it again: it says a cancelled order cannot be changed.
 
+### 3.9b Stock edge cases and the safety nets [AUTO: `tests/stock-edge-cases.test.ts`] + manual look
+1. **Late payment, then cancel** (builds on 3.6): after the late order with a "Needs review" note, cancel it. Expected: the product's stock goes up only by the units that were really taken from the shelf (not by the full ordered quantity).
+2. **Payment without an order** [MANUAL, optional, Test Mode, and only on a database you can clean]: start a checkout, then in Upstash (Data Browser) delete the key `pending_order_<razorpay order id>` before paying; pay with the test card. Expected: the payment page says to contact support; the Admin **dashboard** shows a red box "1 payment received without an order" with the payment id (and the amount once Razorpay's webhook arrives). There is no "dismiss" button (an entry only disappears when an order for it exists), so afterwards delete that one document by hand: Atlas > Browse Collections > `unmatchedpayments` > delete. Do not do this on the live shop database.
+3. **Wrong amount** (cannot be forced in Test Mode, covered by the automated tests): an order would show "Amount mismatch" in its review note.
+4. **Checkout limit** [MANUAL, optional]: press Pay, close the window, press Pay again, 11 times in an hour with the same account. Expected: the 11th shows "You have started checkout several times in the last hour...". Wait an hour (or clear the `checkout_start:*` keys in Upstash) to start again.
+5. After any of these, nothing should be stuck: reload the product page, the stock should match what is really on the shelf plus what is held for open checkouts.
+
 ### 3.10 Mobile and redirect-based payment methods [MANUAL]
 1. On your **phone** (mobile data, not your Wi-Fi), repeat 3.1 with the card.
 2. In the Razorpay window try **UPI** (Test Mode shows a way to simulate success/failure) and **Netbanking** (a mock bank page). Expected: after the redirect back, the site shows the order (or, if the redirect is lost, the order appears in Profile > Orders thanks to the webhook).
@@ -212,6 +219,7 @@ Expected: no sideways scrolling, text readable, buttons large enough to tap, pho
 |---|---|---|
 | Card success/failure, hold release on close, race for last unit, stale bag, promo limits, admin cancel + restock | browser suite `e2e/payments.e2e.ts` (real Razorpay Test checkout, your local database) | 3.1 and 3.2 once on the deployed site, 3.5, 3.10 |
 | Webhook logic (signature, duplicates, order.paid + captured) | unit tests + `scripts/razorpay-test-check.mjs` | 3.2 (real delivery) |
+| Stock records, restock after late payment, crash safety (cancel, release, settle), repair pass, unmatched payments, amount check, checkout limit, indexes | `tests/stock-edge-cases.test.ts`, `tests/live/checkout-limit.live.ts` (real Upstash) | 3.9b (look at the dashboard box once) |
 | Sign-up/sign-in/reset/rotation | `tests/auth-routes.test.ts` (fake mail) | 2.1 to 2.4 (real mail) |
 | Image shrinking in the browser | `e2e/admin-uploads.e2e.ts` | section 4 (real Cloudinary) |
 | Pagination, reorder, picker, listings | unit + `e2e/storefront.e2e.ts` | 5.2, 5.3 (feel) |

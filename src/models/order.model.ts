@@ -9,6 +9,11 @@ export interface IOrderItem {
   selectedSize?: string;
   selectedColor?: string;
   selectedColorHex?: string;
+  /**
+   * Units actually taken from stock when this order was settled. Cancelling gives back exactly
+   * this many. Absent on orders created before it existed (those give back the full quantity).
+   */
+  deductedQuantity?: number;
 }
 
 export interface IOrder extends Document {
@@ -23,6 +28,11 @@ export interface IOrder extends Document {
   promoCode?: string;
   deliveryNotes?: string;
   reviewNote?: string;
+  /**
+   * false = paid, stock not settled yet (a repair pass finishes it); true = settled.
+   * Absent on orders created before it existed: those are treated as settled.
+   */
+  stockSettled?: boolean;
   paymentStatus: "UNPAID" | "PAID" | "FAILED";
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
@@ -50,6 +60,7 @@ const OrderItemSchema: Schema = new Schema({
   selectedSize: { type: String },
   selectedColor: { type: String },
   selectedColorHex: { type: String },
+  deductedQuantity: { type: Number, min: 0 },
 });
 
 const OrderSchema: Schema = new Schema(
@@ -69,6 +80,7 @@ const OrderSchema: Schema = new Schema(
     promoCode: { type: String },
     deliveryNotes: { type: String },
     reviewNote: { type: String },
+    stockSettled: { type: Boolean },
     paymentStatus: {
       type: String,
       enum: ["UNPAID", "PAID", "FAILED"],
@@ -100,6 +112,8 @@ OrderSchema.index({ paymentStatus: 1, status: 1, createdAt: -1 });
 // ...and the "All orders" tab (PAID, newest first)
 OrderSchema.index({ paymentStatus: 1, createdAt: -1 });
 OrderSchema.index({ userId: 1, createdAt: -1 });
+// Repair pass: paid orders whose stock was never settled (a handful at most; sparse keeps it tiny)
+OrderSchema.index({ stockSettled: 1, createdAt: 1 }, { partialFilterExpression: { stockSettled: false } });
 
 if (process.env.NODE_ENV === "development") {
   delete mongoose.models.Order;

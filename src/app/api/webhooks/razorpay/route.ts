@@ -9,7 +9,7 @@ import { getRazorpayWebhookSecret } from "@/lib/env";
 type RazorpayEvent = {
   event?: string;
   payload?: {
-    payment?: { entity?: { id?: string; order_id?: string } };
+    payment?: { entity?: { id?: string; order_id?: string; amount?: number; error_code?: string; error_reason?: string } };
     order?: { entity?: { id?: string } };
   };
 };
@@ -40,6 +40,15 @@ export async function POST(req: NextRequest) {
     return Response.json({ message: "Invalid payload" }, { status: 400 });
   }
 
+  // A failed attempt does NOT end the checkout (Razorpay lets the customer retry on the same
+  // order), so nothing is released here; the line is only for visibility.
+  if (event.event === "payment.failed") {
+    const failed = event.payload?.payment?.entity;
+    const clean = (v: unknown) => String(v ?? "").replace(/[^\w .:-]/g, "").slice(0, 60);
+    console.warn(`[razorpay webhook] payment attempt failed: order ${clean(failed?.order_id)}, payment ${clean(failed?.id)}, ${clean(failed?.error_code)} ${clean(failed?.error_reason)}`);
+    return Response.json({ received: true, ignored: event.event });
+  }
+
   if (event.event !== "payment.captured" && event.event !== "order.paid") {
     return Response.json({ received: true, ignored: event.event });
   }
@@ -58,7 +67,12 @@ export async function POST(req: NextRequest) {
 
   try {
     await dbConnect();
-    const result = await finalizeOrder({ razorpayOrderId, razorpayPaymentId });
+    const result = await finalizeOrder({
+      razorpayOrderId,
+      razorpayPaymentId,
+      source: "webhook",
+      paidAmountPaise: typeof payment?.amount === "number" ? payment.amount : undefined,
+    });
     if (!result.ok && result.status >= 500) {
       return Response.json({ message: result.message }, { status: 500 });
     }
