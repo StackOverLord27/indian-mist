@@ -115,3 +115,87 @@ test("blogs: 12 posts, then Load more, and the category filter fetches its own p
   await page.getByRole("link", { name: "All Posts" }).click();
   await expect(cards).toHaveCount(12);
 });
+
+// ---- /products Sort button: the WHOLE button is the click target, like Filter ----
+const sortButton = (page: import("@playwright/test").Page) => page.getByRole("button", { name: /^Sort products, current choice/ });
+const sortList = (page: import("@playwright/test").Page) => page.getByRole("listbox", { name: "Sort products" });
+
+test("/products: Sort has the same box as Filter, and clicking its far left or far right edge opens the list", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/products");
+  const sort = sortButton(page);
+  const filter = page.getByRole("button", { name: /Filter/ });
+  await expect(sort).toBeVisible();
+  // same height and the label of the current choice is on the button
+  const [sb, fb] = [(await sort.boundingBox())!, (await filter.boundingBox())!];
+  expect(Math.round(sb.height)).toBe(Math.round(fb.height));
+  await expect(sort).toContainText("Sort by: Featured");
+
+  for (const x of [3, sb.width - 3]) {
+    await page.mouse.click(sb.x + x, sb.y + sb.height / 2);
+    await expect(sortList(page)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(sortList(page)).toHaveCount(0);
+  }
+});
+
+test("/products: choosing a sort option sorts, shows the choice on the button with a check, and closes the list", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/products");
+  await sortButton(page).click();
+  const active = sortList(page).getByRole("option", { selected: true });
+  await expect(active).toHaveText("Sort by: Featured");
+  await sortList(page).getByRole("option", { name: "Price: High to Low" }).click();
+  await expect(sortList(page)).toHaveCount(0);
+  await expect(sortButton(page)).toContainText("Price: High to Low");
+  // the dearest product (Listing Item 39, price 339) is now the first card
+  await expect(page.locator("a[href^='/products/']").filter({ hasText: "Listing Item" }).first()).toContainText("Listing Item 39");
+  // the active option carries the check
+  await sortButton(page).click();
+  await expect(sortList(page).getByRole("option", { selected: true })).toHaveText("Price: High to Low");
+  await expect(sortList(page).getByRole("option", { selected: true }).locator("svg")).toHaveCount(1);
+});
+
+test("/products: Sort works from the keyboard (open, arrows, Enter, Escape)", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/products");
+  await sortButton(page).focus();
+  await page.keyboard.press("Enter");
+  await expect(sortList(page)).toBeVisible();
+  // focus starts on the active option; arrow down moves to the next one
+  await expect(sortList(page).getByRole("option", { name: "Sort by: Featured" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(sortList(page).getByRole("option", { name: "Newest Arrivals" })).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp"); // wraps to the last
+  await expect(sortList(page).getByRole("option", { name: "Name: Z to A" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(sortList(page)).toHaveCount(0);
+  await expect(sortButton(page)).toBeFocused();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(sortList(page)).toHaveCount(0);
+  await expect(sortButton(page)).toContainText("Price: Low to High");
+});
+
+test("/products: on a phone the Sort button is full width, and tapping its far edges opens the list", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  await page.goto("/products");
+  const sort = sortButton(page);
+  const box = (await sort.boundingBox())!;
+  expect(box.width).toBeGreaterThan(390 - 16 * 2 - 4); // full width inside the 16px gutters
+  for (const x of [3, box.width - 3]) {
+    await sort.tap({ position: { x, y: box.height / 2 } });
+    await expect(sortList(page)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(sortList(page)).toHaveCount(0);
+  }
+  await sort.tap();
+  await sortList(page).getByRole("option", { name: "Name: A to Z" }).tap();
+  await expect(sortList(page)).toHaveCount(0);
+  await expect(sort).toContainText("Name: A to Z");
+  await context.close();
+});

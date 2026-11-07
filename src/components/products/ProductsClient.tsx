@@ -2,7 +2,7 @@
 
 import toast from "react-hot-toast";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowUpDown, Filter, Search } from "lucide-react";
+import { ArrowUpDown, Check, Filter, Search } from "lucide-react";
 import { ProductCard } from "@/components/home/ProductCard";
 import { ProductCardSkeleton } from "@/components/ui/skeletons";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
@@ -10,6 +10,20 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import type { ListingProduct, FacetItem as ListingFacet, ListingFacets } from "@/lib/product-listing";
+
+// Sort choices (value = what the listing API / URL state uses, label = what the shopper sees)
+const SORT_OPTIONS = [
+  { value: "featured", label: "Sort by: Featured" },
+  { value: "newest", label: "Newest Arrivals" },
+  { value: "price-low", label: "Price: Low to High" },
+  { value: "price-high", label: "Price: High to Low" },
+  { value: "name-asc", label: "Name: A to Z" },
+  { value: "name-desc", label: "Name: Z to A" },
+] as const;
+
+// Filter and Sort buttons look and behave the same: the whole button is the click target
+const TOOLBAR_BUTTON =
+  "inline-flex items-center justify-center whitespace-nowrap h-10 px-4 border border-olive/30 bg-card-surface hover:bg-warm w-full sm:w-auto rounded-sm transition-colors text-sm font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive/50";
 
 type ProductItem = ListingProduct;
 type FacetItem = ListingFacet;
@@ -41,6 +55,20 @@ export default function ProductsClient({
 
   // Filters, sort, and search
   const [sortBy, setSortBy] = useState(initialSort || "featured");
+  const [sortOpen, setSortOpen] = useState(false);
+  const selectedSortRef = useRef<HTMLButtonElement | null>(null);
+  const currentSort = SORT_OPTIONS.find((o) => o.value === sortBy) ?? SORT_OPTIONS[0];
+
+  // Arrow keys / Home / End move between the sort options (Enter and Space press the focused one, Escape closes)
+  const handleSortKeys = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[role="option"]'));
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    const move = (i: number) => { e.preventDefault(); items[(i + items.length) % items.length]?.focus(); };
+    if (e.key === "ArrowDown") move(at + 1);
+    else if (e.key === "ArrowUp") move(at - 1);
+    else if (e.key === "Home") move(0);
+    else if (e.key === "End") move(items.length - 1);
+  };
   const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategories);
   const [selectedBadges, setSelectedBadges] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -174,7 +202,7 @@ export default function ProductsClient({
           
           {/* Filters Dropdown */}
           <Popover>
-            <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap h-10 px-4 border border-olive/30 bg-card-surface hover:bg-warm w-full sm:w-auto rounded-sm transition-colors text-sm font-medium">
+            <PopoverTrigger className={TOOLBAR_BUTTON}>
               <Filter className="mr-2 h-4 w-4 text-forest" />
               <span className="font-montserrat text-xs uppercase tracking-wide text-forest">Filter</span>
               {(selectedCategories.length > 0 || selectedBadges.length > 0) && (
@@ -259,22 +287,45 @@ export default function ProductsClient({
             </PopoverContent>
           </Popover>
 
-          {/* Sort By Dropdown */}
-          <div className="relative flex items-center border border-olive/30 bg-card-surface rounded-sm h-10 px-3 w-full sm:w-auto transition-colors hover:bg-warm">
-            <ArrowUpDown className="h-4 w-4 text-forest mr-2 shrink-0" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="bg-transparent font-montserrat text-xs uppercase tracking-wide text-forest focus-visible:outline-none cursor-pointer appearance-none pr-6 w-full sm:w-auto"
+          {/* Sort By: same button as Filter, option list in the same Popover */}
+          <Popover open={sortOpen} onOpenChange={setSortOpen}>
+            <PopoverTrigger
+              className={TOOLBAR_BUTTON}
+              aria-haspopup="listbox"
+              aria-label={`Sort products, current choice: ${currentSort.label}`}
             >
-              <option value="featured">Sort by: Featured</option>
-              <option value="newest">Newest Arrivals</option>
-              <option value="price-low">Price: Low to High</option>
-              <option value="price-high">Price: High to Low</option>
-              <option value="name-asc">Name: A to Z</option>
-              <option value="name-desc">Name: Z to A</option>
-            </select>
-          </div>
+              <ArrowUpDown className="mr-2 h-4 w-4 text-forest" aria-hidden="true" />
+              <span className="font-montserrat text-xs uppercase tracking-wide text-forest">{currentSort.label}</span>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-60 p-1.5 bg-card-surface border-olive/20 shadow-lg rounded-md gap-0"
+              align="end"
+              initialFocus={selectedSortRef}
+            >
+              <div role="listbox" aria-label="Sort products" onKeyDown={handleSortKeys} className="flex flex-col">
+                {SORT_OPTIONS.map((option) => {
+                  const active = option.value === sortBy;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="option"
+                      aria-selected={active}
+                      ref={active ? selectedSortRef : undefined}
+                      onClick={() => {
+                        setSortBy(option.value);
+                        setSortOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between gap-3 rounded-sm px-3 py-2.5 text-left font-montserrat text-xs uppercase tracking-wide text-forest transition-colors hover:bg-warm focus-visible:bg-warm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive/50 ${active ? "font-semibold" : ""}`}
+                    >
+                      {option.label}
+                      {active && <Check className="h-4 w-4 shrink-0 text-olive" aria-hidden="true" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
