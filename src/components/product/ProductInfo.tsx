@@ -280,7 +280,7 @@ export function ProductInfo({ product, sizeChartUrl }: { product: Product; sizeC
           onClick={handleAddToCart}
           disabled={isAdded || isSoldOut}
           className={cn(
-            "w-full sm:flex-1 font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto transition-all duration-200",
+            "w-full sm:min-w-0 sm:flex-1 font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto transition-all duration-200",
             isAdded || isSoldOut
               ? "bg-olive/80 text-cornsilk cursor-not-allowed"
               : "bg-forest text-cornsilk hover:bg-olive active:scale-[0.98]",
@@ -300,12 +300,12 @@ export function ProductInfo({ product, sizeChartUrl }: { product: Product; sizeC
             </>
           )}
         </Button>
-        {/* Buy Now — desktop full label, mobile icon+label */}
+        {/* Buy Now: the same width as Add to Bag (50 / 50 side by side; stacked full width on phones) */}
         <button
           type="button"
           disabled={isSoldOut}
           onClick={handleBuyNowClick}
-          className="w-full sm:w-auto border border-olive-leaf/40 text-forest bg-olive-leaf/10 hover:bg-olive-leaf/20 hover:border-olive-leaf/60 font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full sm:min-w-0 sm:flex-1 border border-olive-leaf/40 text-forest bg-olive-leaf/10 hover:bg-olive-leaf/20 hover:border-olive-leaf/60 font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <Zap className="mr-2 size-3.5" />
           Buy Now

@@ -199,3 +199,21 @@ test("/products: on a phone the Sort button is full width, and tapping its far e
   await expect(sort).toContainText("Name: A to Z");
   await context.close();
 });
+
+test("product page: Add to Bag and Buy Now are the same size side by side (50 / 50), and stacked full width on a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/products/listing-item-0");
+  const add = page.getByRole("button", { name: /Add to Bag/i });
+  const buy = page.getByRole("button", { name: /Buy Now/i });
+  await expect(add).toBeVisible();
+  const [a, b] = [(await add.boundingBox())!, (await buy.boundingBox())!];
+  expect(Math.abs(a.width - b.width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(a.height - b.height)).toBeLessThanOrEqual(1);
+  expect(Math.abs(a.y - b.y)).toBeLessThanOrEqual(1); // on one row
+
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.reload();
+  const [pa, pb] = [(await add.boundingBox())!, (await buy.boundingBox())!];
+  expect(Math.abs(pa.width - pb.width)).toBeLessThanOrEqual(1); // phone: stacked, both full width
+  expect(pa.width).toBeGreaterThan(390 - 40);
+});
