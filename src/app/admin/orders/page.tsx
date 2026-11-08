@@ -31,14 +31,78 @@ import { ChevronDown, ChevronRight, Package, MapPin, CreditCard } from "lucide-r
 import { SafeImage } from "@/components/ui/SafeImage";
 
 type StatusUpdater = UseMutationResult<unknown, Error, { id: string; status: string }>;
+type RefundInput = { id: string; refundStatus: string; refundNote: string; razorpayRefundId: string };
+type RefundSaver = UseMutationResult<unknown, Error, RefundInput>;
+
+const REFUND_LABEL: Record<string, string> = { NOT_NEEDED: "Not needed", PENDING: "Pending", REFUNDED: "Refunded" };
+
+/** Small badge in the orders list: only for refunds that need attention or are done */
+function RefundBadge({ status }: { status?: string }) {
+  if (status !== "PENDING" && status !== "REFUNDED") return null;
+  return (
+    <span
+      className={`mt-1 inline-block rounded-full px-2 py-0.5 font-montserrat text-[10px] font-bold uppercase tracking-wider ${
+        status === "PENDING" ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-900"
+      }`}
+    >
+      {status === "PENDING" ? "Refund pending" : "Refunded"}
+    </span>
+  );
+}
+
+/** Refunds are made in the Razorpay dashboard; this only records them (nothing is sent to Razorpay). */
+function RefundPanel({ order, saveRefund }: { order: AdminOrder; saveRefund: RefundSaver }) {
+  const [status, setStatus] = useState(order.refundStatus ?? "NOT_NEEDED");
+  const [note, setNote] = useState(order.refundNote ?? "");
+  const [refundId, setRefundId] = useState(order.razorpayRefundId ?? "");
+  const needsRefund = order.status === "CANCELLED" && status === "PENDING";
+  const field = "block w-full min-w-0 rounded-sm border border-olive/25 bg-cornsilk px-2.5 py-1.5 font-montserrat text-xs text-forest outline-none focus:border-olive";
+  return (
+    <div className="mt-4 min-w-0 space-y-2 whitespace-normal rounded-sm border border-olive/10 bg-white p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-text">Refund</p>
+      {needsRefund && (
+        <p role="alert" className="rounded-sm border border-amber-300 bg-amber-50 p-2 font-montserrat text-xs text-amber-900">
+          Cancelled orders are <b>not refunded automatically</b>. Refund ₹{order.totalAmount.toLocaleString("en-IN")} in the Razorpay
+          dashboard (Payments, find {order.razorpayPaymentId ?? "the payment"}, Refund), then set this to Refunded.
+        </p>
+      )}
+      <label className="block font-montserrat text-[11px] text-muted-text">
+        Status
+        <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} className={`${field} mt-0.5`}>
+          {Object.entries(REFUND_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="block font-montserrat text-[11px] text-muted-text">
+        Razorpay refund id (optional)
+        <input value={refundId} onChange={(e) => setRefundId(e.target.value)} maxLength={64} placeholder="rfnd_..." className={`${field} mt-0.5`} />
+      </label>
+      <label className="block font-montserrat text-[11px] text-muted-text">
+        Note (optional, only you see it)
+        <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} className={`${field} mt-0.5`} />
+      </label>
+      <Button
+        type="button"
+        disabled={saveRefund.isPending}
+        onClick={() => saveRefund.mutate({ id: order._id, refundStatus: status, refundNote: note, razorpayRefundId: refundId })}
+        className="h-8 w-full rounded-sm bg-forest px-3 font-montserrat text-[11px] font-semibold uppercase tracking-wider text-cornsilk hover:bg-olive"
+      >
+        Save refund details
+      </Button>
+    </div>
+  );
+}
 
 function OrderRow({
   order,
   updateStatus,
+  saveRefund,
   getStatusColor,
 }: {
   order: AdminOrder;
   updateStatus: StatusUpdater;
+  saveRefund: RefundSaver;
   getStatusColor: (status: string) => string;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -110,6 +174,7 @@ function OrderRow({
               </span>
               <ChevronDown className="h-3 w-3 opacity-50" />
             </DropdownMenuTrigger>
+            <RefundBadge status={order.refundStatus} />
             <DropdownMenuContent align="end" className="font-montserrat text-xs bg-cornsilk border-olive/20">
               <DropdownMenuItem
                 onClick={() => updateStatus.mutate({ id: order._id, status: "PROCESSING" })}
@@ -130,7 +195,15 @@ function OrderRow({
                 Completed (Delivered)
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => updateStatus.mutate({ id: order._id, status: "CANCELLED" })}
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Cancel this order? The stock goes back on sale.\n\nThe customer is NOT refunded automatically: you must refund ₹${order.totalAmount.toLocaleString("en-IN")} in the Razorpay dashboard yourself. The order will be listed under "Refund pending" until you mark it refunded.`,
+                    )
+                  ) {
+                    updateStatus.mutate({ id: order._id, status: "CANCELLED" });
+                  }
+                }}
                 className="text-red-600 hover:bg-red-50 focus:bg-red-50"
               >
                 Cancelled
@@ -257,6 +330,7 @@ function OrderRow({
                       <p className="text-xs text-forest"><span className="text-muted-text">Pay ID:</span> {order.razorpayPaymentId}</p>
                     )}
                   </div>
+                  <RefundPanel key={`${order.refundStatus}|${order.refundNote}|${order.razorpayRefundId}`} order={order} saveRefund={saveRefund} />
                 </div>
               </div>
 
@@ -294,12 +368,33 @@ export default function AdminOrdersPage() {
       const res = await adminAxios.patch(`/api/admin/orders/${id}/status`, { status });
       return res.data;
     },
-    onSuccess: (data) => {
-      toast.success("Order status updated");
+    onSuccess: (data: { refundReminder?: boolean; order?: { totalAmount?: number } }) => {
+      if (data?.refundReminder) {
+        toast(
+          `Order cancelled. Remember to refund ₹${(data.order?.totalAmount ?? 0).toLocaleString("en-IN")} in the Razorpay dashboard: it is NOT refunded automatically. It is listed under "Refund pending" until you mark it refunded.`,
+          { duration: 12000, icon: "⚠️" },
+        );
+      } else {
+        toast.success("Order status updated");
+      }
       queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
     },
     onError: (err) => {
       toast.error(getApiErrorMessage(err, "Failed to update status"));
+    },
+  });
+
+  const saveRefund = useMutation({
+    mutationFn: async ({ id, ...body }: RefundInput) => {
+      const res = await adminAxios.patch(`/api/admin/orders/${id}/refund`, body);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success("Refund details saved");
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+    },
+    onError: (err) => {
+      toast.error(getApiErrorMessage(err, "Could not save the refund details"));
     },
   });
 
@@ -326,6 +421,7 @@ export default function AdminOrdersPage() {
     { label: "Shipped", value: "SHIPPED" },
     { label: "Completed", value: "DELIVERED" },
     { label: "Cancelled", value: "CANCELLED" },
+    { label: "Refund pending", value: "REFUND_PENDING" },
   ];
 
   return (
@@ -341,12 +437,12 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      <div className="flex border-b border-olive/20 mb-4">
+      <div className="flex overflow-x-auto border-b border-olive/20 mb-4">
         {tabs.map((tab) => (
           <button
             key={tab.value}
             onClick={() => { setFilter(tab.value); setPage(1); }}
-            className={`px-4 py-2 font-montserrat text-xs uppercase tracking-widest font-semibold transition-colors ${
+            className={`whitespace-nowrap px-4 py-2 font-montserrat text-xs uppercase tracking-widest font-semibold transition-colors ${
               filter === tab.value
                 ? "border-b-2 border-forest text-forest"
                 : "text-muted-text hover:text-forest"
@@ -408,7 +504,7 @@ export default function AdminOrdersPage() {
               </TableRow>
             ) : (
               data.map((order) => (
-                <OrderRow key={order._id} order={order} updateStatus={updateStatus} getStatusColor={getStatusColor} />
+                <OrderRow key={order._id} order={order} updateStatus={updateStatus} saveRefund={saveRefund} getStatusColor={getStatusColor} />
               ))
             )}
           </TableBody>

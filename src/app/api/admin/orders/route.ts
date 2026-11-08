@@ -12,11 +12,13 @@ export const GET = withAdmin(async (req: NextRequest) => {
 
     const base = { paymentStatus: 'PAID' };
     const query: Record<string, unknown> = { ...base };
-    if (status && status !== 'ALL') {
+    if (status === 'REFUND_PENDING') {
+      query.refundStatus = 'PENDING'; // the "Refund pending" tab (a filter, not an order status)
+    } else if (status && status !== 'ALL') {
       query.status = status;
     }
 
-    const [orders, total, grouped] = await Promise.all([
+    const [orders, total, grouped, refundPending] = await Promise.all([
       Order.find(query)
         .select('-razorpaySignature') // never needed by the page
         .sort({ createdAt: -1, _id: -1 })
@@ -29,8 +31,9 @@ export const GET = withAdmin(async (req: NextRequest) => {
         { $match: base },
         { $group: { _id: '$status', count: { $sum: 1 } } },
       ]),
+      Order.countDocuments({ paymentStatus: 'PAID', refundStatus: 'PENDING' }),
     ]);
-    const statusCounts: Record<string, number> = { ALL: 0 };
+    const statusCounts: Record<string, number> = { ALL: 0, REFUND_PENDING: refundPending };
     for (const g of grouped) {
       statusCounts[g._id] = g.count;
       statusCounts.ALL += g.count;

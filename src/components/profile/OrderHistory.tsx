@@ -40,7 +40,23 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
   },
 };
 
-function getStatusDetails(status: string): StatusConfig {
+// What the customer sees once the shop has recorded a refund: neutral, no timeline promised
+const REFUND_IN_PROGRESS: StatusConfig = {
+  label: "Cancelled, refund in progress",
+  badgeClass: "bg-rose-100/80 text-rose-900 border border-rose-300/70",
+  dotClass: "bg-rose-500",
+  description: "This order has been cancelled and your refund is in progress.",
+};
+const REFUNDED: StatusConfig = {
+  label: "Refunded",
+  badgeClass: "bg-emerald-100/80 text-emerald-900 border border-emerald-300/70",
+  dotClass: "bg-emerald-500",
+  description: "This order has been refunded.",
+};
+
+function getStatusDetails(status: string, refundStatus?: string): StatusConfig {
+  if (refundStatus === "REFUNDED") return REFUNDED;
+  if (refundStatus === "PENDING" && status?.toUpperCase() === "CANCELLED") return REFUND_IN_PROGRESS;
   const upper = status?.toUpperCase() || "PROCESSING";
   return (
     STATUS_CONFIG[upper] || {
@@ -112,7 +128,7 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
         <div className="divide-y divide-olive-leaf/10">
           {orders.map((order) => {
             const isExpanded = !!expandedOrders[order._id];
-            const statusConfig = getStatusDetails(order.status);
+            const statusConfig = getStatusDetails(order.status, order.refundStatus);
 
             return (
               <div key={order._id} className="transition-colors">
@@ -144,6 +160,8 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                           month: "short",
                         })}
                       </p>
+                      {/* On a phone the Status column is off to the right (the table scrolls sideways): say it here too */}
+                      <p className="font-montserrat text-[10px] font-semibold text-forest md:hidden">{statusConfig.label}</p>
                     </div>
                   </div>
 
@@ -164,7 +182,7 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                   {/* Status Badge reflecting Admin Choice */}
                   <div className="w-28 flex justify-center">
                     <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-montserrat text-[10px] font-bold uppercase tracking-wider ${statusConfig.badgeClass}`}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-2xl text-center leading-tight font-montserrat text-[10px] font-bold uppercase tracking-wider ${statusConfig.badgeClass}`}
                     >
                       <span className={`size-1.5 rounded-full ${statusConfig.dotClass}`} />
                       {statusConfig.label}

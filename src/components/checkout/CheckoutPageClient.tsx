@@ -16,6 +16,7 @@ import { useCartSync } from "@/lib/use-cart-sync";
 import { formatPrice } from "@/lib/utils";
 import { usePricingSettings } from "@/hooks/usePricingSettings";
 import { computeOrderTotals } from "@/lib/order-totals";
+import { CHECKOUT_WINDOW_SECONDS } from "@/lib/checkout-timing";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { StepProgress } from "@/components/checkout/StepProgress";
 import { ShippingForm } from "@/components/checkout/ShippingForm";
@@ -294,6 +295,8 @@ export function CheckoutPageClient() {
           email: data.email.trim(),
           contact: data.phone.trim(),
         },
+        // The payment window closes a little before the stock hold would run out (Razorpay `timeout`, seconds)
+        timeout: CHECKOUT_WINDOW_SECONDS,
         theme: {
           color: "#283618",
           backdrop_color: "rgba(40, 54, 24, 0.75)",

@@ -3,12 +3,14 @@ import { Product } from "@/models/product.model";
 import { StockReservation } from "@/models/stock-reservation.model";
 import { Order } from "@/models/order.model";
 import { addReviewNote } from "@/lib/review-note";
+import { HOLD_MINUTES } from "@/lib/checkout-timing";
 
-// How long stock is held for a checkout before it is returned to sale.
+// How long stock is held for a checkout before it is returned to sale (defined in checkout-timing.ts
+// so the browser's payment window can be derived from the same number).
 // This is deliberately SHORT and separate from PENDING_ORDER_TTL_SECONDS below: a hold only keeps
 // stock off the shelf while the shopper is paying; the pending order must live much longer so a
 // payment that lands after the hold expired can still become an order.
-export const HOLD_MINUTES = 15;
+export { HOLD_MINUTES };
 
 /**
  * How long what finalizeOrder needs to create the order after payment (the pending order in

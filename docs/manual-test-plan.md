@@ -119,6 +119,14 @@ Skip unless you want to see it: two browsers, one unit, both press Pay. Expected
 6. Type 15 wrong codes in a row. Expected: a "too many invalid codes, try again in 10 minutes" message.
 7. Free shipping and shipping fee: Pricing > shipping fee and free-shipping threshold. Buy just under and just over the threshold. Expected: the fee appears below the threshold and disappears above it.
 
+### 3.9c Refund tracking, duplicate flag and payment window length [AUTO: `tests/refunds-and-duplicates.test.ts`, `e2e/refunds.e2e.ts`] + [MANUAL on your site]
+1. Place a small real/test order, then in Admin > Orders choose Cancelled. Expected: a confirmation that says you must refund in Razorpay yourself; after confirming, a long reminder toast; the order shows a **Refund pending** badge and appears under the **Refund pending** tab.
+2. Open the order (click the row): the Refund box. Refund it in the Razorpay dashboard, then set Refunded, paste the `rfnd_` id, save. Expected: badge becomes Refunded, the tab count drops.
+3. Sign in as that customer, Profile: the order says "Cancelled, refund in progress", then "Refunded". On a phone the status is also written under the order number. Your note and the refund id must not be visible anywhere for the customer.
+4. Pay twice for the same items from one account within 30 minutes. Expected: the second order has a red "Possible duplicate payment" note.
+5. Start a payment and leave the Razorpay window open without paying. Expected: it closes by itself after about 14 minutes ("Payment cancelled"), and the stock is released. (Not automated: it takes 14 minutes.)
+6. Admin dashboard: the line "Payments received without an order: 0" is visible.
+
 ### 3.9 Admin order status changes and cancel with restock [AUTO: scenario 9] + manual feel
 1. Admin > Orders > open the paid order > change status Processing > Shipped > Delivered (shown on the "Completed" tab). Expected: the tab counts update; the customer sees the new status on Profile > Orders.
 2. Cancel a paid order. Expected: status Cancelled, stock goes back **once**, a product that had been marked Sold Out becomes buyable. Try to cancel/change it again: it says a cancelled order cannot be changed.

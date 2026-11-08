@@ -33,6 +33,15 @@ export interface IOrder extends Document {
    * Absent on orders created before it existed: those are treated as settled.
    */
   stockSettled?: boolean;
+  /**
+   * Refunds are made by hand in the Razorpay dashboard; this only records them. Absent = nothing
+   * recorded. Set to PENDING when a paid order is cancelled; the admin changes it by hand.
+   */
+  refundStatus?: "NOT_NEEDED" | "PENDING" | "REFUNDED";
+  /** Admin-only note about the refund (never shown to the customer) */
+  refundNote?: string;
+  /** Razorpay's refund id (rfnd_...), entered by the admin */
+  razorpayRefundId?: string;
   paymentStatus: "UNPAID" | "PAID" | "FAILED";
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
@@ -81,6 +90,9 @@ const OrderSchema: Schema = new Schema(
     deliveryNotes: { type: String },
     reviewNote: { type: String },
     stockSettled: { type: Boolean },
+    refundStatus: { type: String, enum: ["NOT_NEEDED", "PENDING", "REFUNDED"] }, // no default: absent = nothing recorded
+    refundNote: { type: String },
+    razorpayRefundId: { type: String },
     paymentStatus: {
       type: String,
       enum: ["UNPAID", "PAID", "FAILED"],
@@ -114,6 +126,9 @@ OrderSchema.index({ paymentStatus: 1, createdAt: -1 });
 OrderSchema.index({ userId: 1, createdAt: -1 });
 // Repair pass: paid orders whose stock was never settled (a handful at most; sparse keeps it tiny)
 OrderSchema.index({ stockSettled: 1, createdAt: 1 }, { partialFilterExpression: { stockSettled: false } });
+
+// "Refund pending" tab of the admin orders list (a handful of rows at most)
+OrderSchema.index({ refundStatus: 1, createdAt: -1 }, { partialFilterExpression: { refundStatus: "PENDING" } });
 
 if (process.env.NODE_ENV === "development") {
   delete mongoose.models.Order;

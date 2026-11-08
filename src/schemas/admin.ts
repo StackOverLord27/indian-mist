@@ -365,3 +365,15 @@ export const CollectionSchema = z.object({
   order: z.number().optional().default(0),
   products: z.array(z.string()).optional(),
 });
+
+// Refund bookkeeping on an order: set by hand by the admin after refunding in the Razorpay dashboard
+export const OrderRefundSchema = z.object({
+  refundStatus: z.enum(["NOT_NEEDED", "PENDING", "REFUNDED"]),
+  refundNote: z.string().trim().max(500, "Note is too long").optional(),
+  razorpayRefundId: z
+    .string()
+    .trim()
+    .max(64, "Refund id is too long")
+    .regex(/^[A-Za-z0-9_]*$/, "A Razorpay refund id has only letters, numbers and underscores (rfnd_...)")
+    .optional(),
+});

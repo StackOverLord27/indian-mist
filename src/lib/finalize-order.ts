@@ -68,6 +68,42 @@ async function checkPaidAmount(order: HydratedDocument<IOrder>, paidAmountPaise:
   }
 }
 
+/** Two paid orders from one account with the same items closer together than this are flagged. */
+export const DUPLICATE_WINDOW_MINUTES = 30;
+
+const lineSignature = (items: { productId?: unknown; selectedSize?: string; selectedColor?: string; quantity: number }[]) =>
+  items.map((i) => `${String(i.productId)}|${i.selectedSize ?? ""}|${i.selectedColor ?? ""}|${i.quantity}`).sort().join(",");
+
+/**
+ * The same account paying twice for the same things within 30 minutes (a double click, a retry
+ * after a slow page) is probably a mistake. The new order stands (the customer has paid), but it
+ * gets a note so the shop can check before shipping and refund one of the two. Cancelled orders
+ * do not count. Never a reason to fail the order.
+ */
+async function flagPossibleDuplicate(order: HydratedDocument<IOrder>) {
+  try {
+    const since = new Date(order.createdAt.getTime() - DUPLICATE_WINDOW_MINUTES * 60_000);
+    const recent = await Order.find({
+      userId: order.userId,
+      _id: { $ne: order._id },
+      paymentStatus: "PAID",
+      status: { $ne: "CANCELLED" },
+      createdAt: { $gte: since, $lte: order.createdAt },
+    })
+      .select("items.productId items.selectedSize items.selectedColor items.quantity")
+      .lean();
+    const mine = lineSignature(order.items);
+    const twin = recent.find((o) => lineSignature(o.items) === mine);
+    if (!twin) return;
+    await addReviewNote(
+      order._id,
+      `Possible duplicate payment: the same account paid for the same items in order #${String(twin._id).slice(-6).toUpperCase()} less than ${DUPLICATE_WINDOW_MINUTES} minutes earlier. Check with the customer before shipping both; refund one in Razorpay if it is a mistake.`,
+    );
+  } catch (error) {
+    console.error("[finalizeOrder] duplicate check failed:", error);
+  }
+}
+
 /** The payment is now an order: any record of it as "unmatched" is resolved. */
 async function resolveUnmatched(razorpayOrderId: string, orderId: unknown) {
   try {
@@ -197,6 +233,7 @@ export async function finalizeOrder(opts: {
   }
   await recordPromoReviewNote(order);
   await checkPaidAmount(order, paidAmountPaise);
+  await flagPossibleDuplicate(order);
   await resolveUnmatched(razorpayOrderId, order._id);
 
   // The order is saved: the pending copy is no longer needed. A leftover one only expires later.

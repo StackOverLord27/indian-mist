@@ -305,13 +305,15 @@ test("9. admin cancels a paid order: stock restored once, a second cancel change
   expect(await stockOf(shop.plain)).toBe(7);
 
   // (a) cancel order one in the admin UI, then try again
+  // cancelling asks for confirmation (the refund is not automatic): accept it
+  adminPage.on("dialog", (dialog) => void dialog.accept());
   await adminPage.goto("/admin/orders");
   const row = adminPage.getByRole("row").filter({ hasText: shortId(orderOne) });
   await row.getByRole("button", { name: /PROCESSING/i }).click();
   await adminPage.getByRole("menuitem", { name: "Cancelled" }).click();
-  await expect(adminPage.getByText("Order status updated").first()).toBeVisible();
+  await expect(adminPage.getByText(/Remember to refund/).first()).toBeVisible(); // the refund reminder
   await expect.poll(() => stockOf(shop.plain)).toBe(8);
-  expect((await ordersFor(one.razorpayOrderId))[0].status).toBe("CANCELLED");
+  expect((await ordersFor(one.razorpayOrderId))[0]).toMatchObject({ status: "CANCELLED", refundStatus: "PENDING" }); // listed as refund pending
 
   const again = adminPage.getByRole("row").filter({ hasText: shortId(orderOne) });
   await again.getByRole("button", { name: /CANCELLED/i }).click();

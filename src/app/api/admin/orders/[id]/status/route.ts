@@ -45,6 +45,11 @@ export const PATCH = withAdmin(async (req: NextRequest, context) => {
         );
         if (!before) return null;
         if (status === 'CANCELLED' && before.paymentStatus === 'PAID') {
+          // The money is NOT returned automatically: remind the admin by listing it as "refund pending"
+          // (unless they already recorded something for this order)
+          if (!before.refundStatus) {
+            await Order.updateOne({ _id: id }, { refundStatus: 'PENDING' }, { session });
+          }
           if (before.stockSettled === false) throw NOT_SETTLED; // settled by someone else in between: start again
           // Only what was really taken from stock goes back. Orders from before deductedQuantity
           // existed have no record, so they give back the full quantity (as they always did).
@@ -74,5 +79,6 @@ export const PATCH = withAdmin(async (req: NextRequest, context) => {
   }
 
   const order = await Order.findById(id);
-  return successResponse({ order, message: 'Status updated successfully' });
+  const refundReminder = status === 'CANCELLED' && previous.paymentStatus === 'PAID' && order?.refundStatus === 'PENDING';
+  return successResponse({ order, refundReminder, message: 'Status updated successfully' });
 });

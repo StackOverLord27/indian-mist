@@ -18,7 +18,8 @@ export const GET = withDB(async (req: NextRequest) => {
   const orders = await Order.find({ userId, paymentStatus: "PAID" })
     .sort({ createdAt: -1 })
     .limit(50) // the latest 50 orders: this list is not paged
-    .select("-razorpaySignature -razorpayPaymentId") // payment internals the page never shows
+    // payment internals and the shop's own notes (review notes, refund notes and ids) are never sent to the customer
+    .select("-razorpaySignature -razorpayPaymentId -reviewNote -refundNote -razorpayRefundId -stockSettled")
     .populate("items.productId", "name images price slug")
     .lean();
 

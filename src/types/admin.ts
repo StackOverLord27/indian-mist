@@ -317,6 +317,10 @@ export interface AdminOrder {
   promoCode?: string;
   deliveryNotes?: string;
   reviewNote?: string;
+  /** Recorded by hand (a cancelled paid order starts as PENDING); absent = nothing recorded */
+  refundStatus?: 'NOT_NEEDED' | 'PENDING' | 'REFUNDED';
+  refundNote?: string;
+  razorpayRefundId?: string;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   shippingAddress: {

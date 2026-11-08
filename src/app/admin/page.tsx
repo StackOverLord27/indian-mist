@@ -17,7 +17,7 @@ export default function AdminDashboardPage() {
   const { data: carousel } = useCarousel();
   const { data: collectionsData } = useAdminCollections({ limit: 1 });
   const { data: blogsData } = useAdminBlogs({ limit: 1 });
-  const { data: unmatched } = useUnmatchedPayments();
+  const { data: unmatched, isError: unmatchedError } = useUnmatchedPayments();
 
   const stats = [
     { label: 'Total Products', value: productsData?.total || 0, icon: Package },
@@ -29,7 +29,7 @@ export default function AdminDashboardPage() {
 
   return (
     <AdminProtectedRoute>
-      {!!unmatched?.count && (
+      {unmatched?.count ? (
         <div role="alert" className="mb-6 rounded-md border border-red-300 bg-red-50 p-5 text-red-900">
           <h3 className="font-serif text-base">
             {unmatched.count} payment{unmatched.count === 1 ? '' : 's'} received without an order
@@ -50,6 +50,18 @@ export default function AdminDashboardPage() {
               </li>
             ))}
           </ul>
+        </div>
+      ) : (
+        // Always shown, so "0" is something you can see (an empty page could also mean it failed to load)
+        <div
+          data-testid="unmatched-payments-status"
+          className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-olive/15 bg-card px-5 py-3 font-sans text-xs text-forest"
+        >
+          <span className="font-serif text-base">Payments received without an order:</span>
+          <b className="text-base">{unmatchedError ? '—' : unmatched ? 0 : '…'}</b>
+          <span className="text-forest/60">
+            {unmatchedError ? 'Could not check. Reload the page; look in the Razorpay dashboard if it keeps failing.' : unmatched ? 'Nothing to do. Check this daily.' : 'Checking…'}
+          </span>
         </div>
       )}
       <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-5 gap-4 mb-8">
