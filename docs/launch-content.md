@@ -30,7 +30,7 @@ Run `node scripts/find-placeholder-content.mjs` (read-only). These were saved wh
 - Collections page intro "Discover items grouped by causes and themes. Thoughtfully put together for your journey."
 - Checkout "We accept: UPI, Cards, Net Banking, Wallets" (true only if all are enabled in the Razorpay account).
 - Footer "© 2026 Indian Mist" (fixed year).
-- Blog category suggestions in the admin include "Sustainability".
+- ~~Blog category suggestions in the admin include "Sustainability".~~ Removed: the category list is now only what the owner created or already used on a post.
 - Order e-mails and OTP e-mails (out of scope: postponed).
 
 ## Follow-up: refund / shipping pages and the trust strip

@@ -8,14 +8,6 @@ import { BlogCategory } from "@/models/blog-category.model";
 import { Blog } from "@/models/blog.model";
 import { escapeRegex } from "@/lib/pagination";
 
-const DEFAULT_CATEGORIES = [
-  "Trail Stories",
-  "Gear Guides",
-  "Sustainability",
-  "Brand Updates",
-  "Tips & Tricks",
-];
-
 async function getAllMergedCategories(): Promise<string[]> {
   const [saved, distinctFromBlogs] = await Promise.all([
     BlogCategory.find().sort({ name: 1 }).lean<{ name: string }[]>(),
@@ -39,8 +31,7 @@ async function getAllMergedCategories(): Promise<string[]> {
   saved.forEach((s) => add(s.name));
   // Add any existing categories currently on blogs
   distinctFromBlogs.forEach((c) => add(String(c)));
-  // Add defaults
-  DEFAULT_CATEGORIES.forEach((c) => add(c));
+  // (No built-in suggestions: the list is only what the owner created or has already used)
 
   return categories;
 }

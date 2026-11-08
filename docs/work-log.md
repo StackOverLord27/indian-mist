@@ -310,7 +310,7 @@ Scope: no new features. Gate, review of the whole branch, fix proven defects, wr
 - B7: sign-up / sign-in messages reveal whether an address has an account (accepted earlier).
 - Webhook and checkout use the general 100 requests / 10 s per IP limiter.
 - `proxy.ts` lets any valid customer token load the `/admin` page shell (the admin APIs refuse them); the HSTS header covers subdomains for 2 years.
-- `DEFAULT_CATEGORIES` ("Trail Stories", "Gear Guides", ...) are still offered in the blog category picker of the admin.
+- ~~`DEFAULT_CATEGORIES` ("Trail Stories", "Gear Guides", ...) are still offered in the blog category picker of the admin.~~ Removed later (see "Owner decisions on the open questions").
 - Sitemap refreshes hourly (a new product can take up to an hour to be listed), unlike the pages.
 
 ## Dependency upgrade (after Prompt 13)
@@ -389,3 +389,10 @@ Tests (`e2e/storefront.e2e.ts`, +4): same height as Filter and clicking 3 px ins
 
 ## Page width: fill normal screens, centre only ultrawide
 Owner feedback (1920x1080 laptop): the 1280 px centred column looked wrong and left the hero text far from the edge. The page container's maximum width is now a theme token, `--container-page: 160rem` (2560 px) in `globals.css`, used as `max-w-page` by every page container (navbar, footer, home sections, listings, product, blog, cart, checkout, profile, policy pages, skeletons; admin untouched, it has its own layout). Screens up to 2560 px wide (1366, 1920, QHD) are filled with the usual side margins (16 / 24 / 40 / 64 px); only wider screens (3440 ultrawide) get a centred 2560 px column. The home hero's text keeps its left edge on the container (`lg:pl-[max(4rem,calc((100vw-160rem)/2+4rem))]`), so it now sits 64 px from the edge at 1920 instead of 240 px. Test: `e2e/blog-header.e2e.ts` now checks the page content's left edge (16 / 40 / 64 / 64 / 64 px at 390 / 768 / 1280 / 1920 / 2560, and 504 px at 3440) and that the breadcrumb is in the same place on five pages at every width. To change the limit later, edit the one token. Gate: typecheck clean, lint 0 errors / 3 warnings, 421 unit tests, browser: width tests 7/7 and the storefront, launch-content, cart-shipping, refunds and sign-in specs 19/19 (the payment scenarios were not re-run: only the checkout container's maximum width changed).
+
+## Owner decisions on the open questions
+Owner's answers to the open questions: keep auto "Refund pending" on cancel, keep the 10 / 30 per hour checkout limits, keep whole-rupee price display, skip card layouts for admin tables on phones, do the checkout-start crash window later; do the rest:
+- **Mark resolved for unmatched payments.** `PATCH /api/admin/unmatched-payments/[id]` (admin) sets `resolvedAt` and `resolvedManually: true`; safe to repeat (200 "Already resolved"), 404 unknown, 400 invalid id; nothing is sent to Razorpay. Each row of the dashboard alert has a "Mark resolved" button (asks first). A later webhook retry for the same payment only raises `seen`; it stays resolved.
+- **Refunds waiting for you** on the dashboard (always shown, 0 included, amber with the count when above 0, links to Orders; "—" when it cannot be loaded). It reads the tab count of the existing orders list (`status=REFUND_PENDING&limit=1`), no new endpoint.
+- **Blog category suggestions removed** (API and picker): the list is only the categories created in the admin plus the ones already on posts; with none, the picker offers only "Create New Category".
+Tests: `tests/unmatched-and-categories.test.ts` (6) and two extended browser tests in `e2e/refunds.e2e.ts` (resolve from the dashboard; the refunds line shows 0, then 1 after a cancel, then 0 after marking refunded). Gate: typecheck clean, lint 0 errors / 3 warnings, 427 unit tests, browser specs other than payments pass (payment scenarios not re-run: nothing they touch changed).

@@ -113,8 +113,8 @@ None of this is built in; set it up, it takes 30 minutes.
   - `[csp]` : a browser blocked something the page tried to load (broken Razorpay or image?).
   - `Needs review` notes in admin Orders (promo used beyond its limit, or stock ran out after the hold expired): look at the **Orders** page daily.
 - [ ] **Every day (two minutes), Admin dashboard and Admin > Orders:**
-  1. **Dashboard: "Payments received without an order" must read 0.** It is always shown (a box with 0, or a red alert listing each payment). Anything above 0 means a customer paid and has no order: fulfil it by hand or refund it in Razorpay. "—" means the check itself failed: reload.
-  2. **Orders > "Refund pending" tab** (count in brackets): every cancelled paid order waits here until you have refunded the money in Razorpay and marked it Refunded (with the Razorpay refund id).
+  1. **Dashboard: "Payments received without an order" must read 0.** It is always shown (a box with 0, or a red alert listing each payment). Anything above 0 means a customer paid and has no order: fulfil it by hand or refund it in Razorpay, then press **Mark resolved** on its row (it asks first; this only hides it, nothing is sent to Razorpay). If you also create payment links on this Razorpay account, those payments show up here too: mark them resolved. "—" means the check itself failed: reload.
+  2. **Dashboard: "Refunds waiting for you"** (also the **Orders > "Refund pending" tab**, count in brackets): every cancelled paid order waits here until you have refunded the money in Razorpay and marked it Refunded (with the Razorpay refund id).
   3. **Orders with a red "Needs review" note**: amount mismatch, promo over its limit, stock ran out, or **"Possible duplicate payment"** (the same account paid for the same items twice within 30 minutes: check with the customer, refund one).
 - [ ] **Razorpay dashboard**: Webhooks > delivery log. Failures there mean paid orders are not being created from the webhook.
 - [ ] **Atlas**: Alerts for connection spikes, storage, and "cluster paused/unreachable"; turn on the performance advisor e-mails.

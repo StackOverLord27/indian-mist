@@ -9,7 +9,7 @@ import { useAnnouncements } from '@/hooks/admin/useAdminAnnouncements';
 import { useCarousel } from '@/hooks/admin/useAdminCarousel';
 import { useAdminCollections } from '@/hooks/admin/useAdminCollections';
 import { useAdminBlogs } from '@/hooks/admin/useAdminBlogs';
-import { useUnmatchedPayments } from '@/hooks/admin/useUnmatchedPayments';
+import { useUnmatchedPayments, useResolveUnmatchedPayment, useRefundPendingCount } from '@/hooks/admin/useUnmatchedPayments';
 
 export default function AdminDashboardPage() {
   const { data: productsData } = useAdminProducts({ limit: 1 });
@@ -18,6 +18,8 @@ export default function AdminDashboardPage() {
   const { data: collectionsData } = useAdminCollections({ limit: 1 });
   const { data: blogsData } = useAdminBlogs({ limit: 1 });
   const { data: unmatched, isError: unmatchedError } = useUnmatchedPayments();
+  const resolveUnmatched = useResolveUnmatchedPayment();
+  const { data: refundsPending, isError: refundsError } = useRefundPendingCount();
 
   const stats = [
     { label: 'Total Products', value: productsData?.total || 0, icon: Package },
@@ -37,7 +39,7 @@ export default function AdminDashboardPage() {
           <p className="font-sans text-xs mt-1 mb-3">
             Razorpay confirmed these payments but the checkout session had expired, so no order exists. Find each one in the
             Razorpay dashboard (search the payment id), then either create the order by hand or refund it. A row disappears
-            by itself if an order for it appears later.
+            by itself if an order for it appears later, or when you mark it resolved after dealing with it.
           </p>
           <ul className="space-y-1 font-sans text-xs">
             {unmatched.payments.map((p) => (
@@ -47,6 +49,18 @@ export default function AdminDashboardPage() {
                 {p.amount !== undefined && <span>₹{p.amount.toFixed(2)}</span>}
                 <span>{new Date(p.createdAt).toLocaleString()}</span>
                 <span>via {p.source === 'webhook' ? 'Razorpay webhook' : 'customer\'s browser'}</span>
+                <button
+                  type="button"
+                  disabled={resolveUnmatched.isPending}
+                  onClick={() => {
+                    if (confirm('Mark this payment as resolved?\n\nDo this only after you have refunded it in Razorpay or created the order by hand. It will leave this list.')) {
+                      resolveUnmatched.mutate(p._id);
+                    }
+                  }}
+                  className="ml-auto rounded-sm border border-red-300 bg-white px-2 py-0.5 font-semibold uppercase tracking-wider text-red-800 hover:bg-red-100 disabled:opacity-50"
+                >
+                  Mark resolved
+                </button>
               </li>
             ))}
           </ul>
@@ -64,6 +78,23 @@ export default function AdminDashboardPage() {
           </span>
         </div>
       )}
+      <Link
+        href="/admin/orders"
+        data-testid="refunds-pending-status"
+        className={`mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border px-5 py-3 font-sans text-xs text-forest transition-colors ${
+          refundsPending ? 'border-amber-300 bg-amber-50 hover:bg-amber-100' : 'border-olive/15 bg-card hover:bg-warm'
+        }`}
+      >
+        <span className="font-serif text-base">Refunds waiting for you:</span>
+        <b className="text-base">{refundsError ? '—' : refundsPending ?? '…'}</b>
+        <span className="text-forest/60">
+          {refundsError
+            ? 'Could not check. Look at Orders > Refund pending.'
+            : refundsPending
+              ? 'Cancelled orders you still have to refund in Razorpay. Open Orders > Refund pending.'
+              : 'Nothing to refund.'}
+        </span>
+      </Link>
       <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-5 gap-4 mb-8">
         {stats.map((stat, i) => {
           const Icon = stat.icon;

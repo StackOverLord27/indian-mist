@@ -33,6 +33,8 @@ test("dashboard: the unmatched-payments check is visible with 0, and turns into 
   const status = page.getByTestId("unmatched-payments-status");
   await expect(status).toContainText("Payments received without an order:");
   await expect(status).toContainText("0");
+  await expect(page.getByTestId("refunds-pending-status")).toContainText("Refunds waiting for you:");
+  await expect(page.getByTestId("refunds-pending-status")).toContainText("Nothing to refund.");
 
   const d = await db();
   await d.collection("unmatchedpayments").insertOne({ razorpayOrderId: "order_unmatched_1", razorpayPaymentId: "pay_unmatched_1", amount: 499, source: "webhook", seen: 1, createdAt: new Date(), updatedAt: new Date() });
@@ -40,6 +42,12 @@ test("dashboard: the unmatched-payments check is visible with 0, and turns into 
   await expect(page.getByText("1 payment received without an order")).toBeVisible();
   await expect(page.getByText("pay_unmatched_1")).toBeVisible();
   await expect(page.getByTestId("unmatched-payments-status")).toHaveCount(0);
+
+  // "Mark resolved" asks first, then the row leaves the list and the box shows 0 again
+  page.once("dialog", (dialog) => { expect(dialog.message()).toContain("refunded it in Razorpay"); void dialog.accept(); });
+  await page.getByRole("button", { name: "Mark resolved" }).click();
+  await expect(page.getByTestId("unmatched-payments-status")).toContainText("0");
+  expect(await d.collection("unmatchedpayments").findOne({ razorpayPaymentId: "pay_unmatched_1" })).toMatchObject({ resolvedManually: true });
   await d.collection("unmatchedpayments").deleteMany({});
   await admin.close();
 });
@@ -66,6 +74,12 @@ test("cancelling a paid order reminds about the refund, lists it as pending, and
   await page.getByRole("button", { name: /Refund pending\s*\(1\)/ }).click();
   await expect(page.getByRole("row").filter({ hasText: "Ada Customer" })).toBeVisible();
 
+  // The dashboard reminds about it too
+  const dash = await admin.newPage();
+  await dash.goto("/admin");
+  await expect(dash.getByTestId("refunds-pending-status")).toContainText("1");
+  await expect(dash.getByTestId("refunds-pending-status")).toContainText("Refund pending");
+
   // The customer sees "Cancelled, refund in progress" (and no notes)
   const customer = await newContext(browser, "customer-a");
   const cp = await customer.newPage();
@@ -89,6 +103,9 @@ test("cancelling a paid order reminds about the refund, lists it as pending, and
   const d = await db();
   const saved = await d.collection("orders").findOne({ _id: oid(orderId) });
   expect(saved).toMatchObject({ refundStatus: "REFUNDED", razorpayRefundId: "rfnd_TEST1234", refundNote: "Refunded in the dashboard", status: "CANCELLED" });
+
+  await dash.reload();
+  await expect(dash.getByTestId("refunds-pending-status")).toContainText("Nothing to refund.");
 
   // The customer now sees "Refunded", without the note or the refund id
   await cp.reload();

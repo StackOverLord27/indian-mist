@@ -7,14 +7,6 @@ import {
   useCreateBlogCategory,
 } from "@/hooks/admin/useAdminBlogs";
 
-const DEFAULT_CATEGORIES = [
-  "Trail Stories",
-  "Gear Guides",
-  "Sustainability",
-  "Brand Updates",
-  "Tips & Tricks",
-];
-
 interface BlogCategorySelectProps {
   value: string;
   onChange: (value: string) => void;
@@ -32,12 +24,9 @@ export default function BlogCategorySelect({
   const [isAdding, setIsAdding] = useState(false);
   const [newCatName, setNewCatName] = useState("");
 
-  // Merge loaded categories with defaults, keeping current selected value if present
+  // Only the categories that exist (created here or already on a post); the current value is kept if present
   const categories = (() => {
-    const list =
-      categoryList && categoryList.length > 0
-        ? categoryList
-        : DEFAULT_CATEGORIES;
+    const list = categoryList ?? [];
     if (value && !list.includes(value)) {
       return [value, ...list];
     }

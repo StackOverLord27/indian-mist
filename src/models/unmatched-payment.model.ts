@@ -15,6 +15,8 @@ export interface IUnmatchedPayment extends Document {
   seen: number;
   resolvedAt?: Date;
   resolvedOrderId?: mongoose.Types.ObjectId;
+  /** true when the admin marked it resolved by hand (refunded in Razorpay, or fulfilled outside the site) */
+  resolvedManually?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +30,7 @@ const UnmatchedPaymentSchema = new Schema<IUnmatchedPayment>(
     seen: { type: Number, default: 1 },
     resolvedAt: { type: Date },
     resolvedOrderId: { type: Schema.Types.ObjectId, ref: "Order" },
+    resolvedManually: { type: Boolean },
   },
   { timestamps: true },
 );
