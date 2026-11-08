@@ -260,8 +260,9 @@ export function Navbar({
 
   return (
     <nav
+      data-testid="site-navbar"
       className={cn(
-        "relative h-16 w-full border-b border-olive-leaf/15 bg-cornsilk transition-shadow duration-300",
+        "sticky top-0 z-50 h-16 w-full border-b border-olive-leaf/15 bg-cornsilk transition-shadow duration-300",
         scrolled && "shadow-sm"
       )}
     >

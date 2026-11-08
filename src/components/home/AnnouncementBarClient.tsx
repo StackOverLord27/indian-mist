@@ -43,7 +43,7 @@ export function AnnouncementBarClient({ displayItems }: { displayItems: string[]
   const activeIndex = currentIndex % displayItems.length;
 
   return (
-    <div className="flex h-8 w-full items-center justify-center overflow-hidden bg-black-forest px-4 font-sans text-2xs uppercase tracking-widest text-cornsilk sm:h-7">
+    <div data-testid="announcement-bar" className="flex h-8 w-full items-center justify-center overflow-hidden bg-black-forest px-4 font-sans text-2xs uppercase tracking-widest text-cornsilk sm:h-7">
       
       {/* MOBILE: Fade Carousel */}
       <div className="relative flex w-full max-w-2xl items-center justify-center h-full md:hidden">

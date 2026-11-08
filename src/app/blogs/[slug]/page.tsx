@@ -104,7 +104,7 @@ export default async function BlogPostPage({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 xl:gap-16 items-start">
           
           {/* Left Column: Framed cover image box (compact, bounded height) */}
-          <div className="lg:col-span-4 xl:col-span-4 lg:sticky lg:top-24">
+          <div className="lg:col-span-4 xl:col-span-4 lg:sticky lg:top-20">
             {blog.coverImage?.url ? (
               <div className="bg-card/90 backdrop-blur-xs border-2 border-olive/20 rounded-md p-3 sm:p-3.5 shadow-sm hover:shadow-md transition-shadow">
                 {/* Gallery frame matting & border */}
