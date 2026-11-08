@@ -31,7 +31,7 @@ export default async function CollectionsPage() {
 
   return (
     <div className="bg-cornsilk min-h-screen pb-16 page-enter">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 pt-6">
+      <div className="mx-auto w-full max-w-page px-4 sm:px-6 md:px-10 lg:px-16 pt-6">
       <Breadcrumb className="pb-2" items={[{ label: "Home", href: "/" }, { label: "Collections" }]} />
       {/* Page header with a thin green accent */}
       <header className="mt-2 mb-10 pb-8 border-b border-olive/20">
@@ -48,7 +48,7 @@ export default async function CollectionsPage() {
       </div>
 
       {collections.length === 0 ? (
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 py-24 text-center">
+        <div className="mx-auto w-full max-w-page px-4 sm:px-6 md:px-10 lg:px-16 py-24 text-center">
           <p className="font-merriweather text-xl text-forest mb-2">
             No collections found
           </p>
@@ -73,7 +73,7 @@ export default async function CollectionsPage() {
                 key={collection._id.toString()}
                 className={`py-12 ${isEven ? "" : "bg-warm-mist/40"}`}
               >
-                <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16">
+                <div className="mx-auto w-full max-w-page px-4 sm:px-6 md:px-10 lg:px-16">
                 <div className="mb-6 flex items-baseline gap-4">
                   {/* Faint index number in forest green */}
                   <span className="font-merriweather text-5xl font-normal text-forest/10 select-none leading-none">

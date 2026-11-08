@@ -42,7 +42,7 @@ export function NewestArrivals({ arrivals }: NewestArrivalsProps) {
 
   return (
     <section className="bg-warm-mist py-16">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16">
+      <div className="mx-auto w-full max-w-page px-4 sm:px-6 md:px-10 lg:px-16">
         <div className="mb-8 flex items-end justify-between gap-6">
           <h2 className="font-serif text-2xl font-light text-black-forest md:text-3xl">
             Newest arrivals

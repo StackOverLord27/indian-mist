@@ -84,7 +84,7 @@ export default async function BlogPostPage({
   return (
     <div className="bg-cornsilk min-h-screen page-enter">
       {/* Breadcrumb section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-2">
+      <div className="max-w-page mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-2">
         <Breadcrumb
           className="pb-2"
           items={[
@@ -100,7 +100,7 @@ export default async function BlogPostPage({
       </div>
 
       {/* Main split layout container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-4 pb-16">
+      <div className="max-w-page mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-4 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 xl:gap-16 items-start">
           
           {/* Left Column: Framed cover image box (compact, bounded height) */}
@@ -236,7 +236,7 @@ export default async function BlogPostPage({
       {/* Related posts */}
       {related.length > 0 && (
         <section className="bg-warm-mist border-t border-olive/8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 py-16">
+          <div className="max-w-page mx-auto px-4 sm:px-6 md:px-10 lg:px-16 py-16">
             <h2 className="font-merriweather text-xl text-forest mb-8">
               More from {blog.category}
             </h2>

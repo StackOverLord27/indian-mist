@@ -178,7 +178,7 @@ export default function ProductsClient({
 
   return (
     <div className="bg-cornsilk pb-8 min-h-screen">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 pt-6">
+      <div className="mx-auto w-full max-w-page px-4 sm:px-6 md:px-10 lg:px-16 pt-6">
       <Breadcrumb className="pb-2" items={[{ label: "Home", href: "/" }, { label: "All Products" }]} />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mt-2 mb-8 gap-6">
         <div className="space-y-2 max-w-prose">

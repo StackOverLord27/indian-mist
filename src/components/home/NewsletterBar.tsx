@@ -37,7 +37,7 @@ export function NewsletterBar() {
 
   return (
     <section className="bg-sunlit-clay py-13">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 flex flex-col justify-between gap-8 lg:flex-row lg:items-center">
+      <div className="mx-auto w-full max-w-page px-4 sm:px-6 md:px-10 lg:px-16 flex flex-col justify-between gap-8 lg:flex-row lg:items-center">
         <div className="flex-1">
           <h2 className="font-serif text-2xl font-normal text-black-forest">
             Notes from the forest

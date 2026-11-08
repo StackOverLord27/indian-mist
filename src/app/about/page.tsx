@@ -51,7 +51,7 @@ export default async function AboutPage() {
   const storyHtml = sanitizeRichText(about.story.body);
 
   const eyebrow = "font-montserrat text-[13px] font-semibold uppercase tracking-[0.24em]";
-  const gutter = "max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16";
+  const gutter = "max-w-page mx-auto px-4 sm:px-6 md:px-10 lg:px-16";
 
   return (
     <div className="bg-cornsilk min-h-screen page-enter">

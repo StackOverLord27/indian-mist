@@ -31,10 +31,20 @@ const breadcrumbBox = async (page: Page, path: string) => {
 // Every page that has a breadcrumb in the same place (the "seamless" rule): same top and left edge as /about
 const PAGES = ["/blogs", "/contact", "/collections", "/products"];
 
-for (const [name, size] of [["phone", { width: 390, height: 844 }], ["tablet", { width: 768, height: 900 }], ["desktop", { width: 1280, height: 900 }], ["wide", { width: 1920, height: 1000 }]] as const) {
+for (const [name, size, expectedLeft] of [
+  ["phone", { width: 390, height: 844 }, 16],
+  ["tablet", { width: 768, height: 900 }, 40],
+  ["desktop", { width: 1280, height: 900 }, 64],
+  // a normal 1920x1080 screen is filled (64 px margin), not centred in a narrow column
+  ["full HD", { width: 1920, height: 1000 }, 64],
+  ["QHD", { width: 2560, height: 1000 }, 64],
+  // only an ultrawide screen gets a centred column (page width 2560 px)
+  ["ultrawide", { width: 3440, height: 1000 }, (3440 - 2560) / 2 + 64],
+] as const) {
   test(`the breadcrumb on /blogs, /contact, /collections and /products is at the same top and left as on /about (${name})`, async ({ page }) => {
     await page.setViewportSize(size);
     const about = await breadcrumbBox(page, "/about");
+    expect(about.left, "left edge of the page content").toBe(expectedLeft);
     const blogs = await breadcrumbBox(page, "/blogs");
     expect(blogs).toEqual(about);
     // on /blogs it is above the green header

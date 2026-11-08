@@ -65,7 +65,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <div className="bg-cornsilk min-h-screen page-enter">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pb-24 lg:pb-0">
+      <div className="max-w-page mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pb-24 lg:pb-0">
         
         {/* Breadcrumb */}
         <Breadcrumb

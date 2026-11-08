@@ -30,7 +30,7 @@ export function EcoCommitmentSection({ settings }: EcoCommitmentProps) {
 
   return (
     <section className="bg-black-forest py-16">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16">
+      <div className="mx-auto w-full max-w-page px-4 sm:px-6 md:px-10 lg:px-16">
       {(subtitle || hasHeading) && (
         <div className="mx-auto max-w-3xl text-center">
           {subtitle && (

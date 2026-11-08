@@ -4,7 +4,7 @@ export default function AboutLoading() {
   return (
     <div className="bg-cornsilk min-h-screen">
       {/* Hero section */}
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 pt-16 pb-12">
+      <div className="mx-auto w-full max-w-page px-4 sm:px-6 md:px-10 lg:px-16 pt-16 pb-12">
         <div className="text-center space-y-4">
           <Skeleton className="h-10 w-48 mx-auto" />
           <Skeleton className="h-4 w-96 max-w-full mx-auto" />
@@ -12,7 +12,7 @@ export default function AboutLoading() {
       </div>
 
       {/* Content sections */}
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 pb-16 space-y-16">
+      <div className="mx-auto w-full max-w-page px-4 sm:px-6 md:px-10 lg:px-16 pb-16 space-y-16">
         <div>
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">

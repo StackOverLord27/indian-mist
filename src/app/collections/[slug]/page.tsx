@@ -60,7 +60,7 @@ export default async function CollectionPage({
 
   return (
     <div className="bg-cornsilk pb-16 min-h-screen page-enter">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16 pt-6">
+      <div className="mx-auto w-full max-w-page px-4 sm:px-6 md:px-10 lg:px-16 pt-6">
         <Breadcrumb
           className="pb-2"
           items={[

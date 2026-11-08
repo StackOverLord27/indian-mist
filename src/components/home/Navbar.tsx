@@ -265,7 +265,7 @@ export function Navbar({
         scrolled && "shadow-sm"
       )}
     >
-      <div className="flex h-16 items-center justify-between gap-4 mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16">
+      <div className="flex h-16 items-center justify-between gap-4 mx-auto w-full max-w-page px-4 sm:px-6 md:px-10 lg:px-16">
         {/* ── Logo ── */}
         <Link
           href="/"

@@ -3,6 +3,10 @@
 @import "shadcn/tailwind.css";
 
 @theme inline {
+  /* Page width: pages use the whole screen (with side margins) up to 2560px, so 1366 to 2560 px
+     screens are filled; only wider (ultrawide) screens get a centred column. One number, used by
+     every page container as `max-w-page`. */
+  --container-page: 160rem;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-montserrat);

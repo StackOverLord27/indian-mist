@@ -123,7 +123,7 @@ export function Footer({
 
   return (
     <footer className="bg-forest pb-7 pt-13">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-10 lg:px-16">
+      <div className="mx-auto w-full max-w-page px-4 sm:px-6 md:px-10 lg:px-16">
         {/* Top grid — brand + nav columns */}
         <div
           className={`grid grid-cols-2 gap-10 ${footerColumns.length > 3 ? "md:grid-cols-4 lg:grid-cols-6" : "md:grid-cols-4 lg:grid-cols-5"}`}

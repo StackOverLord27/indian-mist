@@ -52,7 +52,7 @@ export function CartPageClient() {
   return (
     <>
       <div className="bg-cornsilk min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-20 lg:pb-20">
+        <div className="max-w-page mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-20 lg:pb-20">
 
           {/* Breadcrumb */}
           <Breadcrumb
