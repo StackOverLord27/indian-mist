@@ -48,6 +48,8 @@ interface CheckoutOrderSummaryProps {
   isLoading: boolean;
   payBtnRef: React.RefObject<HTMLButtonElement | null>;
   gstRate?: number;
+  /** false until the shipping rules have arrived: no shipping number, no total, no paying */
+  pricingReady?: boolean;
 }
 
 export function CheckoutOrderSummary({
@@ -64,7 +66,8 @@ export function CheckoutOrderSummary({
   onRemoveCoupon,
   isLoading,
   payBtnRef,
-  gstRate = 0.18,
+  gstRate = 0,
+  pricingReady = true,
 }: CheckoutOrderSummaryProps) {
   const gstPercent = Math.round(gstRate * 100);
   return (
@@ -213,10 +216,10 @@ export function CheckoutOrderSummary({
                   shippingFree ? "text-olive" : "text-forest"
                 }`}
               >
-                {shippingFree ? "Free" : formatPrice(shippingCost)}
+                {!pricingReady ? "Calculating…" : shippingFree ? "Free" : formatPrice(shippingCost)}
               </span>
             </div>
-            {shippingFree && (
+            {pricingReady && shippingFree && (
               <p className="text-[10px] text-olive font-montserrat mt-0.5">
                 ✓ Free shipping unlocked
               </p>
@@ -241,13 +244,13 @@ export function CheckoutOrderSummary({
             Total
           </span>
           <div className="text-right">
-            {coupon.applied && coupon.discount > 0 && (
+            {pricingReady && coupon.applied && coupon.discount > 0 && (
               <span className="font-montserrat text-xs text-muted-text line-through block mb-0.5">
                 {formatPrice(subtotal + shippingCost)}
               </span>
             )}
             <span className="font-merriweather text-2xl font-bold text-forest">
-              {formatPrice(totalAmount)}
+              {pricingReady ? formatPrice(totalAmount) : "—"}
             </span>
           </div>
         </div>
@@ -256,7 +259,7 @@ export function CheckoutOrderSummary({
         <button
           ref={payBtnRef}
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || !pricingReady}
           id="checkout-pay-button"
           className="w-full bg-forest text-cornsilk hover:bg-olive font-montserrat text-xs font-semibold uppercase tracking-wider py-4 rounded-sm h-auto transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-forest/15 active:scale-[0.98]"
         >
@@ -268,7 +271,7 @@ export function CheckoutOrderSummary({
           ) : (
             <>
               <LockKeyhole className="size-4" />
-              Pay Securely — {formatPrice(totalAmount)}
+              {pricingReady ? `Pay Securely — ${formatPrice(totalAmount)}` : "Pay Securely"}
             </>
           )}
         </button>

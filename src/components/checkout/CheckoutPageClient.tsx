@@ -15,6 +15,7 @@ import { useCartStore } from "@/lib/cart-store";
 import { useCartSync } from "@/lib/use-cart-sync";
 import { formatPrice } from "@/lib/utils";
 import { usePricingSettings } from "@/hooks/usePricingSettings";
+import { computeOrderTotals } from "@/lib/order-totals";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { StepProgress } from "@/components/checkout/StepProgress";
 import { ShippingForm } from "@/components/checkout/ShippingForm";
@@ -138,15 +139,14 @@ export function CheckoutPageClient() {
   const pricing = usePricingSettings();
 
   // Calculation
-  const shippingFree = subtotal >= pricing.shippingThreshold;
-  const shippingCost = shippingFree ? 0 : pricing.shippingCost;
-  const discountedSubtotal = Math.max(subtotal - coupon.discount, 0);
-  // GST disabled — no GST registration yet
-  // const taxAmount = Math.round(
-  //   (discountedSubtotal + shippingCost) * pricing.gstRate,
-  // );
-  const taxAmount = 0;
-  const totalAmount = discountedSubtotal + shippingCost + taxAmount;
+  // The same calculation the server uses (src/lib/order-totals.ts); until the rules have arrived
+  // there is no shipping number and no total (see usePricingSettings)
+  const totals = pricing.ready ? computeOrderTotals({ subtotal, discount: coupon.discount, rules: pricing }) : null;
+  const shippingFree = totals?.shippingFree ?? false;
+  const shippingCost = totals?.shippingCost ?? 0;
+  const discountedSubtotal = totals?.discountedSubtotal ?? Math.max(subtotal - coupon.discount, 0);
+  const taxAmount = totals?.taxAmount ?? 0;
+  const totalAmount = totals?.total ?? 0;
 
   // Mount animation
   useEffect(() => {
@@ -236,6 +236,7 @@ export function CheckoutPageClient() {
   // ─── Form submission + Razorpay ───────────────────────────────────────
 
   const onSubmit = async (data: CheckoutFormValues) => {
+    if (!pricing.ready) return; // the button is disabled until the shipping rules have arrived
     setIsLoading(true);
     let heldOrderId: string | null = null;
 
@@ -436,7 +437,8 @@ export function CheckoutPageClient() {
               onRemoveCoupon={handleRemoveCoupon}
               isLoading={isLoading}
               payBtnRef={payBtnRef}
-              gstRate={pricing.gstRate}
+              gstRate={pricing.ready ? pricing.gstRate : 0}
+              pricingReady={pricing.ready}
             />
           </form>
         </div>
@@ -450,13 +452,13 @@ export function CheckoutPageClient() {
               Total
             </p>
             <p className="font-merriweather text-xl font-bold text-forest">
-              {formatPrice(totalAmount)}
+              {pricing.ready ? formatPrice(totalAmount) : "—"}
             </p>
           </div>
           <button
             type="submit"
             form="checkout-form"
-            disabled={isLoading}
+            disabled={isLoading || !pricing.ready}
             className="bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider px-6 py-3.5 rounded-sm hover:bg-olive transition-colors min-h-11 flex items-center gap-2 disabled:opacity-50"
           >
             {isLoading ? (

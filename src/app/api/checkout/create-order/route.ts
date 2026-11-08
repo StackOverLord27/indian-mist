@@ -20,7 +20,8 @@ import { Order } from "@/models/order.model";
 import { User } from "@/models/user.model";
 import { Product } from "@/models/product.model";
 import Settings from "@/models/settings.model";
-import { SHIPPING_COST, SHIPPING_THRESHOLD } from "@/lib/constants";
+import { resolveShippingRules } from "@/lib/shipping-rules";
+import { computeOrderTotals } from "@/lib/order-totals";
 import { CreateOrderSchema } from "@/schemas/checkout-api";
 import Razorpay from "razorpay";
 import { getRazorpayKeyId, getRazorpayKeySecret } from "@/lib/env";
@@ -149,8 +150,7 @@ export const POST = withDB(async (req: NextRequest) => {
 
   // ─── Settings: shipping rates and promo codes ────────────────────────────
   const settings = await Settings.findOne().lean<SiteSettings>();
-  const shippingRate = settings?.pricingSettings?.shippingCost ?? SHIPPING_COST;
-  const freeThreshold = settings?.pricingSettings?.freeShippingThreshold ?? SHIPPING_THRESHOLD;
+  const shippingRules = resolveShippingRules(settings?.pricingSettings);
 
   // Re-validate promo code at order creation time (prevents manipulation)
   let validatedPromoCode: string | null = null;
@@ -200,11 +200,13 @@ export const POST = withDB(async (req: NextRequest) => {
   }
 
   // ─── Totals (same rules the checkout page displays) ──────────────────────
-  const shippingCost = subtotal >= freeThreshold ? 0 : shippingRate;
-  const taxAmount = 0; // GST disabled — no GST registration yet
-  // Whole paise, so the amount stored on the order and the amount charged are always the same number
-  const totalPaise = Math.round((Math.max(subtotal - validatedDiscount, 0) + shippingCost + taxAmount) * 100);
-  const totalAmount = totalPaise / 100;
+  // One shared calculation (src/lib/order-totals.ts), the same one the cart and checkout pages use.
+  // Whole paise, so the amount stored on the order and the amount charged are always the same number.
+  const { shippingCost, taxAmount, totalPaise, total: totalAmount } = computeOrderTotals({
+    subtotal,
+    discount: validatedDiscount,
+    rules: shippingRules,
+  });
 
   if (!Number.isSafeInteger(totalPaise) || totalPaise < 100) return errorResponse("Order total is too low", 400);
 

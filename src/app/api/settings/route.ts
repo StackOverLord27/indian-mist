@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 import { withDB, successResponse } from '@/lib/api-helpers';
 import Settings from '@/models/settings.model';
+import { resolveShippingRules } from '@/lib/shipping-rules';
 
 export const GET = withDB(async () => {
   const settings = await Settings.findOne().lean();
@@ -13,5 +14,8 @@ export const GET = withDB(async () => {
     delete settings.pricingSettings.promoCodes;
   }
   
-  return successResponse({ settings: settings ?? {} });
+  // The shipping rules the server will charge (saved values, or its last-resort values when none are
+  // saved), so the cart and checkout show exactly those numbers and never invent their own.
+  const shippingRules = resolveShippingRules(settings?.pricingSettings);
+  return successResponse({ settings: settings ?? {}, shippingRules });
 });
