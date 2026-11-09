@@ -70,5 +70,11 @@ BlogSchema.pre("save", function (this: IBlog) {
   }
 });
 
+// In development the compiled model stays cached between code reloads, so a field added to the schema
+// would be dropped on save until the dev server is restarted: rebuild it when not in production.
+if (process.env.NODE_ENV !== "production") {
+  delete mongoose.models.Blog;
+}
+
 export const Blog: Model<IBlog> =
   mongoose.models.Blog || mongoose.model<IBlog>("Blog", BlogSchema);

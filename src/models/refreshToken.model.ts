@@ -36,6 +36,12 @@ const RefreshTokenSchema: Schema = new Schema({
   },
 });
 
+// In development the compiled model stays cached between code reloads, so a field added to the schema
+// would be dropped on save until the dev server is restarted: rebuild it when not in production.
+if (process.env.NODE_ENV !== "production") {
+  delete mongoose.models.RefreshToken;
+}
+
 export const RefreshToken: Model<IRefreshToken> =
   mongoose.models.RefreshToken ||
   mongoose.model<IRefreshToken>("RefreshToken", RefreshTokenSchema);

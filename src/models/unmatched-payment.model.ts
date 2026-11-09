@@ -38,6 +38,12 @@ const UnmatchedPaymentSchema = new Schema<IUnmatchedPayment>(
 // Dashboard: the unresolved ones, newest first
 UnmatchedPaymentSchema.index({ resolvedAt: 1, createdAt: -1 });
 
+// In development the compiled model stays cached between code reloads, so a field added to the schema
+// would be dropped on save until the dev server is restarted: rebuild it when not in production.
+if (process.env.NODE_ENV !== "production") {
+  delete mongoose.models.UnmatchedPayment;
+}
+
 export const UnmatchedPayment: Model<IUnmatchedPayment> =
   mongoose.models.UnmatchedPayment ||
   mongoose.model<IUnmatchedPayment>("UnmatchedPayment", UnmatchedPaymentSchema);
