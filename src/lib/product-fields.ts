@@ -7,7 +7,7 @@ const jsonField = jsonFormField;
 
 type Existing = Pick<
   IProduct,
-  | "name" | "category" | "price" | "originalPrice" | "description" | "badge" | "tags" | "sizes" | "colorName"
+  | "name" | "category" | "price" | "originalPrice" | "description" | "badge" | "tags" | "idealForHeading" | "idealFor" | "sizes" | "colorName"
   | "colorHex" | "colorGroup" | "features" | "materials" | "careInstructions" | "shippingInfo" | "isFeatured"
   | "trackInventory" | "stockQuantity" | "sizeStock"
 >;
@@ -35,6 +35,8 @@ export function productCandidate(fields: Record<string, string>, existing?: Exis
     description: fields.description?.trim() ?? e?.description,
     badge: fields.badge ?? e?.badge ?? "",
     tags: jsonField<string[]>(fields, "tags") ?? e?.tags ?? [],
+    idealForHeading: fields.idealForHeading !== undefined ? fields.idealForHeading.trim() : (e?.idealForHeading ?? ""),
+    idealFor: jsonField<string[]>(fields, "idealFor") ?? e?.idealFor ?? [],
     sizes: jsonField<string[]>(fields, "sizes") ?? e?.sizes ?? [],
     colorName: fields.colorName !== undefined ? fields.colorName.trim() : (e?.colorName ?? ""),
     colorHex: fields.colorHex !== undefined ? fields.colorHex.trim() : (e?.colorHex ?? ""),

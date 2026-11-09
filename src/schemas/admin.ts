@@ -10,6 +10,8 @@ export const ProductSchema = z.object({
   description: z.string().trim().min(1, "Description is required").max(20_000, "Description is too long"),
   badge: z.enum(["New", "Sale", "Sold Out", ""]).optional(),
   tags: z.array(shortText(60)).max(30).optional(),
+  idealForHeading: shortText(40).optional(),
+  idealFor: z.array(shortText(60)).max(20).optional(),
   sizes: z.array(shortText(40)).max(20).optional(),
   features: z.array(shortText(500)).max(30).optional(),
   materials: z.array(shortText(200)).max(30).optional(),

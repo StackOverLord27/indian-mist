@@ -41,6 +41,8 @@ const productSchema = z.object({
   colorHex: z.string().regex(/^(#[0-9a-fA-F]{6})?$/, 'Use a hex code like #1a2b3c').optional(),
   colorGroup: z.string().max(80).optional(),
   tags: z.string(),
+  idealForHeading: z.string().max(40, 'At most 40 characters').optional(),
+  idealFor: z.string().optional(),
   badge: z.enum(['New', 'Sale', 'Sold Out', '']).optional(),
   isFeatured: z.boolean().default(false),
   trackInventory: z.boolean().default(false),
@@ -136,6 +138,8 @@ export default function ProductForm({ product, duplicateOf }: { product?: AdminP
       colorHex: product?.colorHex || '#000000',
       colorGroup: source?.colorGroup || '',
       tags: source?.tags?.join(', ') || '',
+      idealForHeading: source?.idealForHeading || '',
+      idealFor: source?.idealFor?.join(', ') || '',
       badge: product?.badge || '',
       isFeatured: source?.isFeatured || false,
       trackInventory: source?.trackInventory || false,
@@ -410,9 +414,18 @@ export default function ProductForm({ product, duplicateOf }: { product?: AdminP
             </div>
           </AdminFormField>
 
-          <AdminFormField label="Tags (comma separated)" error={errors.tags?.message}>
+          <AdminFormField label="Highlights (comma separated)" hint="Shown as larger tags next to the product details." error={errors.tags?.message}>
             <input {...register('tags')} className={inputClass} placeholder="organic, fresh, limited" />
           </AdminFormField>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AdminFormField label="Second list: heading" hint={'Leave empty to show "Ideal for". For example "Wear it on".'} error={errors.idealForHeading?.message}>
+              <input {...register('idealForHeading')} maxLength={40} className={inputClass} placeholder="Ideal for" />
+            </AdminFormField>
+            <AdminFormField label="Second list: items (comma separated)" hint="The section is hidden when there are none." error={errors.idealFor?.message}>
+              <input {...register('idealFor')} className={inputClass} placeholder="treks, birdwatching, road trips" />
+            </AdminFormField>
+          </div>
 
           {/* Materials */}
           <div>

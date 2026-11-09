@@ -78,7 +78,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         />
 
         {/* SECTION 1 — PRODUCT HERO */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 py-8 md:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 pt-8 md:pt-10 pb-2">
           {/* Left Column: Image Gallery */}
           <ProductGallery
             images={product.images}

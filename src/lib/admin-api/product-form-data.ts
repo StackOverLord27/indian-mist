@@ -27,6 +27,9 @@ export type ProductFormValues = {
   colorHex?: string;
   colorGroup?: string;
   tags: string;
+  idealForHeading?: string;
+  /** comma separated, like tags */
+  idealFor?: string;
   materials: string[];
   careInstructions: { text: string; icon: string }[];
   shippingStandard?: string;
@@ -65,6 +68,8 @@ export function buildProductFormData(data: ProductFormValues, images: ProductIma
   formData.append('colorHex', colorName ? (data.colorHex ?? '') : '');
   formData.append('colorGroup', data.colorGroup ?? '');
   formData.append('tags', JSON.stringify(data.tags.split(',').map((t) => t.trim()).filter(Boolean)));
+  formData.append('idealForHeading', (data.idealForHeading ?? '').trim());
+  formData.append('idealFor', JSON.stringify((data.idealFor ?? '').split(',').map((t) => t.trim()).filter(Boolean)));
   formData.append('materials', JSON.stringify(data.materials.filter((s) => s.trim())));
   formData.append('careInstructions', JSON.stringify(data.careInstructions.filter((c) => c.text.trim())));
   formData.append('shippingInfo', JSON.stringify({

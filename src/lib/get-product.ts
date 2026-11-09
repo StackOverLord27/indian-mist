@@ -27,6 +27,9 @@ export type Product = {
   materials: string[]
   careInstructions: { text: string; icon: string }[]
   tags: string[]
+  /** "Ideal for" style list: the heading is whatever the admin typed ("" = use the default label) */
+  idealForHeading: string
+  idealFor: string[]
   relatedProductIds: string[]
   shippingInfo: {
     standard: string
@@ -41,7 +44,7 @@ export const getProductBySlug = cache(async (slug: string): Promise<Product | nu
   await sweepExpiredReservations();
 
   const p = await ProductModel.findOne({ slug })
-    .select("slug name category price originalPrice badge description images sizes trackInventory stockQuantity sizeStock colorName colorHex colorGroup materials careInstructions tags features shippingInfo")
+    .select("slug name category price originalPrice badge description images sizes trackInventory stockQuantity sizeStock colorName colorHex colorGroup materials careInstructions tags idealForHeading idealFor features shippingInfo")
     .lean();
   if (!p) return null;
 
@@ -84,6 +87,8 @@ export const getProductBySlug = cache(async (slug: string): Promise<Product | nu
       typeof c === "string" ? { text: c, icon: "droplets" } : { text: c.text, icon: c.icon || "droplets" }
     ),
     tags: p.tags || [],
+    idealForHeading: p.idealForHeading || "",
+    idealFor: p.idealFor || [],
     relatedProductIds: [],
     shippingInfo: {
       // Only a delivery time the admin typed for this product; none is invented

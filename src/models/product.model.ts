@@ -19,6 +19,9 @@ export interface IProduct extends Document {
   materials?: string[];
   careInstructions?: { text: string; icon: string }[];
   tags?: string[];
+  /** Optional second list next to the highlights ("Ideal for", "Wear it on"...): its heading and items, both typed by the admin */
+  idealForHeading?: string;
+  idealFor?: string[];
   stockQuantity: number;
   sizeStock?: { size: string; quantity: number }[];
   trackInventory?: boolean;
@@ -64,6 +67,8 @@ const ProductSchema: Schema = new Schema(
       icon: { type: String, default: "droplets" },
     }],
     tags: [{ type: String }],
+    idealForHeading: { type: String }, // no default: shown only when the admin typed one
+    idealFor: [{ type: String }],
     shippingInfo: {
       standard: { type: String, default: "" },
       express: { type: String, default: "" },
@@ -95,6 +100,13 @@ ProductSchema.pre("validate", function (this: IProduct) {
       .replace(/^-|-$/g, "");
   }
 });
+
+// In development the compiled model stays cached between code reloads, so a field added to the schema
+// would be ignored and silently dropped on save until the dev server is restarted. Rebuild it when
+// not in production (same guard as the About and Order models).
+if (process.env.NODE_ENV !== "production") {
+  delete mongoose.models.Product;
+}
 
 export const Product: Model<IProduct> =
   mongoose.models.Product || mongoose.model<IProduct>("Product", ProductSchema);

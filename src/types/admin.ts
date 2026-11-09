@@ -37,6 +37,8 @@ export interface AdminProduct {
   colorHex?: string;
   colorGroup?: string;
   tags: string[];
+  idealForHeading?: string;
+  idealFor?: string[];
   /** "Sold Out" is set by the shop itself when tracked stock reaches 0 */
   badge?: 'New' | 'Sale' | 'Sold Out' | '';
   materials: string[];
