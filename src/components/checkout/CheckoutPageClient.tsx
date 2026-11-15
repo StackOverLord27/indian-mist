@@ -1,11 +1,12 @@
 "use client";
 
-import type { UserData } from "@/components/profile/types";
 import { getApiErrorMessage } from "@/lib/admin-error";
+import { customerApi, classifyFailure, failureMessage } from "@/lib/customer-session";
+import { useCustomerProfile } from "@/hooks/useCustomerProfile";
+import type { ShippingAddress } from "@/components/profile/types";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import axios from "axios";
 import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +14,8 @@ import { checkoutSchema, type CheckoutFormValues } from "@/schemas/checkout";
 import { ArrowLeft, LockKeyhole, Loader2 } from "lucide-react";
 import { useCartStore } from "@/lib/cart-store";
 import { useCartSync } from "@/lib/use-cart-sync";
+import { CartSyncNotice } from "@/components/cart/CartSyncNotice";
+import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { formatPrice } from "@/lib/utils";
 import { usePricingSettings } from "@/hooks/usePricingSettings";
 import { computeOrderTotals } from "@/lib/order-totals";
@@ -51,7 +54,7 @@ export function CheckoutPageClient() {
     setBuyNowItem,
   } = useCartStore();
 
-  useCartSync();
+  const cartSync = useCartSync();
   const checkoutItems = buyNowItem ? [buyNowItem] : items;
   // Worked out from the items themselves so they follow every change to the bag
   const checkoutItemCount = checkoutItems.reduce((n, i) => n + i.quantity, 0);
@@ -84,33 +87,28 @@ export function CheckoutPageClient() {
 
   const deliveryNotesValue = watch("deliveryNotes") || "";
 
-  // Auth and Profile state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [storedProfile, setStoredProfile] = useState<UserData | null>(null);
+  // Saved details: loaded through the shared customer session (renews the 15-minute access
+  // token if needed). Never blocks the form: while it loads or if it fails the shopper can type.
+  const { state: profileState, retry: retryProfile } = useCustomerProfile({ orders: false });
+  const isAuthenticated = profileState.status === "ready";
+  const storedProfile = profileState.status === "ready" ? profileState.user : null;
 
-  // Fetch user profile on mount — auto-fill ALL fields
   useEffect(() => {
-    axios
-      .get("/api/profile")
-      .then((res) => {
-        setIsAuthenticated(true);
-        const { user } = res.data;
-        if (user) {
-          setStoredProfile(user);
-          const address = user.shippingAddress || {};
-          setValue("customerName", user.name || "");
-          setValue("email", user.email || "");
-          setValue("phone", user.phone || "");
-          setValue("street", address.street || "");
-          setValue("city", address.city || "");
-          setValue("state", address.state || "");
-          setValue("zipCode", address.zipCode || "");
-        }
-      })
-      .catch(() => {
-        setIsAuthenticated(false);
-      });
-  }, [setValue]);
+    if (profileState.status === "ready") {
+      const { user } = profileState;
+      const address: Partial<ShippingAddress> = user.shippingAddress ?? {};
+      setValue("customerName", user.name || "");
+      setValue("email", user.email || "");
+      setValue("phone", user.phone || "");
+      setValue("street", address.street || "");
+      setValue("city", address.city || "");
+      setValue("state", address.state || "");
+      setValue("zipCode", address.zipCode || "");
+    } else if (profileState.status === "signed-out") {
+      // A 401 that survived a renewal: the session is over (the bag stays in the browser)
+      router.replace("/signin?callbackUrl=/checkout");
+    }
+  }, [profileState, setValue, router]);
 
   // Detect if the user has changed any field from their stored profile values
   const currentValues = watch();
@@ -198,7 +196,7 @@ export function CheckoutPageClient() {
 
     setCoupon((prev) => ({ ...prev, loading: true, error: "" }));
     try {
-      const res = await axios.post("/api/checkout/promo", {
+      const res = await customerApi.post("/api/checkout/promo", {
         code: coupon.code.trim(),
         subtotal,
       });
@@ -243,7 +241,7 @@ export function CheckoutPageClient() {
 
     try {
       // Step 1: Create order on backend
-      const { data: dataRes } = await axios.post("/api/checkout/create-order", {
+      const { data: dataRes } = await customerApi.post("/api/checkout/create-order", {
         items: checkoutItems.map((item) => ({
           productId: item.id,
           name: item.name,
@@ -304,7 +302,7 @@ export function CheckoutPageClient() {
         handler: async (response: RazorpaySuccessResponse) => {
           try {
             // Step 3: Verify payment
-            const { data: verifyRes } = await axios.post(
+            const { data: verifyRes } = await customerApi.post(
               "/api/checkout/verify-payment",
               {
                 razorpayOrderId: response.razorpay_order_id,
@@ -324,7 +322,15 @@ export function CheckoutPageClient() {
 
             toast.success("Payment successful! Your order has been placed.");
           } catch (err) {
-            toast.error("Payment verification failed. Please contact support.");
+            // The payment window already took the money. A refused verification is different
+            // from "we could not reach the server": never tell the shopper to pay again.
+            const failure = classifyFailure(err);
+            toast.error(
+              failure.kind === "network" || failure.kind === "timeout" || failure.kind === "server" || failure.kind === "rate-limited"
+                ? "We couldn't confirm your payment just now. Please don't pay again: check My Profile in a few minutes, or contact support."
+                : "Payment verification failed. Please contact support.",
+              { duration: 10000 },
+            );
           }
         },
         modal: {
@@ -332,7 +338,7 @@ export function CheckoutPageClient() {
             setIsLoading(false);
             toast.error("Payment cancelled");
             // Put the held stock back on sale right away
-            axios
+            customerApi
               .post("/api/checkout/release", { razorpayOrderId: dataRes.razorpayOrderId })
               .catch(() => {});
           },
@@ -350,12 +356,20 @@ export function CheckoutPageClient() {
     } catch (err) {
       // The payment window never opened: give the held stock back right away
       if (heldOrderId) {
-        axios.post("/api/checkout/release", { razorpayOrderId: heldOrderId }).catch(() => {});
+        customerApi.post("/api/checkout/release", { razorpayOrderId: heldOrderId }).catch(() => {});
+      }
+      const failure = classifyFailure(err);
+      if (failure.kind === "signed-out") {
+        toast.error(failureMessage(failure));
+        router.replace("/signin?callbackUrl=/checkout");
+        return;
       }
       toast.error(
         err instanceof Error && err.message === "PAYMENT_WINDOW_UNAVAILABLE"
           ? "The payment window could not load. Check your connection or ad blocker and try again."
-          : getApiErrorMessage(err, "Something went wrong. Please try again."),
+          : failure.kind === "network" || failure.kind === "timeout" || failure.kind === "server" || failure.kind === "rate-limited"
+            ? failureMessage(failure)
+            : getApiErrorMessage(err, "Something went wrong. Please try again."),
       );
       setIsLoading(false);
     }
@@ -368,7 +382,7 @@ export function CheckoutPageClient() {
   }
 
   if (checkoutItems.length === 0) {
-    return null; // Will redirect in useEffect
+    return <PageSkeleton label="Loading checkout" />; // the saved bag is still loading, or the page is about to send you back to the bag
   }
 
   return (
@@ -406,6 +420,29 @@ export function CheckoutPageClient() {
 
           {/* Step Progress */}
           <StepProgress currentStep={1} />
+
+          <CartSyncNotice sync={cartSync} />
+
+          {/* Saved details: loading and failure are shown, the form itself stays usable */}
+          {profileState.status === "loading" && (
+            <p role="status" data-testid="prefill-loading" className="mb-4 animate-pulse font-montserrat text-xs text-muted-text">
+              Loading your saved details…
+            </p>
+          )}
+          {profileState.status === "error" && (
+            <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 border-l-2 border-red-500 bg-red-50 p-3">
+              <p className="font-montserrat text-xs text-red-800">
+                We couldn&apos;t load your saved details. {failureMessage(profileState.failure)} You can also type them in below.
+              </p>
+              <button
+                type="button"
+                onClick={retryProfile}
+                className="border border-olive-leaf px-3 py-1 font-montserrat text-xs font-semibold uppercase tracking-widest text-olive-leaf hover:bg-olive-leaf hover:text-cornsilk"
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
           {/* 2-column layout */}
           <form

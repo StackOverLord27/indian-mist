@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { randomUUID } from "crypto";
+import jwt from "jsonwebtoken";
 import dbConnect from "@/lib/db";
 import { User } from "@/models/user.model";
 import { RefreshToken } from "@/models/refreshToken.model";
@@ -10,128 +10,121 @@ import {
   signRefreshToken,
   hashToken,
   setTokenCookies,
-  setAccessTokenCookie,
   clearTokenCookies,
-  REFRESH_TOKEN_MAX_AGE,
+  refreshLifetimeFor,
 } from "@/lib/auth-tokens";
+import { pruneSessions, slidingExpiry } from "@/lib/auth-session";
+import { logAuth, tokenAgeSeconds } from "@/lib/auth-log";
 
-// A second refresh with a token that was exchanged this recently is treated as a parallel request
-// (two tabs), not as a replay. 10 s is long enough for a slow database round trip.
-const PARALLEL_REFRESH_GRACE_MS = 10_000;
-
+/**
+ * Renewal. The refresh token does NOT rotate: a cookie that is present, whose hash is stored,
+ * not expired and not revoked only yields a new access token; the refresh token and cookie keep
+ * their value (the cookie's Max-Age moves with the sliding expiry). So a lost response, two tabs,
+ * or a retry can never end a session. A session ends by: sign-out (that session), password reset
+ * (all sessions), its sliding expiry, its absolute maximum, or the "10 newest sessions" cap.
+ *
+ * Every refusal logs one `[auth]` line with the reason (never a token, e-mail or id).
+ */
 export async function POST(req: NextRequest) {
   // The refresh cookie has path "/" (see setTokenCookies for why), so the browser sends it with
   // every same-site request. Only the proxy (does it exist?), this route and signout look at it.
   const rawToken = req.cookies.get("refresh_token")?.value;
 
   if (!rawToken) {
-    return NextResponse.json(
-      { error: "No refresh token provided" },
-      { status: 401 }
-    );
+    logAuth("renewal refused", { reason: "no-refresh-cookie" });
+    return NextResponse.json({ error: "No refresh token provided" }, { status: 401 });
   }
+
+  const refuse = (error: string) => {
+    const res = NextResponse.json({ error }, { status: 401 });
+    clearTokenCookies(res);
+    return res;
+  };
 
   // ── 1. Verify JWT signature & expiry (stateless, no DB) ─────────────────
-  let payload: { userId: string; family: string };
+  let payload: { userId: string; family: string; iat?: number };
   try {
-    payload = verifyRefreshToken(rawToken);
-  } catch {
-    // Expired or tampered — clear cookies and reject.
-    const res = NextResponse.json(
-      { error: "Invalid or expired refresh token" },
-      { status: 401 }
-    );
-    clearTokenCookies(res);
-    return res;
+    payload = verifyRefreshToken(rawToken) as typeof payload;
+  } catch (err) {
+    const decoded = jwt.decode(rawToken);
+    const age = tokenAgeSeconds(decoded && typeof decoded === "object" ? decoded.iat : undefined);
+    logAuth("renewal refused", {
+      reason: err instanceof jwt.TokenExpiredError ? "token-expired" : "token-invalid",
+      tokenAgeSeconds: age,
+    });
+    return refuse("Invalid or expired refresh token");
   }
+  const age = tokenAgeSeconds(payload.iat);
 
-  // ── 2. Claim the token (one atomic step) ──────────────────────────────
-  // findOneAndUpdate with "not used yet" in the filter lets exactly ONE of several parallel
-  // requests (two tabs, the admin's retry queue) rotate this token; before, both could succeed,
-  // or the slower one looked like a replay and signed the user out everywhere.
-  await dbConnect();
-  const incomingHash = hashToken(rawToken);
-  const now = new Date();
-  const storedToken = await RefreshToken.findOneAndUpdate(
-    { tokenHash: incomingHash, usedAt: { $exists: false } },
-    { $set: { usedAt: now } },
-    { new: false },
-  );
+  try {
+    await dbConnect();
 
-  if (!storedToken) {
-    // Already used, or never existed. If it was used a moment ago, this is a parallel request
-    // from the same browser: the winner has set the new refresh cookie, so this request only
-    // gets a fresh access token (the refresh cookie is left alone).
-    const used = await RefreshToken.findOne({ tokenHash: incomingHash }).select("usedAt userId").lean();
-    if (used?.usedAt && now.getTime() - used.usedAt.getTime() <= PARALLEL_REFRESH_GRACE_MS) {
-      const user = await User.findById(payload.userId).select("email isVerified");
-      if (user?.isVerified) {
-        const res = NextResponse.json({ message: "Token refreshed successfully" }, { status: 200 });
-        setAccessTokenCookie(
-          res,
-          signAccessToken({ userId: String(user._id), email: user.email, role: roleForEmail(user.email) }),
-        );
-        return res;
-      }
+    // ── 2. The token must still be stored (sign-out, password reset, the session cap and expiry delete it) ──
+    const row = await RefreshToken.findOne({ tokenHash: hashToken(rawToken) });
+    if (!row || String(row.userId) !== payload.userId) {
+      // No token text, no ids: only what helps tell "revoked by sign-out/reset" from "forged".
+      console.warn(`[security] Refresh token unknown or revoked (token age ${age}s)`);
+      return refuse("Session ended — please sign in again");
     }
 
-    // A used token outside the grace window, or one that does not exist, is a REPLAY signal:
-    // wipe the entire family so all sessions derived from this login are invalidated.
-    console.warn(
-      `[security] Refresh token replay detected — wiping family ${payload.family} for user ${payload.userId}`
-    );
-    await RefreshToken.deleteMany({
-      userId: payload.userId,
-      family: payload.family,
-    });
+    const now = Date.now();
+    if (row.expiresAt.getTime() <= now) {
+      logAuth("renewal refused", { reason: "session-idle-expired", tokenAgeSeconds: age });
+      return refuse("Session expired — please sign in again");
+    }
+    if (row.absoluteExpiresAt && row.absoluteExpiresAt.getTime() <= now) {
+      logAuth("renewal refused", { reason: "session-absolute-max-reached", tokenAgeSeconds: age });
+      return refuse("Session expired — please sign in again");
+    }
 
-    const res = NextResponse.json(
-      { error: "Refresh token already used — please sign in again" },
-      { status: 401 }
+    // ── 3. Fresh user data (role and verification may have changed) ─────────
+    const user = await User.findById(payload.userId).select("email isVerified");
+    if (!user || !user.isVerified) {
+      logAuth("renewal refused", { reason: "account-missing-or-unverified", tokenAgeSeconds: age });
+      return refuse("User not found or account unverified");
+    }
+
+    const role = roleForEmail(user.email);
+    const life = refreshLifetimeFor(role);
+    const accessToken = signAccessToken({ userId: String(user._id), email: user.email, role });
+
+    // ── 4. Sessions from before tokens stopped rotating (no absolute maximum stored) ──
+    // Their token expires after the old 7 days and cannot be extended in place, so the first
+    // renewal swaps it, once, for a new-format token in the same session. The old row stays
+    // until it expires, so a lost response here costs nothing: the old cookie still works.
+    if (!row.absoluteExpiresAt) {
+      const absoluteExpiresAt = new Date(now + life.absolute * 1000);
+      const upgraded = signRefreshToken({ userId: String(user._id), family: row.family }, life.absolute);
+      await RefreshToken.create({
+        userId: user._id,
+        tokenHash: hashToken(upgraded),
+        family: row.family,
+        expiresAt: slidingExpiry(now, life.sliding, absoluteExpiresAt),
+        absoluteExpiresAt,
+        lastUsedAt: new Date(now),
+      });
+      await pruneSessions(user._id).catch(() => {});
+      const res = NextResponse.json({ message: "Token refreshed successfully" }, { status: 200 });
+      setTokenCookies(res, accessToken, upgraded, life.sliding);
+      return res;
+    }
+
+    // ── 5. Slide the expiry (never shortened by an out-of-order parallel renewal) ──
+    const expiresAt = slidingExpiry(now, life.sliding, row.absoluteExpiresAt);
+    await RefreshToken.updateOne(
+      { _id: row._id },
+      { $max: { expiresAt }, $set: { lastUsedAt: new Date(now) } },
     );
-    clearTokenCookies(res);
+
+    // Same refresh token, cookie lifetime moved to the new expiry
+    const res = NextResponse.json({ message: "Token refreshed successfully" }, { status: 200 });
+    const cookieSeconds = Math.max(1, Math.floor((expiresAt.getTime() - now) / 1000));
+    setTokenCookies(res, accessToken, rawToken, cookieSeconds);
     return res;
+  } catch (error) {
+    // A database or other server failure is NOT a sign-out: leave the cookies alone and say 503,
+    // the client keeps the session and offers a retry.
+    console.error("[auth] renewal failed: server error", error instanceof Error ? error.message : "unknown");
+    return NextResponse.json({ error: "Service temporarily unavailable. Please try again." }, { status: 503 });
   }
-
-  // ── 3. Fetch fresh user data (role, isVerified may have changed) ─────────
-  const user = await User.findById(payload.userId).select(
-    "email role isVerified"
-  );
-  if (!user || !user.isVerified) {
-    const res = NextResponse.json(
-      { error: "User not found or account unverified" },
-      { status: 401 }
-    );
-    clearTokenCookies(res);
-    return res;
-  }
-
-  // ── 5. Issue rotated token pair ───────────────────────────────────────────
-  // Reuse the same family UUID — it groups all rotations for this session.
-  const { family } = payload;
-
-  const userRole = roleForEmail(user.email);
-
-  const newAccessToken = signAccessToken({
-    userId: String(user._id),
-    email: user.email,
-    role: userRole,
-  });
-
-  const newRawRefreshToken = signRefreshToken({ userId: String(user._id), family });
-
-  await RefreshToken.create({
-    userId: user._id,
-    tokenHash: hashToken(newRawRefreshToken),
-    family,
-    expiresAt: new Date(Date.now() + REFRESH_TOKEN_MAX_AGE * 1000),
-  });
-
-  // ── 6. Return new cookies ─────────────────────────────────────────────────
-  const response = NextResponse.json(
-    { message: "Token refreshed successfully" },
-    { status: 200 }
-  );
-  setTokenCookies(response, newAccessToken, newRawRefreshToken);
-  return response;
 }

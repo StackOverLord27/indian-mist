@@ -25,6 +25,7 @@
     "test:live": "vitest run --config vitest.live.config.ts",
     "test:live:cold": "vitest run --config vitest.live-cold.config.ts tests/live-cold/1-upload.step.ts && vitest run --config vitest.live-cold.config.ts tests/live-cold/2-delete.step.ts; vitest run --config vitest.live-cold.config.ts tests/live-cold/3-cleanup.step.ts",
     "reconcile:cloudinary": "node scripts/reconcile-cloudinary.mjs",
+    "ensure:indexes": "node scripts/ensure-indexes.mjs",
     "test:e2e": "playwright test",
     "seed:e2e": "node e2e/support/seed-cli.ts"
   },

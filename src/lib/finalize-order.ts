@@ -8,6 +8,9 @@ import { findPromo, countPaidPromoUses } from "@/lib/promo";
 import Settings from "@/models/settings.model";
 import type { SiteSettings } from "@/types/admin";
 import { revalidateCatalog } from "@/lib/revalidate-storefront";
+import { orderIdForRazorpayOrder } from "@/lib/order-id";
+import { samePaymentText } from "@/lib/duplicate-note";
+import { orderNumber } from "@/lib/order-number";
 
 type PendingOrder = Record<string, unknown> & {
   userId: string;
@@ -82,6 +85,15 @@ const lineSignature = (items: { productId?: unknown; selectedSize?: string; sele
  */
 async function flagPossibleDuplicate(order: HydratedDocument<IOrder>) {
   try {
+    // The SAME payment recorded twice is not a second purchase: say so plainly. (New orders
+    // cannot be doubled any more, see orderIdForRazorpayOrder; this covers older duplicates.)
+    if (order.razorpayPaymentId) {
+      const samePayment = await Order.find({ razorpayPaymentId: order.razorpayPaymentId, _id: { $ne: order._id } }).select("_id").lean();
+      if (samePayment.length) {
+        await addReviewNote(order._id, samePaymentText(samePayment.map((o) => o._id)));
+        return;
+      }
+    }
     const since = new Date(order.createdAt.getTime() - DUPLICATE_WINDOW_MINUTES * 60_000);
     const recent = await Order.find({
       userId: order.userId,
@@ -97,7 +109,7 @@ async function flagPossibleDuplicate(order: HydratedDocument<IOrder>) {
     if (!twin) return;
     await addReviewNote(
       order._id,
-      `Possible duplicate payment: the same account paid for the same items in order #${String(twin._id).slice(-6).toUpperCase()} less than ${DUPLICATE_WINDOW_MINUTES} minutes earlier. Check with the customer before shipping both; refund one in Razorpay if it is a mistake.`,
+      `Possible duplicate payment: the same account paid for the same items in order ${orderNumber(twin._id)} less than ${DUPLICATE_WINDOW_MINUTES} minutes earlier. Check with the customer before shipping both; refund one in Razorpay if it is a mistake.`,
     );
   } catch (error) {
     console.error("[finalizeOrder] duplicate check failed:", error);
@@ -133,8 +145,9 @@ export async function finalizeOrder(opts: {
   const { razorpayOrderId, razorpayPaymentId, razorpaySignature, userId, paidAmountPaise } = opts;
   const source = opts.source ?? "verify-payment";
 
-  const existing = await Order.findOne({ razorpayOrderId });
-  if (existing) {
+  // The order may already exist (the other path got there first, or this is a repeat). Everything
+  // that follows for an existing order is the same whenever it is found, so it is one function.
+  const resolveExisting = async (existing: HydratedDocument<IOrder>): Promise<FinalizeResult> => {
     if (userId && String(existing.userId) !== userId) {
       return { ok: false, status: 403, message: "This order belongs to another account" };
     }
@@ -149,13 +162,22 @@ export async function finalizeOrder(opts: {
     await checkPaidAmount(existing, paidAmountPaise);
     await resolveUnmatched(razorpayOrderId, existing._id);
     return { ok: true, order: existing, alreadyProcessed: true };
-  }
+  };
+
+  const existing = await Order.findOne({ razorpayOrderId });
+  if (existing) return resolveExisting(existing);
 
   const redis = requireRedis();
 
   const key = `pending_order_${razorpayOrderId}`;
   const raw = await redis.get(key);
   if (!raw) {
+    // The other path may have created the order and removed the pending copy between our first
+    // look and this one (the browser confirmation and the webhook arrive together). That is not a
+    // lost payment: look again before calling it one.
+    const created = await Order.findOne({ razorpayOrderId });
+    if (created) return resolveExisting(created);
+
     // A paid-but-no-order case: nothing can be rebuilt. Save it where the admin dashboard shows it
     // (the log line is only a backup).
     console.error(`[finalizeOrder] payment ${razorpayPaymentId} for ${razorpayOrderId}: pending order not found`);
@@ -189,15 +211,19 @@ export async function finalizeOrder(opts: {
     return { ok: false, status: 403, message: "This order belongs to another account" };
   }
 
-  // The pending order is NOT deleted before the order exists. The unique index on
-  // razorpayOrderId is what makes this exactly-once: when the browser and the webhook arrive
-  // together, one create succeeds and the other gets a duplicate-key error and returns that
-  // order. If this process dies before the order is saved, the pending order is still there for
-  // the webhook's retry (deleting it first would lose a paid order).
+  // The pending order is NOT deleted before the order exists. Exactly-once comes from the order's
+  // own database id: every attempt for this Razorpay order uses the same `_id`
+  // (orderIdForRazorpayOrder), so when the browser and the webhook arrive together the database lets
+  // ONE create in and answers the other with a duplicate-key error, whether or not the unique
+  // razorpayOrderId index exists. The loser returns the winner's order. If this process dies before
+  // the order is saved, the pending order is still there for the webhook's retry (deleting it first
+  // would lose a paid order).
   let order: HydratedDocument<IOrder>;
+  const finalizedAt = new Date();
   try {
     order = await Order.create({
       ...pending,
+      _id: orderIdForRazorpayOrder(razorpayOrderId),
       promoCode: pending.promoCode ?? undefined,
       status: "PROCESSING",
       paymentStatus: "PAID",
@@ -205,17 +231,21 @@ export async function finalizeOrder(opts: {
       razorpayOrderId,
       razorpayPaymentId,
       razorpaySignature,
+      finalizedVia: source,
+      finalizedAt,
     });
   } catch (error) {
     if ((error as { code?: number } | null)?.code === 11000) {
-      const dup = await Order.findOne({ razorpayOrderId });
+      const dup = await Order.findOne({ $or: [{ _id: orderIdForRazorpayOrder(razorpayOrderId) }, { razorpayOrderId }] });
       if (dup) {
         // The other request is settling it; if that request died, the repair pass will
+        console.warn(`[order] ${source} confirmation for ${razorpayOrderId} found the order already created via ${dup.finalizedVia ?? "unknown"} at ${dup.finalizedAt?.toISOString() ?? "unknown time"}`);
         return { ok: true, order: dup, alreadyProcessed: true };
       }
     }
     throw error; // the pending order is untouched, so a retry can still complete it
   }
+  console.log(`[order] created ${orderNumber(order._id)} for ${razorpayOrderId} (payment ${razorpayPaymentId}) via ${source} at ${finalizedAt.toISOString()}`);
 
   try {
     await settleOrderStock(order._id);

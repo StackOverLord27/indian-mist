@@ -3,6 +3,7 @@ import { isBlocked, recordFailure } from "@/lib/attempt-limit";
 import type { SiteSettings } from "@/types/admin";
 import { withDB, errorResponse, successResponse } from "@/lib/api-helpers";
 import Settings from "@/models/settings.model";
+import { hasExpired } from "@/lib/shop-time";
 import { normalizePromoCode, findPromo, countPaidPromoUses, promoDiscount } from "@/lib/promo";
 
 export const POST = withDB(async (req: NextRequest) => {
@@ -47,7 +48,7 @@ export const POST = withDB(async (req: NextRequest) => {
     }
 
     // Check expiry
-    if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) {
+    if (hasExpired(promo.expiresAt)) {
       return errorResponse("This promo code has expired", 400);
     }
 

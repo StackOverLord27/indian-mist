@@ -3,6 +3,8 @@ export const runtime = 'nodejs';
 import { NextRequest } from 'next/server';
 import { withAdmin, errorResponse, successResponse } from '@/lib/api-helpers';
 import { Collection } from '@/models/collection.model';
+// registered for populate('products') below; a server instance that had not loaded it answered 500
+import '@/models/product.model';
 import { CollectionSchema } from '@/schemas/admin';
 import { revalidateStorefront } from '@/lib/revalidate-storefront';
 

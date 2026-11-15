@@ -34,7 +34,7 @@ export function getRateLimiter(kind: LimiterKind): Ratelimit | null {
   return (limiters[kind] = new Ratelimit({
     redis,
     limiter,
-    analytics: true,
+    analytics: false, // the dashboard statistics cost extra Redis commands on every request and nothing reads them
     prefix: `@upstash/ratelimit/${kind}`,
   }));
 }

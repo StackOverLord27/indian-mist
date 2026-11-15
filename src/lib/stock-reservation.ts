@@ -4,6 +4,7 @@ import { StockReservation } from "@/models/stock-reservation.model";
 import { Order } from "@/models/order.model";
 import { addReviewNote } from "@/lib/review-note";
 import { HOLD_MINUTES } from "@/lib/checkout-timing";
+import { orderNumber } from "@/lib/order-number";
 
 // How long stock is held for a checkout before it is returned to sale (defined in checkout-timing.ts
 // so the browser's payment window can be derived from the same number).
@@ -260,16 +261,17 @@ export async function repairUnsettledOrders(): Promise<number> {
 const SWEEP_EVERY_MS = 60_000;
 let lastSweepAt = 0;
 
-/** Release expired holds before reading stock. Throttled per instance; never throws (a failing sweep must not break a page). */
-export async function sweepExpiredReservations(): Promise<void> {
+/** Release expired holds before reading stock. Throttled per instance; never throws (a failing sweep must not break a page). Returns how many holds were released (the caller, if it is a route handler, refreshes the product pages when that is above 0). */
+export async function sweepExpiredReservations(): Promise<number> {
   const now = Date.now();
-  if (now - lastSweepAt < SWEEP_EVERY_MS) return;
+  if (now - lastSweepAt < SWEEP_EVERY_MS) return 0;
   lastSweepAt = now; // set before awaiting, so concurrent callers on this instance skip
   try {
-    await releaseExpiredReservations();
+    return await releaseExpiredReservations();
   } catch (error) {
     lastSweepAt = 0; // try again on the next call
     console.error("[stock] sweeping expired holds failed:", error);
+    return 0;
   }
 }
 
@@ -278,9 +280,11 @@ export function resetSweepThrottleForTests() {
 }
 
 /** A shopper starting a new checkout gives up their earlier unpaid attempts. */
-export async function releaseUserReservations(userId: string) {
+export async function releaseUserReservations(userId: string): Promise<number> {
   const mine = await StockReservation.find({ userId, status: "ACTIVE" }).select("_id").lean();
-  for (const r of mine) await releaseReservation({ _id: r._id });
+  let released = 0;
+  for (const r of mine) if (await releaseReservation({ _id: r._id })) released++;
+  return released;
 }
 
 async function markSoldOutWhereEmpty(productIds: Id[]) {
@@ -317,6 +321,31 @@ export async function settleOrderStock(orderId: Id): Promise<string | null> {
       { session, returnDocument: "after" },
     );
     if (!order) return null; // already settled (or an older order)
+
+    // Another order for the SAME Razorpay order (an older duplicate; new ones cannot be created,
+    // see orderIdForRazorpayOrder) must never take the stock a second time. Two settlements of
+    // twins at the same moment both write the same product (or the same stock hold), so the later
+    // one gets a write conflict, its transaction is retried, and the retry sees the first one's
+    // result here. (tests/duplicate-orders.test.ts runs this 20 times at once.)
+    let takenByTwin: Id | null = null;
+    if (order.razorpayOrderId) {
+      const twins = await Order.find({ razorpayOrderId: order.razorpayOrderId, _id: { $ne: order._id } })
+        .select("_id stockSettled")
+        .session(session)
+        .lean();
+      takenByTwin = twins.find((t) => t.stockSettled !== false)?._id ?? null;
+    }
+    if (takenByTwin) {
+      const none: Record<string, number> = {};
+      for (const index of order.items.keys()) none[`items.${index}.deductedQuantity`] = 0;
+      if (Object.keys(none).length) await Order.updateOne({ _id: order._id }, { $set: none }, { session });
+      await addReviewNote(
+        order._id,
+        `No stock was taken for this order: order ${orderNumber(takenByTwin)} (the same payment) already took it.`,
+        session,
+      );
+      return { productIds: [], shortageNote: null };
+    }
 
     // The hold of this checkout: active now, or made permanent earlier
     let heldItems: { productId: Id; size?: string; quantity: number }[] | null = null;

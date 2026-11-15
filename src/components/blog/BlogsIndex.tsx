@@ -7,14 +7,12 @@ import { useEffect, useState } from "react";
 import { Calendar, Clock, ArrowRight, Loader2 } from "lucide-react";
 import type { BlogPostData } from "@/types/blog";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
+import { formatShopDate } from "@/lib/shop-time";
 
-const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-};
+// India time on the server and in every browser (the server renders in UTC: a post published
+// shortly after midnight in India would otherwise show the previous day, and the browser's own
+// text would then disagree with the server's)
+const formatDate = (dateStr: string) => formatShopDate(dateStr, "dateLong");
 
 /** Category tabs plus the post grid. The page passes every published post; this filters them. */
 export function BlogsView({

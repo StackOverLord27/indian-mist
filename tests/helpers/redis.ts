@@ -108,7 +108,7 @@ export function ratelimitModuleMock() {
   class Ratelimit {
     static slidingWindow = (tokens: number, window: string) => ({ tokens, window });
     static fixedWindow = (tokens: number, window: string) => ({ tokens, window });
-    constructor(public config: { prefix?: string }) {}
+    constructor(public config: { prefix?: string; analytics?: boolean }) {}
     async limit(id: string) {
       if (ratelimitState.failing) throw new Error("redis unreachable");
       ratelimitState.calls.push(`${this.config.prefix}|${id}`);

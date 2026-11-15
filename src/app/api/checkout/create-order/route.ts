@@ -8,6 +8,7 @@ import {
   attachRazorpayOrder,
   PENDING_ORDER_TTL_SECONDS,
 } from "@/lib/stock-reservation";
+import { revalidateCatalogThrottled } from "@/lib/revalidate-storefront";
 import { normalizePromoCode, findPromo, countPaidPromoUses, promoDiscount } from "@/lib/promo";
 import { requireRedis } from "@/lib/redis";
 import { allowCheckoutStart } from "@/lib/attempt-limit";
@@ -24,6 +25,7 @@ import { resolveShippingRules } from "@/lib/shipping-rules";
 import { computeOrderTotals } from "@/lib/order-totals";
 import { CreateOrderSchema } from "@/schemas/checkout-api";
 import Razorpay from "razorpay";
+import { hasExpired } from "@/lib/shop-time";
 import { getRazorpayKeyId, getRazorpayKeySecret } from "@/lib/env";
 
 const MAX_QTY_PER_ITEM = 50;
@@ -165,7 +167,7 @@ export const POST = withDB(async (req: NextRequest) => {
       return errorResponse("Promo code is no longer valid", 400);
     }
 
-    if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) {
+    if (hasExpired(promo.expiresAt)) {
       return errorResponse("Promo code has expired", 400);
     }
 
@@ -218,15 +220,19 @@ export const POST = withDB(async (req: NextRequest) => {
 
   // ─── Hold the stock for this checkout ─────────────────────────────────────
   // The stock is taken in one atomic step, so two shoppers can never both get the last unit.
-  await releaseExpiredReservations();
-  await releaseUserReservations(userId);
+  const returned = (await releaseExpiredReservations()) + (await releaseUserReservations(userId));
   const hold = await reserveStock(
     userId,
     [...requestedQty.values()],
   );
+  // Stock moved (units came back, or this checkout took some): refresh the product pages, throttled
+  if (returned > 0 || (hold.ok && hold.reservationId)) revalidateCatalogThrottled();
   if (!hold.ok) return errorResponse(hold.message, 400);
   const releaseHold = async () => {
-    if (hold.reservationId) await releaseReservation({ _id: hold.reservationId });
+    if (hold.reservationId) {
+      await releaseReservation({ _id: hold.reservationId });
+      revalidateCatalogThrottled();
+    }
   };
 
   // From here on the stock is held: whatever goes wrong, give it back before reporting the error

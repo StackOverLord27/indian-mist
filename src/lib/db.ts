@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { getMongoUri } from "@/lib/env";
+import { checkOrdersIndexNow } from "@/lib/db-health";
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -42,7 +43,11 @@ export default async function dbConnect(): Promise<typeof mongoose> {
   }
 
   try {
+    const first = !cache.conn;
     cache.conn = await cache.promise;
+    // First connection of this server instance: look once at the orders index (logs a [db] CRITICAL
+    // line when it is not unique and sparse). In the background; never delays or fails a request.
+    if (first && !globalThis._ordersIndexHealth) void checkOrdersIndexNow();
     return cache.conn;
   } catch (error) {
     cache.promise = null;

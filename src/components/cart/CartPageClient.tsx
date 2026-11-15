@@ -11,13 +11,15 @@ import { OrderSummary } from "@/components/cart/OrderSummary";
 import { RelatedProducts } from "@/components/product/RelatedProducts";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { useCartSync } from "@/lib/use-cart-sync";
+import { CartSyncNotice } from "@/components/cart/CartSyncNotice";
+import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { usePricingSettings } from "@/hooks/usePricingSettings";
 import { computeOrderTotals } from "@/lib/order-totals";
 
 export function CartPageClient() {
   const router = useRouter();
   const { items, setBuyNowItem } = useCartStore();
-  useCartSync();
+  const cartSync = useCartSync();
   const pricing = usePricingSettings();
   const checkoutBtnRef = useRef<HTMLButtonElement | null>(null);
   const [showStickyBar, setShowStickyBar] = useState(false);
@@ -46,7 +48,7 @@ export function CartPageClient() {
   // The same total the order summary shows (shipping included); no number until the rules have arrived
   const total = pricing.ready ? computeOrderTotals({ subtotal, rules: pricing }).total : null;
   if (!isMounted) {
-    return null; // Prevent hydration mismatch by returning nothing until mounted
+    return <PageSkeleton label="Loading your bag" />; // nothing real until mounted (avoids a hydration mismatch), but never a blank page
   }
 
   return (
@@ -77,8 +79,11 @@ export function CartPageClient() {
             <EmptyCart />
           ) : (
             <>
+              <div className="mt-6">
+                <CartSyncNotice sync={cartSync} />
+              </div>
               {/* 2-column grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 mt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8">
                 {/* Left — Items */}
                 <CartItemList />
 

@@ -25,6 +25,7 @@ import AdminCard from "@/components/admin/ui/AdminCard";
 import AdminFormField from "@/components/admin/ui/AdminFormField";
 import type { PromoCode, SiteSettings } from "@/types/admin";
 import { settingsForSection } from "@/lib/admin-api/settings";
+import { SHOP_TIME_LABEL, formatShopDate, fromShopInputValue, hasExpired, toShopInputValue } from "@/lib/shop-time";
 
 const inputClass =
   "w-full bg-warm/50 border border-olive/20 rounded-sm px-4 py-2.5 font-montserrat text-sm text-forest focus:outline-none focus:border-olive focus:ring-1 focus:ring-olive transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
@@ -50,9 +51,7 @@ function PromoCodeEditor({
   isNew?: boolean;
 }) {
   const [expanded, setExpanded] = useState(isNew ?? false);
-  const isExpired = promo.expiresAt
-    ? new Date(promo.expiresAt) < new Date()
-    : false;
+  const isExpired = hasExpired(promo.expiresAt);
 
   return (
     <div
@@ -327,29 +326,28 @@ function PromoCodeEditor({
             <div className="md:col-span-2">
               <label className="font-montserrat text-[10px] uppercase tracking-widest text-olive-leaf font-bold block mb-1">
                 <span className="flex items-center gap-1">
-                  <Clock className="size-3" /> Expires At
+                  <Clock className="size-3" /> Expires At ({SHOP_TIME_LABEL})
                 </span>
               </label>
               <input
                 type="datetime-local"
-                value={
-                  promo.expiresAt
-                    ? new Date(promo.expiresAt).toISOString().slice(0, 16)
-                    : ""
-                }
-                onChange={(e) =>
-                  onChange(
-                    index,
-                    "expiresAt",
-                    e.target.value
-                      ? new Date(e.target.value).toISOString()
-                      : null,
-                  )
-                }
+                // India time in, India time out, whatever the browser's time zone (src/lib/shop-time.ts):
+                // the field shows exactly what was picked, also after a reload
+                value={toShopInputValue(promo.expiresAt)}
+                onChange={(e) => onChange(index, "expiresAt", fromShopInputValue(e.target.value))}
                 className={smallInputClass}
               />
               <span className="font-montserrat text-[9px] text-olive/60 mt-0.5 block">
-                Leave blank for no expiry
+                India time ({SHOP_TIME_LABEL}). The code stops working at exactly this minute. Leave blank for no expiry.
+                {promo.expiresAt && (
+                  <button
+                    type="button"
+                    onClick={() => onChange(index, "expiresAt", null)}
+                    className="ml-2 underline text-olive-leaf hover:text-copperwood"
+                  >
+                    Clear
+                  </button>
+                )}
               </span>
             </div>
           </div>
@@ -371,13 +369,7 @@ function PromoCodeEditor({
           {promo.createdAt && (
             <p className="font-montserrat text-[9px] text-olive/40 mt-2">
               Created:{" "}
-              {new Date(promo.createdAt).toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {formatShopDate(promo.createdAt, "dateTime", { withZone: true })}
             </p>
           )}
         </div>
@@ -517,10 +509,10 @@ export default function AdminPricingPage() {
   // Separate active from inactive/expired codes
   const now = new Date();
   const activePromos = promoCodes.filter(
-    (p) => p.isActive && !(p.expiresAt && new Date(p.expiresAt) < now),
+    (p) => p.isActive && !hasExpired(p.expiresAt, now),
   );
   const inactivePromos = promoCodes.filter(
-    (p) => !p.isActive || (p.expiresAt && new Date(p.expiresAt) < now),
+    (p) => !p.isActive || hasExpired(p.expiresAt, now),
   );
 
   // We need the original index for edits (since activePromos / inactivePromos are filtered views)

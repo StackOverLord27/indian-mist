@@ -1,11 +1,29 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Package } from "lucide-react";
+import { CheckCircle2, Package, Copy, Check } from "lucide-react";
+import { orderNumber } from "@/lib/order-number";
 
 interface CheckoutSuccessProps {
   orderId: string | null;
 }
 
 export function CheckoutSuccess({ orderId }: CheckoutSuccessProps) {
+  const [copied, setCopied] = useState(false);
+  const number = orderId ? orderNumber(orderId) : null;
+
+  async function copy() {
+    if (!number) return;
+    try {
+      await navigator.clipboard.writeText(number);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard blocked (an insecure page, a strict browser): the number is still on screen to select
+    }
+  }
+
   return (
     <div className="bg-cornsilk min-h-screen flex items-center justify-center px-6">
       <div className="max-w-md w-full text-center py-20 animate-[fadeInUp_0.6s_ease-out]">
@@ -23,15 +41,24 @@ export function CheckoutSuccess({ orderId }: CheckoutSuccessProps) {
         <p className="font-montserrat text-sm text-muted-text mb-2">
           Thank you for your purchase. Your order has been confirmed.
         </p>
-        {orderId && (
+        {number && (
           <div className="inline-flex items-center gap-2 bg-olive/5 border border-olive/15 rounded-md px-4 py-2 mt-2 mb-8">
             <Package className="size-3.5 text-olive" />
             <span className="font-montserrat text-xs text-muted-text">
-              Order ID:
+              Order number:
             </span>
-            <span className="font-montserrat text-xs text-forest font-semibold">
-              {orderId}
+            <span data-testid="order-number" className="font-montserrat text-xs text-forest font-semibold">
+              {number}
             </span>
+            <button
+              type="button"
+              onClick={copy}
+              aria-label="Copy order number"
+              className="ml-1 inline-flex items-center gap-1 rounded-sm border border-olive/20 px-2 py-0.5 font-montserrat text-3xs font-semibold uppercase tracking-wider text-olive hover:bg-olive/10"
+            >
+              {copied ? <Check className="size-3" aria-hidden="true" /> : <Copy className="size-3" aria-hidden="true" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
           </div>
         )}
 

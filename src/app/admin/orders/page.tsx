@@ -29,6 +29,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight, Package, MapPin, CreditCard } from "lucide-react";
 import { SafeImage } from "@/components/ui/SafeImage";
+import { reviewNoteForDisplay } from "@/lib/duplicate-note";
+import { orderNumber } from "@/lib/order-number";
+import { formatShopDate } from "@/lib/shop-time";
 
 type StatusUpdater = UseMutationResult<unknown, Error, { id: string; status: string }>;
 type RefundInput = { id: string; refundStatus: string; refundNote: string; razorpayRefundId: string };
@@ -117,16 +120,10 @@ function OrderRow({
             </button>
             <div>
               <span className="font-merriweather text-sm font-bold text-forest block">
-                #{order._id.slice(-6).toUpperCase()}
+                {orderNumber(order._id)}
               </span>
               <span className="font-montserrat text-[10px] text-muted-text">
-                {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatShopDate(order.createdAt, "dateTime", { withZone: true })}
               </span>
               <div className="mt-1 font-montserrat text-[11px] text-olive-leaf">
                 {order.items.length} item{order.items.length !== 1 ? "s" : ""}
@@ -217,10 +214,11 @@ function OrderRow({
       {isExpanded && (
         <TableRow className="bg-warm-mist/30 hover:bg-warm-mist/30">
           <TableCell colSpan={5} className="p-0 border-b border-olive/20">
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 overflow-hidden">
+            {/* TableCell is whitespace-nowrap: without this reset long notes, ids and addresses ran past their boxes */}
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 overflow-hidden whitespace-normal">
               
               {/* Column 1: Shipping Address */}
-              <div className="space-y-3">
+              <div className="space-y-3 min-w-0">
                 <div className="flex items-center gap-2 text-forest font-merriweather font-semibold border-b border-olive/10 pb-2">
                   <MapPin className="h-4 w-4" />
                   Shipping Address
@@ -234,10 +232,10 @@ function OrderRow({
                   <p>Email: {order.email}</p>
                 </div>
 
-                {order.reviewNote && (
-                  <div className="mt-3 p-2.5 bg-red-50 border border-red-200 rounded-sm">
+                {(order.reviewNote || order.samePaymentAs?.length) && (
+                  <div data-testid="review-note" className="mt-3 w-full min-w-0 max-w-full p-2.5 bg-red-50 border border-red-200 rounded-sm">
                     <p className="font-montserrat text-[10px] text-red-700 uppercase tracking-widest font-semibold mb-1">Needs review</p>
-                    <p className="font-montserrat text-xs text-red-900">{order.reviewNote}</p>
+                    <p className="font-montserrat text-xs text-red-900 wrap-anywhere">{reviewNoteForDisplay(order.reviewNote, order.samePaymentAs)}</p>
                   </div>
                 )}
 
@@ -251,7 +249,7 @@ function OrderRow({
               </div>
 
               {/* Column 2: Order Items */}
-              <div className="space-y-3 lg:col-span-1">
+              <div className="space-y-3 lg:col-span-1 min-w-0">
                 <div className="flex items-center gap-2 text-forest font-merriweather font-semibold border-b border-olive/10 pb-2">
                   <Package className="h-4 w-4" />
                   Ordered Items
@@ -292,7 +290,7 @@ function OrderRow({
               </div>
 
               {/* Column 3: Payment & Breakdown */}
-              <div className="space-y-3">
+              <div className="space-y-3 min-w-0">
                 <div className="flex items-center gap-2 text-forest font-merriweather font-semibold border-b border-olive/10 pb-2">
                   <CreditCard className="h-4 w-4" />
                   Payment Summary
@@ -325,9 +323,14 @@ function OrderRow({
 
                   <div className="mt-4 p-3 bg-white border border-olive/10 rounded-sm space-y-1.5">
                     <p className="text-[10px] text-muted-text uppercase tracking-widest font-semibold">Gateway Details</p>
-                    <p className="text-xs text-forest"><span className="text-muted-text">Order ID:</span> {order.razorpayOrderId}</p>
+                    <p className="text-xs text-forest wrap-anywhere"><span className="text-muted-text">Order ID:</span> {order.razorpayOrderId}</p>
                     {order.razorpayPaymentId && (
-                      <p className="text-xs text-forest"><span className="text-muted-text">Pay ID:</span> {order.razorpayPaymentId}</p>
+                      <p className="text-xs text-forest wrap-anywhere"><span className="text-muted-text">Pay ID:</span> {order.razorpayPaymentId}</p>
+                    )}
+                    {order.finalizedVia && order.finalizedAt && (
+                      <p data-testid="finalized-via" className="text-[10px] text-muted-text">
+                        Order created by {order.finalizedVia === 'webhook' ? 'the Razorpay webhook' : "the customer's browser confirmation"}, {formatShopDate(order.finalizedAt, 'dateTime', { withZone: true })}
+                      </p>
                     )}
                   </div>
                   <RefundPanel key={`${order.refundStatus}|${order.refundNote}|${order.razorpayRefundId}`} order={order} saveRefund={saveRefund} />

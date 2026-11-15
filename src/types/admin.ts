@@ -325,6 +325,11 @@ export interface AdminOrder {
   razorpayRefundId?: string;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
+  /** Which path turned the payment into this order, and when (absent on older orders) */
+  finalizedVia?: 'verify-payment' | 'webhook';
+  finalizedAt?: string;
+  /** Ids of OTHER orders that carry the same Razorpay payment id (the same payment recorded twice) */
+  samePaymentAs?: string[];
   shippingAddress: {
     street: string;
     city: string;

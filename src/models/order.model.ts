@@ -46,6 +46,9 @@ export interface IOrder extends Document {
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   razorpaySignature?: string;
+  /** Which path turned the payment into this order, and when (absent on orders from before it was recorded) */
+  finalizedVia?: "verify-payment" | "webhook";
+  finalizedAt?: Date;
   customerName: string;
   email: string;
   phone: string;
@@ -101,6 +104,8 @@ const OrderSchema: Schema = new Schema(
     razorpayOrderId: { type: String, unique: true, sparse: true },
     razorpayPaymentId: { type: String },
     razorpaySignature: { type: String },
+    finalizedVia: { type: String, enum: ["verify-payment", "webhook"] },
+    finalizedAt: { type: Date },
     customerName: { type: String, required: true },
     email: { type: String, required: true },
     phone: { type: String, required: true },
@@ -124,6 +129,8 @@ OrderSchema.index({ paymentStatus: 1, status: 1, createdAt: -1 });
 // ...and the "All orders" tab (PAID, newest first)
 OrderSchema.index({ paymentStatus: 1, createdAt: -1 });
 OrderSchema.index({ userId: 1, createdAt: -1 });
+// "Is this payment already on another order?" (finalizeOrder's duplicate check, the admin orders list)
+OrderSchema.index({ razorpayPaymentId: 1 }, { sparse: true });
 // Repair pass: paid orders whose stock was never settled (a handful at most; sparse keeps it tiny)
 OrderSchema.index({ stockSettled: 1, createdAt: 1 }, { partialFilterExpression: { stockSettled: false } });
 
@@ -136,4 +143,12 @@ if (process.env.NODE_ENV === "development") {
 
 export const Order: Model<IOrder> =
   mongoose.models.Order || mongoose.model<IOrder>("Order", OrderSchema);
+
+// Mongoose builds the declared indexes in the background when the model is first used. If an index
+// of the same name already exists with other options (the live "razorpayOrderId_1" was a plain
+// index), the build fails with IndexKeySpecsConflict and Mongoose only emits an event. Nothing
+// else listens, so before this the failure was completely silent.
+Order.on("index", (error?: unknown) => {
+  if (error) console.error("[db] CRITICAL: building the orders indexes failed:", error instanceof Error ? error.message : error, "(run: npm run ensure:indexes)");
+});
 

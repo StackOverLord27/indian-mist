@@ -1,17 +1,10 @@
 import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
 import dbConnect from "@/lib/db";
 import { User } from "@/models/user.model";
 import { RefreshToken } from "@/models/refreshToken.model";
 import { verifyOtp, deleteOtp } from "@/lib/otp-store";
-import {
-  signAccessToken,
-  signRefreshToken,
-  hashToken,
-  setTokenCookies,
-  REFRESH_TOKEN_MAX_AGE,
-} from "@/lib/auth-tokens";
-import { roleForEmail } from "@/lib/roles";
+import { setTokenCookies } from "@/lib/auth-tokens";
+import { startSession } from "@/lib/auth-session";
 import { ResetPasswordSchema } from "@/schemas/auth/forgot-password.schema";
 
 export async function POST(req: Request) {
@@ -58,27 +51,8 @@ export async function POST(req: Request) {
     // A password reset must end every existing session (including any stolen one)
     await RefreshToken.deleteMany({ userId: user._id });
 
-    // ── Issue fresh tokens and auto-signin ─────────────────────────────────────
-    const family = randomUUID();
-    const userRole = roleForEmail(user.email);
-
-    const accessToken = signAccessToken({
-      userId: String(user._id),
-      email: user.email,
-      role: userRole,
-    });
-
-    const rawRefreshToken = signRefreshToken({
-      userId: String(user._id),
-      family,
-    });
-
-    await RefreshToken.create({
-      userId: user._id,
-      tokenHash: hashToken(rawRefreshToken),
-      family,
-      expiresAt: new Date(Date.now() + REFRESH_TOKEN_MAX_AGE * 1000),
-    });
+    // ── Issue a fresh session and auto-signin ──────────────────────────────────
+    const { role: userRole, accessToken, refreshToken: rawRefreshToken, refreshMaxAge } = await startSession(user);
 
     const response = NextResponse.json(
       {
@@ -93,7 +67,7 @@ export async function POST(req: Request) {
       { status: 200 }
     );
 
-    setTokenCookies(response, accessToken, rawRefreshToken);
+    setTokenCookies(response, accessToken, rawRefreshToken, refreshMaxAge);
     return response;
   } catch (error) {
     console.error("Password reset error:", error);

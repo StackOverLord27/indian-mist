@@ -252,7 +252,7 @@ describe("expired holds", () => {
 
   it("a failing sweep never throws into the page that triggered it, and is retried next time", async () => {
     vi.spyOn(StockReservation, "find").mockImplementationOnce((() => { throw new Error("db down"); }) as never);
-    await expect(sweepExpiredReservations()).resolves.toBeUndefined();
+    await expect(sweepExpiredReservations()).resolves.toBe(0);
     const find = vi.spyOn(StockReservation, "find");
     await sweepExpiredReservations();
     expect(find).toHaveBeenCalled();
@@ -544,6 +544,18 @@ describe("promo codes", () => {
       expect(res.status).toBe(400);
     }
     expect((await stockOf(p)).stockQuantity).toBe(20); // nothing was held
+  });
+
+  it("a code that expires while the checkout page is open is refused when the shopper presses Pay, and nothing is held", async () => {
+    await setPromos([code({ code: "SOON", expiresAt: new Date(Date.now() + 1500) })]);
+    const p = await product({ price: 1000, stockQuantity: 20 });
+    const first = await startCheckout(U1, [{ productId: String(p._id) }], { promoCode: "SOON" });
+    expect(first.res.status).toBe(200); // still valid
+    await new Promise((r) => setTimeout(r, 1700)); // the expiry instant passes
+    const late = await startCheckout(U2, [{ productId: String(p._id) }], { promoCode: "SOON" });
+    expect(late.res.status).toBe(400);
+    expect(late.body.message).toMatch(/expired/);
+    expect((await stockOf(p)).stockQuantity).toBe(19); // only the first checkout holds a unit
   });
 
   it("per-user limit counts only PAID orders: abandoned checkouts do not use the code up", async () => {

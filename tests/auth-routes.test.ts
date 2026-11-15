@@ -100,59 +100,6 @@ describe("roles in tokens", () => {
   });
 });
 
-describe("refresh-token rotation under parallel requests (audit N1)", () => {
-  const refreshWith = (raw: string) => refresh.POST(post("/api/auth/refresh", {}, `refresh_token=${raw}`));
-
-  it("five parallel refreshes with one cookie: exactly one rotates, nobody is signed out", async () => {
-    const user = await makeUser("race@shop.com");
-    const raw = await session(String(user._id), "fam-race");
-
-    const results = await Promise.all(Array.from({ length: 5 }, () => refreshWith(raw)));
-    expect(results.map((r) => r.status)).toEqual([200, 200, 200, 200, 200]);
-
-    const rotated = results.map((r) => cookieValue(r, "refresh_token")).filter(Boolean) as string[];
-    expect(rotated).toHaveLength(1); // one new refresh token; the others only got an access token
-    for (const r of results) expect(verifyAccessToken(cookieValue(r, "access_token")!).role).toBe("user");
-
-    // the session is intact: exactly one unused token, and it works
-    expect(await RefreshToken.countDocuments({ family: "fam-race", usedAt: { $exists: false } })).toBe(1);
-    expect((await refreshWith(rotated[0])).status).toBe(200);
-  });
-
-  it("a token used long ago is a replay: 401 and the whole session is wiped", async () => {
-    const user = await makeUser("replay@shop.com");
-    const uid = String(user._id);
-    const raw = await session(uid, "fam-replay");
-    const newer = await refreshWith(raw);
-    const newToken = cookieValue(newer, "refresh_token")!;
-    await RefreshToken.updateOne({ tokenHash: hashToken(raw) }, { usedAt: new Date(Date.now() - 60_000) });
-
-    const replay = await refreshWith(raw);
-    expect(replay.status).toBe(401);
-    expect(replay.headers.getSetCookie().join(";")).toMatch(/refresh_token=;/);
-    expect(await RefreshToken.countDocuments({ family: "fam-replay" })).toBe(0);
-    expect((await refreshWith(newToken)).status).toBe(401); // the rotated token died with the session
-  });
-
-  it("a well-signed token that is not in the database is a replay too", async () => {
-    const user = await makeUser("ghost@shop.com");
-    const uid = String(user._id);
-    const raw = jwt.sign({ userId: uid, family: "fam-ghost", jti: randomUUID() }, process.env.JWT_REFRESH_SECRET!, { expiresIn: "7d", algorithm: "HS256" });
-    await session(uid, "fam-ghost");
-    expect((await refreshWith(raw)).status).toBe(401);
-    expect(await RefreshToken.countDocuments({ family: "fam-ghost" })).toBe(0);
-  });
-
-  it("sign-in followed at once by a refresh works (tokens are unique even within one second)", async () => {
-    await makeUser("fast@shop.com", "Fast-Passw0rd!");
-    const login = await signin.POST(post("/api/auth/signin", { email: "fast@shop.com", password: "Fast-Passw0rd!" }));
-    const first = cookieValue(login, "refresh_token")!;
-    const next = await refreshWith(first);
-    expect(next.status).toBe(200);
-    expect(cookieValue(next, "refresh_token")).not.toBe(first);
-  });
-});
-
 describe("sign-up verification (audit N2)", () => {
   const verify = (email: string, otp: string) => verifyOtpRoute.POST(post("/api/auth/verify-otp", { email, otp }));
   const hashed = () => bcrypt.hash("New-Passw0rd!", 4);

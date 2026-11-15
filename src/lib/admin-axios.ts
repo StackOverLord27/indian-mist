@@ -57,7 +57,10 @@ adminAxios.interceptors.response.use(
         return adminAxios(originalRequest);
       } catch (refreshErr) {
         processQueue(refreshErr);
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
+        // Only a 401 from the renewal means "signed out". A 429, 5xx or network failure says nothing
+        // about the session: keep the admin where they are (they see the failed call's error).
+        const sessionOver = axios.isAxiosError(refreshErr) && refreshErr.response?.status === 401;
+        if (sessionOver && typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
           localStorage.removeItem('im_admin_user');
           window.location.href = '/admin/login';
         }

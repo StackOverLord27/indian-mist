@@ -12,7 +12,8 @@
  *
  * Token refresh is NOT done here — the edge runtime has no DB access.
  * The client is responsible for calling POST /api/auth/refresh when it
- * receives a 401, then retrying the original request.
+ * receives a 401, then retrying the original request (customers: src/lib/customer-session.ts,
+ * admin: src/lib/admin-axios.ts).
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -20,6 +21,7 @@ import { verifyAccessTokenEdge } from "@/lib/auth-tokens.edge";
 import { getRateLimiter } from "@/lib/rate-limit";
 import { limiterKindForPath } from "@/lib/rate-limit-paths";
 import { getJwtAccessSecret, isProduction } from "@/lib/env";
+import { logAuth } from "@/lib/auth-log";
 
 // ─── Public & Protected paths ─────────────────────────────────────────────
 
@@ -126,7 +128,8 @@ export async function proxy(req: NextRequest) {
   
   if (isApiRoute) {
     // API Routes: Default deny, except PUBLIC_API_PREFIXES
-    const isPublicApi = PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p));
+    // on a path-segment boundary: "/api/products" covers "/api/products/cart", not "/api/products-private"
+    const isPublicApi = PUBLIC_API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
     if (isPublicApi) {
       return passThrough();
     }
@@ -176,6 +179,11 @@ export async function proxy(req: NextRequest) {
     }
 
     // Page route — redirect to appropriate login page when no tokens exist.
+    // One line saying why (no tokens, personal data or ids), so "signed out at random" can be traced.
+    logAuth("sign-in redirect", {
+      reason: accessToken ? "access-token-invalid-and-no-refresh-cookie" : "no-session-cookies",
+      path: pathname,
+    });
     const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/');
     if (isAdminPage) {
       return NextResponse.redirect(new URL('/admin/login', req.url));

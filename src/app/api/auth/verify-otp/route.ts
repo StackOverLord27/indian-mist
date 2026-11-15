@@ -1,18 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { randomUUID } from "crypto";
 import dbConnect from "@/lib/db";
 import { User } from "@/models/user.model";
-import { RefreshToken } from "@/models/refreshToken.model";
 import { verifyOtp, deleteOtp } from "@/lib/otp-store";
-import { roleForEmail } from "@/lib/roles";
-import {
-  signAccessToken,
-  signRefreshToken,
-  hashToken,
-  setTokenCookies,
-  REFRESH_TOKEN_MAX_AGE,
-} from "@/lib/auth-tokens";
+import { setTokenCookies } from "@/lib/auth-tokens";
+import { startSession } from "@/lib/auth-session";
 
 const VerifyOtpSchema = z.object({
   email: z.string().email().toLowerCase().trim(),
@@ -84,27 +76,7 @@ export async function POST(req: Request) {
     await deleteOtp("signup", email);
 
     // Issue tokens — log the user in automatically, no need to sign in again.
-    const family = randomUUID();
-
-    const userRole = roleForEmail(newUser.email);
-
-    const accessToken = signAccessToken({
-      userId: String(newUser._id),
-      email: newUser.email,
-      role: userRole,
-    });
-
-    const rawRefreshToken = signRefreshToken({
-      userId: String(newUser._id),
-      family,
-    });
-
-    await RefreshToken.create({
-      userId: newUser._id,
-      tokenHash: hashToken(rawRefreshToken),
-      family,
-      expiresAt: new Date(Date.now() + REFRESH_TOKEN_MAX_AGE * 1000),
-    });
+    const { role: userRole, accessToken, refreshToken: rawRefreshToken, refreshMaxAge } = await startSession(newUser);
 
     const response = NextResponse.json(
       {
@@ -119,7 +91,7 @@ export async function POST(req: Request) {
       { status: 200 }
     );
 
-    setTokenCookies(response, accessToken, rawRefreshToken);
+    setTokenCookies(response, accessToken, rawRefreshToken, refreshMaxAge);
     return response;
   } catch (error: unknown) {
     console.error("OTP verification error:", error);

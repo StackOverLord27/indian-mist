@@ -10,6 +10,7 @@ import { Calendar, Clock, ArrowLeft, ArrowRight, User } from "lucide-react";
 import type { Metadata } from "next";
 import { cache } from "react";
 import { NOINDEX, pageMetadata, summarise } from "@/lib/seo";
+import { formatShopDate } from "@/lib/shop-time";
 
 // Built on the first visit, then cached (ISR). Saving a post in the admin refreshes it straight
 // away (revalidateStorefront). Nothing is prebuilt, so the build does not read the posts.
@@ -73,13 +74,8 @@ export default async function BlogPostPage({
 
   const { blog, related } = data;
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  };
+  // India time, not the server's (UTC): see src/lib/shop-time.ts
+  const formatDate = (dateStr: string) => formatShopDate(dateStr, "dateLong");
 
   return (
     <div className="bg-cornsilk min-h-screen page-enter">

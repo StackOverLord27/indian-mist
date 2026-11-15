@@ -62,7 +62,22 @@ export const GET = withAdmin(async (req: NextRequest) => {
       }
     }
 
-    return successResponse({ orders, statusCounts, ...paginationMeta(total, pagination) });
+    // Orders that share a Razorpay payment id with ANOTHER order (the same payment recorded twice):
+    // one lookup for the page, shown in the "Needs review" note (src/lib/duplicate-note.ts).
+    const paymentIds = [...new Set(orders.map((o) => o.razorpayPaymentId).filter((id): id is string => !!id))];
+    const samePaymentAs = new Map<string, string[]>();
+    if (paymentIds.length) {
+      const sharing = await Order.find({ razorpayPaymentId: { $in: paymentIds } }).select('razorpayPaymentId').lean();
+      const byPayment = new Map<string, string[]>();
+      for (const o of sharing) byPayment.set(o.razorpayPaymentId!, [...(byPayment.get(o.razorpayPaymentId!) ?? []), String(o._id)]);
+      for (const order of orders) {
+        const ids = order.razorpayPaymentId ? byPayment.get(order.razorpayPaymentId) : undefined;
+        if (ids && ids.length > 1) samePaymentAs.set(String(order._id), ids.filter((id) => id !== String(order._id)));
+      }
+    }
+    const withDuplicates = orders.map((o) => (samePaymentAs.has(String(o._id)) ? { ...o, samePaymentAs: samePaymentAs.get(String(o._id)) } : o));
+
+    return successResponse({ orders: withDuplicates, statusCounts, ...paginationMeta(total, pagination) });
   } catch (error) {
     console.error('Failed to fetch orders:', error);
     return errorResponse('Failed to fetch orders', 500);

@@ -10,6 +10,7 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import Pagination from '@/components/admin/ui/Pagination';
 import BlogPageHeaderCard from '@/components/admin/BlogPageHeaderCard';
+import { formatShopDate } from '@/lib/shop-time';
 
 const PAGE_SIZE = 50;
 
@@ -30,13 +31,7 @@ export default function AdminBlogsPage() {
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
+  const formatDate = (dateStr: string) => formatShopDate(dateStr, 'date');
 
   return (
     <AdminProtectedRoute>

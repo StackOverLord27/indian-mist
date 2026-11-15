@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ChevronDown, ChevronRight, Package, MapPin, FileText, CheckCircle2 } from "lucide-react";
 import type { OrderData, OrderItemData } from "./types";
 import { SafeImage } from "@/components/ui/SafeImage";
+import { orderNumber } from "@/lib/order-number";
+import { formatShopDate } from "@/lib/shop-time";
 
 interface StatusConfig {
   label: string;
@@ -152,13 +154,10 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                     </button>
                     <div>
                       <p className="font-merriweather text-sm md:text-base font-bold text-black-forest">
-                        #{order._id.slice(-6).toUpperCase()}
+                        {orderNumber(order._id)}
                       </p>
                       <p className="font-montserrat text-[10px] text-olive-leaf/80 md:hidden">
-                        {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                        })}
+                        {formatShopDate(order.createdAt, "date").replace(/ \d{4}$/, "")}
                       </p>
                       {/* On a phone the Status column is off to the right (the table scrolls sideways): say it here too */}
                       <p className="font-montserrat text-[10px] font-semibold text-forest md:hidden">{statusConfig.label}</p>
@@ -167,11 +166,7 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
 
                   {/* Date */}
                   <p className="w-28 text-center font-montserrat text-xs font-medium text-olive-leaf/85">
-                    {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {formatShopDate(order.createdAt, "date")}
                   </p>
 
                   {/* Items count */}

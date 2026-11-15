@@ -9,7 +9,8 @@ import { useAnnouncements } from '@/hooks/admin/useAdminAnnouncements';
 import { useCarousel } from '@/hooks/admin/useAdminCarousel';
 import { useAdminCollections } from '@/hooks/admin/useAdminCollections';
 import { useAdminBlogs } from '@/hooks/admin/useAdminBlogs';
-import { useUnmatchedPayments, useResolveUnmatchedPayment, useRefundPendingCount } from '@/hooks/admin/useUnmatchedPayments';
+import { useUnmatchedPayments, useResolveUnmatchedPayment, useRefundPendingCount, useDbHealth } from '@/hooks/admin/useUnmatchedPayments';
+import { formatShopDate } from '@/lib/shop-time';
 
 export default function AdminDashboardPage() {
   const { data: productsData } = useAdminProducts({ limit: 1 });
@@ -20,6 +21,7 @@ export default function AdminDashboardPage() {
   const { data: unmatched, isError: unmatchedError } = useUnmatchedPayments();
   const resolveUnmatched = useResolveUnmatchedPayment();
   const { data: refundsPending, isError: refundsError } = useRefundPendingCount();
+  const { data: dbHealth } = useDbHealth();
 
   const stats = [
     { label: 'Total Products', value: productsData?.total || 0, icon: Package },
@@ -31,6 +33,16 @@ export default function AdminDashboardPage() {
 
   return (
     <AdminProtectedRoute>
+      {dbHealth && !dbHealth.ordersIndex.ok && (
+        <div role="alert" data-testid="db-index-warning" className="mb-6 rounded-md border border-red-400 bg-red-50 p-5 text-red-900">
+          <h3 className="font-serif text-base">Database problem: orders are not protected against duplicates</h3>
+          <p className="font-sans text-xs mt-1 break-words">
+            {dbHealth.ordersIndex.problem}. The shop still creates only one order per payment by itself, but the database should
+            enforce it too. Ask your developer to run <b>npm run ensure:indexes</b> against the live database (it first shows what
+            is wrong and changes nothing until it is told to).
+          </p>
+        </div>
+      )}
       {unmatched?.count ? (
         <div role="alert" className="mb-6 rounded-md border border-red-300 bg-red-50 p-5 text-red-900">
           <h3 className="font-serif text-base">
@@ -47,7 +59,7 @@ export default function AdminDashboardPage() {
                 <span>Payment <b>{p.razorpayPaymentId}</b></span>
                 <span>Order {p.razorpayOrderId}</span>
                 {p.amount !== undefined && <span>₹{p.amount.toFixed(2)}</span>}
-                <span>{new Date(p.createdAt).toLocaleString()}</span>
+                <span>{formatShopDate(p.createdAt, 'dateTime', { withZone: true })}</span>
                 <span>via {p.source === 'webhook' ? 'Razorpay webhook' : 'customer\'s browser'}</span>
                 <button
                   type="button"

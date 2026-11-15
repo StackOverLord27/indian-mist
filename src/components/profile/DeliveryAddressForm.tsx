@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Pencil, X } from "lucide-react";
 import type { UserData, ShippingAddress } from "./types";
+import { useRouter } from "next/navigation";
+import { customerApi, classifyFailure, failureMessage } from "@/lib/customer-session";
 
 const ADDRESS_FIELDS: { label: string; key: keyof ShippingAddress }[] = [
   { label: "Street", key: "street" },
@@ -21,6 +23,7 @@ export function DeliveryAddressForm({
   setGlobalError: (err: string | null) => void;
   setGlobalSuccess: (msg: string | null) => void;
 }) {
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState<ShippingAddress>({
     street: "", city: "", state: "", zipCode: "", country: "",
@@ -39,19 +42,20 @@ export function DeliveryAddressForm({
     setGlobalError(null);
     setGlobalSuccess(null);
     try {
-      const res = await fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shippingAddress: form }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to save address");
+      const { data } = await customerApi.put("/api/profile", { shippingAddress: form });
       onUpdate(data.user);
       setIsEditing(false);
       setGlobalSuccess("Address updated successfully.");
       setTimeout(() => setGlobalSuccess(null), 3000);
     } catch (err) {
-      setGlobalError(err instanceof Error ? err.message : "Something went wrong");
+      const failure = classifyFailure(err);
+      setGlobalError(
+        failure.kind === "other" && failure.serverMessage
+          ? failure.serverMessage
+          : failureMessage(failure),
+      );
+      // A 401 that survived a renewal: the session is over, go and sign in again
+      if (failure.kind === "signed-out") setTimeout(() => router.replace("/signin?callbackUrl=/profile"), 1500);
     } finally {
       setSaving(false);
     }

@@ -26,3 +26,9 @@ export const fetchUnmatchedPayments = async () => {
   const { data } = await adminAxios.get<{ count: number; payments: UnmatchedPaymentRow[] }>('/api/admin/unmatched-payments');
   return data;
 };
+
+/** Database problems the admin should see (cached on the server). */
+export const fetchDbHealth = async () => {
+  const { data } = await adminAxios.get<{ ordersIndex: { ok: boolean; problem: string | null } }>('/api/admin/health');
+  return data;
+};

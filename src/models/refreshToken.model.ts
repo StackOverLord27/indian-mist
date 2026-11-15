@@ -3,10 +3,14 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface IRefreshToken extends Document {
   userId: mongoose.Types.ObjectId;
   tokenHash: string; // SHA-256 hex of the raw refresh token — never store raw
-  family: string;    // UUID shared across all rotations of one login session
+  family: string;    // UUID of one login session (shared by its rows)
   expiresAt: Date;
-  /** Set (atomically) the moment this token is exchanged for a new one; the token stays so a replay can be told apart from a parallel request */
+  /** Legacy: set by the old rotating design when a token was exchanged. Ignored now (kept so old rows still load). */
   usedAt?: Date;
+  /** The session's hard end. Absent on rows created before tokens stopped rotating ("legacy": upgraded on first use). */
+  absoluteExpiresAt?: Date;
+  /** Last successful renewal (diagnostics only) */
+  lastUsedAt?: Date;
 }
 
 const RefreshTokenSchema: Schema = new Schema({
@@ -27,6 +31,8 @@ const RefreshTokenSchema: Schema = new Schema({
     index: true,
   },
   usedAt: { type: Date },
+  absoluteExpiresAt: { type: Date },
+  lastUsedAt: { type: Date },
   // Explicit Date field used by MongoDB TTL so that expired tokens are
   // automatically reaped by the DB without any application-level cleanup.
   expiresAt: {

@@ -82,8 +82,12 @@ export async function verifyAccessTokenEdge(
     );
     const payload = JSON.parse(payloadJson) as AccessTokenPayload;
 
-    // Check expiry
-    if (payload.exp && Date.now() / 1000 > payload.exp) return null;
+    // Check expiry: a token WITHOUT an expiry is refused (it would never expire)
+    if (typeof payload.exp !== "number" || Date.now() / 1000 > payload.exp) return null;
+
+    // Must have the shape of an ACCESS token. A refresh token signed with the same secret (a
+    // misconfiguration) has no email/role and a 90-day expiry; it must never pass as an access token.
+    if (typeof payload.userId !== "string" || typeof payload.email !== "string" || typeof payload.role !== "string") return null;
 
     return payload;
   } catch {
