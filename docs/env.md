@@ -36,7 +36,7 @@ Vercel environments: **Production** (the live site), **Preview** (every branch/P
 | `RAZORPAY_WEBHOOK_SECRET` | required | only if a Preview webhook is configured | optional | Without it the webhook route answers 503. |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | required | required (ideally a separate account/folder) | required | Only the admin image routes need them. |
 | `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | required | required | optional | Sign-up/reset codes and contact messages. Without them, sending fails and the cause is logged. |
-| `SMTP_PORT` | optional (587) | optional | optional | `465` uses TLS from the start. |
+| `SMTP_PORT` | optional (587) | optional | optional | `465` uses TLS from the start; any other port must offer STARTTLS (the password is never sent in clear text; only `localhost`/`127.0.0.1` is exempt, for a local test server). `SMTP_FROM` must be a plain address (`no-reply@example.com`), no display name or angle brackets; the display names ("Indian Mist", "Indian Mist Website") live in `src/lib/mailer.ts`. |
 
 `NODE_ENV` is set by Next.js (`production` for `next build`/`next start`); do not set it yourself.
 

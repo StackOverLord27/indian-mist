@@ -8,6 +8,9 @@ import { requireRedis } from "@/lib/redis";
 import { sendOTPVerificationEmail } from "@/lib/mailer";
 import { RequestOtpSchema } from "@/schemas/auth/forgot-password.schema";
 
+// The mail send is capped at 20 s (src/lib/mailer.ts); the rest of the request is a few database and Redis calls.
+export const maxDuration = 30;
+
 // The same answer whether or not an account exists, so this form cannot be used to find out
 // who has an account.
 const GENERIC_SUCCESS = {

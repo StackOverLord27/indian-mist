@@ -7,6 +7,9 @@ import { sendContactMessageEmail } from "@/lib/mailer";
 import { getFallbackContactEmail } from "@/lib/env";
 import { CONTACT_TOPICS } from "@/lib/contact-topics";
 
+// The mail send is capped at 20 s (src/lib/mailer.ts); the rest of the request is a few database and Redis calls.
+export const maxDuration = 30;
+
 const contactSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(80),
   email: z.string().trim().email("Please enter a valid email address").max(120),

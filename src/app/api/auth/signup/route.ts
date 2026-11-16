@@ -8,6 +8,9 @@ import { allowOtpEmail } from "@/lib/attempt-limit";
 import { sendOTPVerificationEmail } from "@/lib/mailer";
 import { SignUpSchema } from "@/schemas/auth/signup.schema";
 
+// The mail send is capped at 20 s (src/lib/mailer.ts); the rest of the request is a few database and Redis calls.
+export const maxDuration = 30;
+
 /**
  * Generate a cryptographically secure 6-digit OTP.
  * Uses Node's crypto.randomInt which is backed by a CSPRNG,

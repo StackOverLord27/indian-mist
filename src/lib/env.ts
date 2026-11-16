@@ -109,12 +109,18 @@ export function getCloudinaryConfig() {
 export function getSmtpConfig() {
   const port = Number.parseInt(read("SMTP_PORT") ?? "587", 10);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new EnvError("SMTP_PORT", "is not a valid port number");
+  const from = required("SMTP_FROM");
+  // A bare address only: the display name is added by src/lib/mailer.ts, and a name, angle
+  // brackets or a line break here would corrupt (or inject into) the From header.
+  if (!/^[^\s<>",;()\\]+@[^\s<>",;()\\]+$/.test(from)) {
+    throw new EnvError("SMTP_FROM", "must be a plain e-mail address such as no-reply@example.com (no display name)");
+  }
   return {
     host: required("SMTP_HOST"),
     port,
     user: required("SMTP_USER"),
     pass: required("SMTP_PASS"),
-    from: required("SMTP_FROM"),
+    from,
   };
 }
 
