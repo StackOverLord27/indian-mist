@@ -10,7 +10,6 @@ import { BlogCategory } from "@/models/blog-category.model";
 import * as carouselReorder from "@/app/api/admin/carousel/reorder/route";
 import * as blogCategories from "@/app/api/admin/blogs/categories/route";
 import * as csp from "@/app/api/csp-report/route";
-import { maskEmail } from "@/lib/mailer";
 
 setupTestDb();
 
@@ -61,11 +60,6 @@ describe("blog categories", () => {
 });
 
 describe("log hygiene", () => {
-  it("masks e-mail addresses in the OTP mail log line", () => {
-    expect(maskEmail("asha.kumar@example.com")).toBe("a***@example.com");
-    expect(maskEmail("x@y.in")).toBe("x***@y.in");
-  });
-
   it("the CSP report endpoint logs short, single-line text even for hostile reports", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const hostile = { "csp-report": { "blocked-uri": `https://evil.test/\n[fake] admin signed in\r\n${"A".repeat(3000)}`, "violated-directive": "img-src\u0000", "document-uri": "https://shop.test/" } };

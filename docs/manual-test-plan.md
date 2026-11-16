@@ -53,7 +53,7 @@ All of this needs your **real e-mail inbox**, which is why it is manual. (The lo
 4. Expected: you are signed in and taken to the site; the navbar shows you are logged in.
 5. Negative: sign up again with the same e-mail. Expected: a clear "already exists" type message, no second account.
 6. Negative: request a code, type a wrong code 6 times. Expected: after 5 wrong tries the code is cancelled and you must start again.
-7. Vercel Logs: the line `[MAILER] OTP email sent to a***@...` shows a masked address, not the full one.
+7. Vercel Logs: the line `[email] sent type=otp-signup` appears, with no e-mail address in it.
 
 ### 2.2 Sign in and out [MANUAL] (logic [AUTO])
 1. Sign out (profile page > Sign out). Sign in with the e-mail and password. Expected: you land on the page you came from (for example open `/checkout` while signed out; after signing in you return there).

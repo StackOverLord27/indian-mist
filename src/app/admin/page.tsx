@@ -11,6 +11,7 @@ import { useAdminCollections } from '@/hooks/admin/useAdminCollections';
 import { useAdminBlogs } from '@/hooks/admin/useAdminBlogs';
 import { useUnmatchedPayments, useResolveUnmatchedPayment, useRefundPendingCount, useDbHealth } from '@/hooks/admin/useUnmatchedPayments';
 import { formatShopDate } from '@/lib/shop-time';
+import { useFailedEmails, useResendEmail } from '@/hooks/admin/useFailedEmails';
 
 export default function AdminDashboardPage() {
   const { data: productsData } = useAdminProducts({ limit: 1 });
@@ -22,6 +23,8 @@ export default function AdminDashboardPage() {
   const resolveUnmatched = useResolveUnmatchedPayment();
   const { data: refundsPending, isError: refundsError } = useRefundPendingCount();
   const { data: dbHealth } = useDbHealth();
+  const { data: failedEmails, isError: emailsError } = useFailedEmails();
+  const resendEmail = useResendEmail();
 
   const stats = [
     { label: 'Total Products', value: productsData?.total || 0, icon: Package },
@@ -107,6 +110,52 @@ export default function AdminDashboardPage() {
               : 'Nothing to refund.'}
         </span>
       </Link>
+      <div
+        data-testid="failed-emails-panel"
+        role={failedEmails?.permanentFailures ? 'alert' : undefined}
+        className={`mb-6 rounded-md border px-5 py-3 font-sans text-xs ${
+          failedEmails?.permanentFailures ? 'border-red-300 bg-red-50 text-red-900' : 'border-olive/15 bg-card text-forest'
+        }`}
+      >
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="font-serif text-base">E-mails that failed (last 7 days):</span>
+          <b className="text-base">{emailsError ? '—' : failedEmails ? failedEmails.emails.length : '…'}</b>
+          <span className="text-forest/60">
+            {emailsError
+              ? 'Could not check. Reload the page.'
+              : failedEmails?.permanentFailures
+                ? `${failedEmails.permanentFailures} could not be delivered and will not be retried. Check the mail settings (docs/env.md) and the mail provider's dashboard.`
+                : failedEmails?.emails.length
+                  ? 'Sign-in codes fail now and then; the customer asks for another one.'
+                  : failedEmails
+                    ? 'Nothing failed.'
+                    : 'Checking…'}
+          </span>
+        </div>
+        {failedEmails?.emails.length ? (
+          <ul className="mt-2 space-y-1">
+            {failedEmails.emails.map((e) => (
+              <li key={e.id} className="flex flex-wrap items-center gap-x-4 gap-y-0.5 border-t border-olive/15 pt-1">
+                <span><b>{e.type}</b></span>
+                <span>{formatShopDate(e.createdAt)}</span>
+                <span>{e.attempts} attempt{e.attempts === 1 ? '' : 's'}</span>
+                <span>error {e.lastErrorCode ?? '—'}</span>
+                <span>{e.permanent ? 'will not be retried' : 'will be retried'}</span>
+                {e.canResend && (
+                  <button
+                    type="button"
+                    className="ml-auto rounded border border-olive/40 px-2 py-0.5 hover:bg-warm disabled:opacity-50"
+                    disabled={resendEmail.isPending}
+                    onClick={() => resendEmail.mutate(e.id)}
+                  >
+                    Resend
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-5 gap-4 mb-8">
         {stats.map((stat, i) => {
           const Icon = stat.icon;

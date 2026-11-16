@@ -34,7 +34,9 @@ Set these in Vercel > Project > Settings > Environment Variables. "Prod" = Produ
 | `CLOUDINARY_API_KEY` | yes | yes | yes | |
 | `CLOUDINARY_API_SECRET` | yes | yes | yes | |
 | `SMTP_HOST` | yes | yes | optional | |
-| `SMTP_PORT` | optional (587) | optional | optional | `465` = TLS from the start |
+| `SMTP_PORT` | optional (587) | optional | optional | `465` = TLS from the start; Brevo: `587` |
+| `EMAIL_ENABLED` | optional | optional | optional | `false` = kill switch for ALL e-mail |
+| `EMAIL_ALLOWLIST` | not read | to test | to test | the only addresses a Preview/local run may e-mail (comma-separated, `@domain.com` allowed) |
 | `SMTP_USER` | yes | yes | optional | |
 | `SMTP_PASS` | yes | yes | optional | |
 | `SMTP_FROM` | yes | yes | optional | a sender on **your domain** (see section 8) |
@@ -124,10 +126,23 @@ None of this is built in; set it up, it takes 30 minutes.
 - [ ] **Upstash**: usage alert (daily command limit on the free plan). **Cloudinary**: storage/bandwidth alert. **SMTP**: sending-limit alert and check the spam folder with a real sign-up.
 - [ ] Look once a week at the `npm audit` report (see the audit section of the final report); only upgrade after running the tests.
 
-## 8. E-mail deliverability
+## 8. E-mail deliverability (Brevo SMTP relay)
 
-- [ ] `SMTP_FROM` is an address on **your own domain**; the domain has SPF and DKIM set up with the mail provider (they give you the DNS records). Without this, sign-up codes land in spam or never arrive and customers cannot create accounts.
-- [ ] Send a real sign-up code to Gmail, Outlook and a work address and check they land in the inbox.
+Everything the shop sends (sign-up and password-reset codes, contact-form messages) goes through `src/lib/email`.
+
+- [ ] **Brevo account**: SMTP & API > **SMTP** tab: host `smtp-relay.brevo.com`, port `587`, your **SMTP login** and an **SMTP key** (create one; it is shown once). Put them in Vercel as `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`.
+- [ ] **Authenticate your sending domain in Brevo** (Senders, Domains & Dedicated IPs > Domains > add your domain). Brevo shows the DNS records to add at your domain's DNS host (it can add them for you at some hosts):
+  1. a **Brevo code** TXT record (proves you own the domain),
+  2. a **DKIM** record (one TXT or two CNAME records, as Brevo shows them),
+  3. a **DMARC** TXT record on `_dmarc.yourdomain` (Brevo shows a starting value; to begin gently use `v=DMARC1; p=none; rua=mailto:you@yourdomain`, and tighten to `quarantine` once real mail passes). If the domain already has a DMARC record, do not add a second one; edit the existing one.
+  SPF: Brevo says a separate SPF record is not needed for authentication (DKIM carries DMARC). Adding `include:spf.brevo.com` to your domain's existing SPF record is harmless if you already publish one.
+  Then press "Authenticate" in Brevo (can take up to 24-72 h to propagate). Keep these records as long as you send through Brevo.
+- [ ] **`SMTP_FROM` must be an address on that authenticated domain** (or a sender verified in Brevo), for example `no-reply@yourdomain.com`, a plain address, no display name. Brevo refuses (or the mail lands in spam) when the From domain is not verified. Free mailbox domains (gmail.com, ...) cannot be authenticated.
+- [ ] **Free plan limit: 300 e-mails per day** (Brevo help centre, "What are the limits of the Free plan?"; unused sends do not roll over, the counter resets daily). When it is reached Brevo stops accepting new messages until the quota resets; the shop sees these as failed sends: a customer asking for a sign-in code gets "Failed to send verification email. Please try again.", a contact message gets "We couldn't send your message", and the failure appears in **Admin > Dashboard > "E-mails that failed"**. The contact form has its own cap (20 an hour, 60 a day across all visitors) so a flood cannot use up the allowance. Upgrade the Brevo plan to lift the daily cap. Set a Brevo usage alert.
+- [ ] **Reading failed e-mails**: Admin dashboard > "E-mails that failed (last 7 days)": type, time, attempts, the error code (an SMTP reply such as `550`, or `ETIMEDOUT`, `EAUTH`, `ECONFIG:SMTP_HOST`) and whether it will be retried. A red warning appears when an e-mail failed for good (not counting sign-in codes, which fail now and then and the customer just asks again). **Resend** appears for e-mails the shop can rebuild (order e-mails, once they exist); sign-in codes and contact messages are not stored, so they cannot be resent. Vercel Logs: search `[email]`: `sent type=...`, `... failed: kind=retryable|permanent code=...`, `dropped type=...`, `[contact] global e-mail cap reached`. Logs never contain addresses, codes, message text or credentials.
+- [ ] **Test message**: set `EMAIL_ALLOWLIST` to your own address on the Preview/local environment, open the sign-up page, enter that address and check the code arrives (Brevo > Transactional > Logs shows it too). On the live site: sign up with your own address. A recipient not in the allowlist outside production is logged as `dropped`, not sent.
+- [ ] **Kill switch**: `EMAIL_ENABLED=false` in Vercel stops all sending immediately after a redeploy (customers then see the normal "could not send" messages).
+- [ ] Send a real sign-up code to Gmail, Outlook and a work address and check they land in the inbox, not in spam.
 
 ## 9. Content that must be real before launch
 

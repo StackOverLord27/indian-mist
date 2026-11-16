@@ -14,7 +14,7 @@ vi.mock("next/server", async (importOriginal) => ({
 
 import { User } from "@/models/user.model";
 import { resetRedisForTests } from "@/lib/redis";
-import { mailTimeouts, resetMailerForTests } from "@/lib/mailer";
+import { mailTimeouts, resetSmtpTransportForTests as resetMailerForTests } from "@/lib/email/transport";
 import * as signup from "@/app/api/auth/signup/route";
 import * as requestOtp from "@/app/api/auth/forgot-password/request-otp/route";
 import * as signin from "@/app/api/auth/signin/route";
@@ -163,6 +163,44 @@ describe("6. contact form", () => {
     expect((await res.json()).message).toMatch(/couldn't send your message/);
     expect(logs.join("\n")).not.toContain("asha@cust.test");
     expect(logs.join("\n")).not.toContain("A proper message");
+  });
+
+  it("a double click (the same message twice) sends one e-mail and answers 200 both times", async () => {
+    vi.stubEnv("SUPER_ADMIN_EMAIL", "owner@shop.test");
+    const payload = { ...body, topic: await okTopic() };
+    const statuses = (await Promise.all([1, 2, 3].map(() => contact.POST(post("/api/contact", payload))))).map((r) => r.status);
+    expect(statuses).toEqual([200, 200, 200]);
+    expect(sink.state.messages).toHaveLength(1);
+  });
+
+  it("global cap across all senders: 20 an hour, then a friendly 429 and a log line, nothing sent", async () => {
+    vi.stubEnv("SUPER_ADMIN_EMAIL", "owner@shop.test");
+    const topic = await okTopic();
+    const statuses: number[] = [];
+    for (let i = 0; i < 22; i++) statuses.push((await contact.POST(post("/api/contact", { ...body, topic, email: `sender${i}@cust.test`, message: `Message number ${i} for the shop` }))).status);
+    expect(statuses.filter((s) => s === 200)).toHaveLength(20);
+    expect(statuses.slice(20)).toEqual([429, 429]);
+    expect(sink.state.messages).toHaveLength(20);
+    const res = await contact.POST(post("/api/contact", { ...body, topic, message: "One more message for the shop" }));
+    expect((await res.json()).message).toMatch(/lot of messages right now/);
+    expect(logs.join("\n")).toMatch(/\[contact\] global e-mail cap reached \(hour\)/);
+  });
+
+  it("global cap per day: 60 a day even when each hour is within its limit", async () => {
+    vi.stubEnv("SUPER_ADMIN_EMAIL", "owner@shop.test");
+    const topic = await okTopic();
+    await fakeRedis.set("contact_email:day", 60);
+    const res = await contact.POST(post("/api/contact", { ...body, topic }));
+    expect(res.status).toBe(429);
+    expect(logs.join("\n")).toMatch(/cap reached \(day\)/);
+  });
+
+  it("outside production with no allowlist the message is held back: the customer sees the normal failure, nothing is sent", async () => {
+    vi.stubEnv("SUPER_ADMIN_EMAIL", "owner@shop.test");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    const res = await contact.POST(post("/api/contact", { ...body, topic: await okTopic() }));
+    expect(res.status).toBe(502);
+    expect(sink.state.messages).toHaveLength(0);
   });
 
   it("no owner address configured: 500 with a plain message, nothing sent", async () => {

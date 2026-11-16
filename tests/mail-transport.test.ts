@@ -1,10 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import net from "node:net";
 import { startSmtpSink, headersOf } from "./helpers/smtp-sink";
-import { mailTimeouts, resetMailerForTests, sendContactMessageEmail, sendOTPVerificationEmail } from "@/lib/mailer";
+import { setupTestDb } from "./helpers/mongo";
+import { mailTimeouts, resetSmtpTransportForTests as resetMailerForTests } from "@/lib/email/transport";
+import { sendMail } from "@/lib/email";
 import { getSmtpConfig } from "@/lib/env";
 
 // Real nodemailer talking to a local fake SMTP server (tests/helpers/smtp-sink.ts).
+
+setupTestDb();
+
+const sendOTPVerificationEmail = async (to: string, otp: string) => (await sendMail("otp-signup", to, { otp })).status === "sent";
+const sendContactMessageEmail = async ({ to, ...data }: { to: string; name: string; email: string; phone?: string; topic: string; message: string }) =>
+  (await sendMail("contact", to, data)).status === "sent";
 
 let sink: Awaited<ReturnType<typeof startSmtpSink>>;
 const original = { ...mailTimeouts };
@@ -126,7 +134,7 @@ describe("7. the mail server is down, slow or hung: the send ends quickly and re
     sink.state.mode = "stall-data";
     const started = Date.now();
     expect(await sendOTPVerificationEmail("a@b.co", "123456")).toBe(false);
-    expect(Date.now() - started).toBeLessThan(mailTimeouts.deadline + 800);
+    expect(Date.now() - started).toBeLessThan(2 * mailTimeouts.deadline + 800); // a sign-in code is tried twice
     expect(errors.join("\n")).toMatch(/EDEADLINE/);
   });
 
@@ -134,10 +142,10 @@ describe("7. the mail server is down, slow or hung: the send ends quickly and re
     sink.state.mode = "reject-rcpt";
     expect(await sendOTPVerificationEmail("secret.person@cust.test", "123456")).toBe(false);
     expect(errors.join("\n")).not.toContain("secret.person");
-    expect(errors.join("\n")).toMatch(/responseCode=550|EENVELOPE/);
+    expect(errors.join("\n")).toMatch(/code=550/);
   });
 
-  it("a successful OTP send logs only the masked address and the message id, never the code", async () => {
+  it("a successful OTP send logs neither the address nor the code", async () => {
     expect(await sendOTPVerificationEmail("asha@cust.test", "246810")).toBe(true);
     const log = errors.join("\n");
     expect(log).not.toContain("246810");
@@ -147,12 +155,11 @@ describe("7. the mail server is down, slow or hung: the send ends quickly and re
 
 describe("3. header injection", () => {
   it("line breaks, NUL and Unicode separators in name or topic never create or alter a header", async () => {
-    const evil = "Eve\r\nBcc: evil@x.test\r\nX-Injected: 1\u0000  \u0085x";
+    const evil = "Eve\r\nBcc: evil@x.test\r\nX-Injected: 1\u0000\u2028\u2029\u0085x";
     expect(await contact({ name: evil, topic: "Order\r\nSubject: pwned" })).toBe(true);
     const { headers, subject } = decode(sink.state.messages[0].raw);
     expect(headers.filter((h) => /^(bcc|x-injected|cc):/i.test(h))).toEqual([]);
     expect(headers.filter((h) => /^subject:/i.test(h))).toHaveLength(1);
-    // eslint-disable-next-line no-control-regex
     expect(subject).not.toMatch(new RegExp("[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]"));
     expect(sink.state.messages[0].rcptTo).toHaveLength(1);
   });

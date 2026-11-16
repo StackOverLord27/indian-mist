@@ -36,7 +36,13 @@ Vercel environments: **Production** (the live site), **Preview** (every branch/P
 | `RAZORPAY_WEBHOOK_SECRET` | required | only if a Preview webhook is configured | optional | Without it the webhook route answers 503. |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | required | required (ideally a separate account/folder) | required | Only the admin image routes need them. |
 | `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | required | required | optional | Sign-up/reset codes and contact messages. Without them, sending fails and the cause is logged. |
-| `SMTP_PORT` | optional (587) | optional | optional | `465` uses TLS from the start; any other port must offer STARTTLS (the password is never sent in clear text; only `localhost`/`127.0.0.1` is exempt, for a local test server). `SMTP_FROM` must be a plain address (`no-reply@example.com`), no display name or angle brackets; the display names ("Indian Mist", "Indian Mist Website") live in `src/lib/mailer.ts`. |
+| `SMTP_PORT` | optional (587) | optional | optional | `465` uses TLS from the start; any other port must offer STARTTLS (the password is never sent in clear text; only `localhost`/`127.0.0.1` is exempt, for a local test server). `SMTP_FROM` must be a plain address (`no-reply@example.com`), no display name or angle brackets; the display names ("Indian Mist", "Indian Mist Website") live in `src/lib/email/config.ts`. |
+| `EMAIL_ENABLED` | optional (on) | optional (on) | optional (on) | Kill switch: `false` / `0` / `off` / `no` stops every e-mail at once (they are logged as dropped, nothing is sent). |
+| `EMAIL_ALLOWLIST` | not read | **set it to test** | **set it to test** | Comma-separated addresses (or `@domain.com` for a whole domain), for example `you@gmail.com,@yourshop.com`. **Outside the live production deployment (Vercel Preview, local dev, `next start`) ONLY these addresses can receive mail; everything else is logged as dropped and not sent.** The live deployment is recognised by `VERCEL_ENV=production`, which Vercel sets itself. |
+
+**Mail provider (Brevo SMTP relay, see `docs/deploy-checklist.md` section 8):** `SMTP_HOST=smtp-relay.brevo.com`, `SMTP_PORT=587` (STARTTLS; 465 = implicit TLS; 2525 is Brevo's fallback when 587 is blocked), `SMTP_USER` = the **SMTP login** shown on Brevo's SMTP & API > SMTP tab (not necessarily an e-mail address), `SMTP_PASS` = an **SMTP key** from the same tab (not an API key), `SMTP_FROM` = a sender on a domain you authenticated in Brevo. The variable names stay `SMTP_*` (not `MAIL_*`). The owner's address (where contact messages go) is the one saved in Admin > Contact, else `SUPER_ADMIN_EMAIL`.
+
+Where mail is sent from: everything goes through `src/lib/email` (`sendMail(type, to, data)`); `SMTP_USER` is no longer used as a fallback owner address (with Brevo it is a login, not a mailbox).
 
 `NODE_ENV` is set by Next.js (`production` for `next build`/`next start`); do not set it yourself.
 

@@ -237,7 +237,7 @@ describe("request-otp does not reveal whether an account exists", () => {
 
   it("a failing mail server is invisible to the caller and the unsent code is cleared", async () => {
     await makeUser("exists@shop.com");
-    mailState.failNext = true;
+    mailState.failAll = true; // a one-off failure would be absorbed by the immediate second try
     const res = await requestOtp.POST(post("/api/auth/forgot-password/request-otp", { email: "exists@shop.com" }));
     expect(res.status).toBe(200);
     await runAfter();

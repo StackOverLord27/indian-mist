@@ -5,11 +5,11 @@ import dbConnect from "@/lib/db";
 import { User } from "@/models/user.model";
 import { setOtp, deleteOtp } from "@/lib/otp-store";
 import { allowOtpEmail } from "@/lib/attempt-limit";
-import { sendOTPVerificationEmail } from "@/lib/mailer";
+import { sendMail } from "@/lib/email";
 import { SignUpSchema } from "@/schemas/auth/signup.schema";
 
-// The mail send is capped at 20 s (src/lib/mailer.ts); the rest of the request is a few database and Redis calls.
-export const maxDuration = 30;
+// A send is capped at 15 s and a sign-in code gets one immediate second try (src/lib/email).
+export const maxDuration = 60;
 
 /**
  * Generate a cryptographically secure 6-digit OTP.
@@ -65,10 +65,11 @@ export async function POST(req: Request) {
     const otpCode = generateOTP();
     await setOtp("signup", email, otpCode, name, hashedPassword);
 
-    const emailSent = await sendOTPVerificationEmail(email, otpCode);
+    const sent = await sendMail("otp-signup", email, { otp: otpCode });
 
-    if (!emailSent) {
-      // If email fails, clean up the Redis entry immediately.
+    if (sent.status !== "sent") {
+      // Not delivered (permanently failed, still failing after the one immediate retry, or held
+      // back by the e-mail guard): the code is useless, so delete it and let the customer ask again.
       await deleteOtp("signup", email);
       return NextResponse.json(
         { error: "Failed to send verification email. Please try again." },

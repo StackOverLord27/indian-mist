@@ -71,3 +71,25 @@ export async function allowCheckoutStart(userId: string, ip: string): Promise<bo
   const address = await incrementWithWindow(redis, `checkout_start:ip:${ip}`, CHECKOUT_START_WINDOW_SEC);
   return account <= CHECKOUT_STARTS_PER_ACCOUNT && address <= CHECKOUT_STARTS_PER_IP;
 }
+
+// ─── The contact form's e-mails, across ALL senders ──────────────────────────
+
+export const CONTACT_EMAILS_PER_HOUR = 20;
+export const CONTACT_EMAILS_PER_DAY = 60;
+
+/**
+ * Call before e-mailing a contact-form message. The per-IP limit (proxy) stops one visitor; this
+ * stops many (or a botnet) from filling the owner's inbox and using up the mail provider's daily
+ * allowance. Counts every attempt that reaches this point; fixed windows starting at the first
+ * message. Without Redis (development) it allows everything; in production getRedis() throws
+ * and the route answers 500 (fail closed, like the other limits).
+ */
+export async function allowContactEmail(): Promise<{ allowed: true } | { allowed: false; window: "hour" | "day" }> {
+  const redis = getRedis();
+  if (!redis) return { allowed: true };
+  const hour = await incrementWithWindow(redis, "contact_email:hour", 60 * 60);
+  const day = await incrementWithWindow(redis, "contact_email:day", 24 * 60 * 60);
+  if (hour > CONTACT_EMAILS_PER_HOUR) return { allowed: false, window: "hour" };
+  if (day > CONTACT_EMAILS_PER_DAY) return { allowed: false, window: "day" };
+  return { allowed: true };
+}

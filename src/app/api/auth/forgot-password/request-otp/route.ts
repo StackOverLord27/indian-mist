@@ -5,11 +5,11 @@ import { User } from "@/models/user.model";
 import { setOtp, deleteOtp, checkOtpExists } from "@/lib/otp-store";
 import { allowOtpEmail } from "@/lib/attempt-limit";
 import { requireRedis } from "@/lib/redis";
-import { sendOTPVerificationEmail } from "@/lib/mailer";
+import { sendMail } from "@/lib/email";
 import { RequestOtpSchema } from "@/schemas/auth/forgot-password.schema";
 
-// The mail send is capped at 20 s (src/lib/mailer.ts); the rest of the request is a few database and Redis calls.
-export const maxDuration = 30;
+// A send is capped at 15 s and a sign-in code gets one immediate second try (src/lib/email); this runs in after().
+export const maxDuration = 60;
 
 // The same answer whether or not an account exists, so this form cannot be used to find out
 // who has an account.
@@ -58,8 +58,8 @@ export async function POST(req: Request) {
       // Send after the response so a slow or failing mail server cannot reveal (through timing
       // or an error) that this address has an account.
       after(async () => {
-        const sent = await sendOTPVerificationEmail(email, otp);
-        if (!sent) {
+        const sent = await sendMail("otp-reset", email, { otp });
+        if (sent.status !== "sent") {
           // Let the person ask again instead of waiting for a code that was never delivered
           await deleteOtp("reset", email).catch((error) =>
             console.error("Forgot password: could not clear unsent code:", error)

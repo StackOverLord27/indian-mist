@@ -22,8 +22,14 @@ for (const name of ["RAZORPAY_KEY_ID", "NEXT_PUBLIC_RAZORPAY_KEY_ID"]) {
   if (v && !v.startsWith("rzp_test_")) { console.error(`REFUSING TO START: ${name} is not an rzp_test_ key.`); process.exit(2); }
 }
 
+// No browser test may ever send real mail. .env holds the real SMTP credentials, so the runner
+// replaces them: the host is this machine, the port is a dead one (nothing listens, every send fails
+// at once), and the kill switch is on top. Verified below; the run refuses to start otherwise.
+const MAIL_OVERRIDE = { SMTP_HOST: "127.0.0.1", SMTP_PORT: "9", SMTP_USER: "e2e", SMTP_PASS: "e2e", SMTP_FROM: "e2e@example.test", EMAIL_ENABLED: "false", EMAIL_ALLOWLIST: "", VERCEL_ENV: "" };
+
 const env = {
   ...process.env,
+  ...MAIL_OVERRIDE,
   MONGODB_URI: MONGO_URI,
   JWT_ACCESS_SECRET: "e2e-only-access-secret-not-a-real-secret-0123456789",
   JWT_REFRESH_SECRET: "e2e-only-refresh-secret-not-a-real-secret-0123456789",
@@ -31,6 +37,11 @@ const env = {
   NEXT_PUBLIC_SITE_URL: `http://localhost:${PORT}`,
   NODE_ENV: "production",
 };
+
+if (env.SMTP_HOST !== "127.0.0.1" || env.EMAIL_ENABLED !== "false" || env.VERCEL_ENV) {
+  console.error("REFUSING TO START: the e2e server would not be isolated from the real mail server.");
+  process.exit(2);
+}
 
 if (process.env.E2E_SKIP_BUILD !== "1" || !existsSync(".next/BUILD_ID")) {
   const build = spawnSync("npx", ["next", "build"], { env, stdio: "inherit" });

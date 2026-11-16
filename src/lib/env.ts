@@ -125,4 +125,27 @@ export function getSmtpConfig() {
 }
 
 /** Address that receives contact-form messages when none is saved in the admin settings. */
-export const getFallbackContactEmail = () => getSuperAdminEmailRaw() ?? read("SMTP_USER");
+export const getFallbackContactEmail = () => getSuperAdminEmailRaw();
+
+// ─── E-mail policy (kill switch and non-production allowlist) ───────────────
+
+/**
+ * True only on the live Vercel deployment (VERCEL_ENV=production). Preview deployments and every
+ * local run (including `next start`, which also sets NODE_ENV=production) are NOT production
+ * for mail: they may only e-mail the addresses in EMAIL_ALLOWLIST.
+ */
+export const isProductionDeploy = () => read("VERCEL_ENV") === "production";
+
+export function getEmailPolicy() {
+  const flag = (read("EMAIL_ENABLED") ?? "true").toLowerCase();
+  const allowlist = (read("EMAIL_ALLOWLIST") ?? "")
+    .split(",")
+    .map((x) => x.trim().toLowerCase())
+    .filter(Boolean);
+  return {
+    enabled: !["false", "0", "off", "no"].includes(flag),
+    production: isProductionDeploy(),
+    /** Exact addresses, or "@domain.com" for a whole domain. */
+    allowlist,
+  };
+}
