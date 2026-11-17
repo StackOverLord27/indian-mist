@@ -103,6 +103,9 @@ const SettingsSchema = new mongoose.Schema({
   // Customer e-mails the admin can switch. "Delivered" is OFF unless turned on.
   emailSettings: {
     sendDeliveredEmail: { type: Boolean, default: false },
+    // E-mail the owner when a product falls to the threshold (OFF unless turned on)
+    ownerLowStockAlert: { type: Boolean, default: false },
+    lowStockThreshold: { type: Number, default: 3, min: 0 },
   },
   contactPageSettings: {
     title: { type: String, default: '' },

@@ -89,6 +89,32 @@ export default function AdminSettingsPage() {
               <span className="block text-xs text-forest/60">Off by default. Only orders marked delivered after you switch it on are e-mailed.</span>
             </span>
           </label>
+          <hr className="my-4 border-olive/15" />
+          <p className="mb-2 font-montserrat text-xs text-forest/70">
+            You (the shop owner) always get an e-mail for: each new order, and each payment problem (marked URGENT).
+          </p>
+          <label className="flex items-start gap-3 font-montserrat text-sm text-forest">
+            <input
+              type="checkbox"
+              checked={settings.emailSettings?.ownerLowStockAlert === true}
+              onChange={e => setSettings(prev => ({ ...prev, emailSettings: { ...(prev.emailSettings || {}), ownerLowStockAlert: e.target.checked } }))}
+              className="mt-0.5 size-4"
+            />
+            <span>
+              E-mail me when a product runs low on stock
+              <span className="block text-xs text-forest/60">Off by default. One e-mail each time a product with stock tracking falls to the level below.</span>
+            </span>
+          </label>
+          <div className="mt-3 max-w-50">
+            <AdminFormField label="Low-stock level (units)">
+              <input
+                type="number" min={0} max={1000} step={1}
+                value={settings.emailSettings?.lowStockThreshold ?? 3}
+                onChange={e => setSettings(prev => ({ ...prev, emailSettings: { ...(prev.emailSettings || {}), lowStockThreshold: Math.max(0, Math.min(1000, Math.floor(Number(e.target.value) || 0))) } }))}
+                className={inputClass}
+              />
+            </AdminFormField>
+          </div>
         </AdminCard>
 
         <AdminCard title="SEO & Meta">

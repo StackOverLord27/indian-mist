@@ -2,6 +2,7 @@ import dbConnect from "@/lib/db";
 import { EmailLog } from "@/models/email-log.model";
 import { checkRecipient } from "./config";
 import { EMAIL_TYPES, deliverAndRecord, getBuilder, isResendable, MAX_ATTEMPTS } from "./index";
+import { maybeSendFailedSummary } from "./owner-mail";
 import type { EmailType } from "./types";
 
 /**
@@ -25,7 +26,9 @@ export const resetSweepThrottleForTests = () => { lastSweepAt = 0; };
 export async function sweepThrottled(now = Date.now()): Promise<number | null> {
   if (now - lastSweepAt < SWEEP_MIN_GAP_MS) return null;
   lastSweepAt = now;
-  return sweepFailedEmails(now);
+  const retried = await sweepFailedEmails(now);
+  await maybeSendFailedSummary(now); // at most one warning a day, only if something failed for good
+  return retried;
 }
 
 export async function sweepFailedEmails(now = Date.now()): Promise<number> {

@@ -7,6 +7,8 @@ import { restoreStock, clearSoldOutWhereInStock, settleOrderStock, inTransaction
 import { revalidateCatalog } from '@/lib/revalidate-storefront';
 import { parseTracking } from '@/lib/order-tracking';
 import { queueDeliveredEmail, queueOrderEmail } from '@/lib/email/order-mail';
+import { queuePaymentAlert } from '@/lib/email/owner-mail';
+import { resetLowStockFlags } from '@/lib/low-stock';
 
 // The customer e-mails (shipped, cancelled) go out after the response, and may take a while to retry
 export const maxDuration = 60;
@@ -85,6 +87,7 @@ export const PATCH = withAdmin(async (req: NextRequest, context) => {
   if (status === 'CANCELLED' && previous.paymentStatus === 'PAID') {
     // Stock is back, so the automatic "Sold Out" label no longer applies
     await clearSoldOutWhereInStock(previous.items.map((i) => i.productId));
+    await resetLowStockFlags(previous.items.map((i) => i.productId)); // stock is back: the next drop may alert again
     revalidateCatalog();
   }
 
@@ -96,7 +99,11 @@ export const PATCH = withAdmin(async (req: NextRequest, context) => {
   if (previous.paymentStatus === 'PAID' && previous.status !== status) {
     if (status === 'SHIPPED') await queueOrderEmail('order-shipped', id);
     else if (status === 'DELIVERED') await queueDeliveredEmail(id);
-    else if (status === 'CANCELLED') await queueOrderEmail('order-cancelled', id);
+    else if (status === 'CANCELLED') {
+      await queueOrderEmail('order-cancelled', id);
+      // The money is not returned by itself: tell the owner (URGENT), once per payment
+      if (order?.refundStatus === 'PENDING') await queuePaymentAlert('refund-due', order.razorpayPaymentId);
+    }
   }
 
   const refundReminder = status === 'CANCELLED' && previous.paymentStatus === 'PAID' && order?.refundStatus === 'PENDING';

@@ -178,3 +178,43 @@ test("the settings page has the Delivered e-mail switch, off by default, and it 
   await expect(page.getByRole("checkbox", { name: /Also e-mail the customer when an order is marked/ })).toBeChecked();
   await admin.close();
 });
+
+test("a link from the owner's e-mail (?order=<id>) opens that one order, expanded, with a way back to all orders", async ({ browser }) => {
+  const d = await db();
+  const id = oid();
+  await d.collection("orders").insertMany([
+    { ...order({ customerName: "Zed Other" }), _id: oid(), createdAt: new Date(Date.now() - 1000) },
+    { ...order({ customerName: "Ada Customer" }), _id: id },
+    { ...order({ customerName: "Yan Third" }), _id: oid(), createdAt: new Date(Date.now() - 2000) },
+  ]);
+  const admin = await newContext(browser, "admin");
+  const page = await admin.newPage();
+  await page.goto(`/admin/orders?order=${String(id)}`);
+  await expect(page.getByTestId("single-order-banner")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("order-emails")).toBeVisible(); // expanded at once
+  await expect(page.getByRole("row").filter({ hasText: "Zed Other" })).toHaveCount(0);
+  await expect(page.getByRole("row").filter({ hasText: "Yan Third" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Show all orders" }).click();
+  await expect(page.getByRole("row").filter({ hasText: "Zed Other" })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "Yan Third" })).toBeVisible();
+  await expect(page.getByTestId("single-order-banner")).toHaveCount(0);
+  await admin.close();
+});
+
+test("the settings page has the low-stock switch (off by default) and level, and they are saved", async ({ browser }) => {
+  const d = await db();
+  const admin = await newContext(browser, "admin");
+  const page = await admin.newPage();
+  await page.goto("/admin/settings");
+  const box = page.getByRole("checkbox", { name: /E-mail me when a product runs low on stock/ });
+  await expect(box).toBeVisible({ timeout: 20_000 });
+  await expect(box).not.toBeChecked();
+  await box.check();
+  await page.getByRole("spinbutton").fill("5"); // the level (the only number field on this page)
+  const saved = page.waitForResponse((r) => r.url().endsWith("/api/admin/settings") && r.request().method() === "PUT");
+  await page.getByRole("button", { name: "Save Settings" }).click();
+  expect((await saved).status()).toBe(200);
+  const doc = await d.collection("sitesettings").findOne({});
+  expect(doc!.emailSettings).toMatchObject({ ownerLowStockAlert: true, lowStockThreshold: 5 });
+  await admin.close();
+});

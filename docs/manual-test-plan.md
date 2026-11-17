@@ -192,6 +192,15 @@ The browser suite checked the shrinking in the browser, but it never sent files 
 6. Admin > Site Settings > "Customer e-mails": tick "Also e-mail the customer when ... Delivered", mark an order Completed: a "delivered" e-mail. Untick it: no e-mail.
 7. [Optional, needs a broken mail setting] with a wrong `SMTP_PASS`, change a status: the status still changes, the order detail shows the e-mail as failed, Resend after fixing the password sends it.
 
+### 5.4c E-mails to the shop owner [MANUAL: real e-mail, Preview/local needs `EMAIL_ALLOWLIST` to include the owner address]
+(The logic is [AUTO]: `tests/owner-emails.test.ts`, `e2e/order-emails.e2e.ts`. What only you can judge is how they read in your inbox, on your phone, and whether they land in spam.)
+1. Make sure Admin > Contact Page has your e-mail. Place a small real test order. Expected: ONE "New order #XXXXXX: ₹... from <name>" e-mail to you with items, totals, customer name, delivery address, and a button that opens THAT order, expanded, in the admin ("Show all orders" leaves it).
+2. Cancel that (paid) order in Admin > Orders. Expected: an "URGENT: Refund to make for cancelled order #XXXXXX" e-mail with the Razorpay payment id, the amount and the steps. Cancelling again sends nothing.
+3. [Needs a Razorpay test payment with the checkout session gone] Pay in the checkout, then (before confirming) remove the pending order in Redis, or use `e2e` helper. Expected: ONE "URGENT: Payment received but no order was created" e-mail, even though Razorpay repeats the webhook.
+4. Switch on "E-mail me when a product runs low on stock" with level 3 in Admin > Site Settings. Buy a product down to 3: ONE e-mail. Buy one more: none. Cancel the orders so the stock is above 3, buy it down again: one more. Switch it off: none.
+5. With a wrong `SMTP_PASS` (Preview), change an order status twice: the status changes, the order shows the e-mail as failed; once the key is fixed Resend works. After the failures become permanent (or you press Resend on a permanently refused address), expect at most ONE "Warning: ... could not be delivered" e-mail that day.
+6. Check each of these e-mails on a phone, and that none contains a secret or a card number (they never should).
+
 ### 5.5 Contact form and newsletter [MANUAL: real e-mail]
 1. Contact page > send a message. Expected: success message; the message arrives in the mailbox set as the Contact Page e-mail (Admin > Contact Page); if that is empty it goes to the admin e-mail. The sender's address is set as reply-to.
 2. Send 6 messages quickly. Expected: the 6th is refused ("too many requests").

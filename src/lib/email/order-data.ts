@@ -16,39 +16,44 @@ import { ORDER_EMAIL_TYPES, type EmailData, type OrderEmailType, type OrderMailD
  * typed into the checkout form: that one is free text and may belong to someone else.
  */
 export async function buildOrderMail(orderId: string): Promise<{ to: string; data: OrderMailData } | null> {
+  const data = await buildOrderData(orderId);
+  if (!data) return null;
+  await dbConnect();
+  const order = await Order.findById(orderId).select("userId").lean();
+  const owner = order ? await User.findById(order.userId).select("email").lean<{ email?: string }>() : null;
+  const to = owner?.email?.trim();
+  return to ? { to, data } : null;
+}
+
+/** The order as an e-mail needs it (no recipient): used for the customer's e-mails and the owner's new-order alert. */
+export async function buildOrderData(orderId: string): Promise<OrderMailData | null> {
   if (!mongoose.isValidObjectId(orderId)) return null;
   await dbConnect();
   const order = await Order.findById(orderId).lean();
   if (!order) return null;
-  const owner = await User.findById(order.userId).select("email").lean<{ email?: string }>();
-  const to = owner?.email?.trim();
-  if (!to) return null;
   const shop = await loadShopInfo();
   return {
-    to,
-    data: {
-      orderId: String(order._id),
-      customerName: order.customerName,
-      placedAt: order.createdAt.toISOString(),
-      lines: order.items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.priceAtPurchase, size: i.selectedSize || undefined, color: i.selectedColor || undefined })),
-      subtotal: order.subtotal ?? 0,
-      shipping: order.shippingCost ?? 0,
-      discount: order.discountAmount ?? 0,
-      promoCode: order.promoCode || undefined,
-      tax: order.taxAmount ?? 0,
-      total: order.totalAmount,
-      address: {
-        street: order.shippingAddress.street, city: order.shippingAddress.city, state: order.shippingAddress.state,
-        zipCode: order.shippingAddress.zipCode, country: order.shippingAddress.country,
-      },
-      orderStatus: order.status,
-      paymentStatus: order.paymentStatus,
-      refundStatus: order.refundStatus || undefined,
-      courier: order.courier || undefined,
-      trackingNumber: order.trackingNumber || undefined,
-      trackingUrl: order.trackingUrl || undefined,
-      shop,
+    orderId: String(order._id),
+    customerName: order.customerName,
+    placedAt: order.createdAt.toISOString(),
+    lines: order.items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.priceAtPurchase, size: i.selectedSize || undefined, color: i.selectedColor || undefined })),
+    subtotal: order.subtotal ?? 0,
+    shipping: order.shippingCost ?? 0,
+    discount: order.discountAmount ?? 0,
+    promoCode: order.promoCode || undefined,
+    tax: order.taxAmount ?? 0,
+    total: order.totalAmount,
+    address: {
+      street: order.shippingAddress.street, city: order.shippingAddress.city, state: order.shippingAddress.state,
+      zipCode: order.shippingAddress.zipCode, country: order.shippingAddress.country,
     },
+    orderStatus: order.status,
+    paymentStatus: order.paymentStatus,
+    refundStatus: order.refundStatus || undefined,
+    courier: order.courier || undefined,
+    trackingNumber: order.trackingNumber || undefined,
+    trackingUrl: order.trackingUrl || undefined,
+    shop,
   };
 }
 

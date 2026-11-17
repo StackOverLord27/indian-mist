@@ -38,7 +38,7 @@ function withLayout(d: { shop: ShopInfo }, i: { subject: string; heading: string
 
 // ─── Pieces of an order ─────────────────────────────────────────────────────
 
-function itemsHtml(d: OrderMailData): string {
+export function itemsHtml(d: OrderMailData): string {
   const rows = d.lines.map((l) => {
     // each part is escaped on its own; only the separator is markup
     const details = [l.size && esc(`Size: ${line(l.size, 40)}`), l.color && esc(`Colour: ${line(l.color, 40)}`), esc(`Qty ${l.quantity} × ${formatMoney(l.price)}`)].filter(Boolean).join(" &middot; ");
@@ -56,7 +56,7 @@ function itemsHtml(d: OrderMailData): string {
   return `${sectionTitle("Your items")}<table width="100%" cellpadding="0" cellspacing="0" role="presentation">${rows.join("")}</table><table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-top:8px;">${totals}</table>`;
 }
 
-function itemsText(d: OrderMailData): string {
+export function itemsText(d: OrderMailData): string {
   const items = d.lines.map((l) => {
     const opts = [l.size && `size ${line(l.size, 40)}`, l.color && line(l.color, 40)].filter(Boolean).join(", ");
     return `- ${line(l.name, 150)}${opts ? ` (${opts})` : ""}, qty ${l.quantity} x ${formatMoney(l.price)} = ${formatMoney(l.price * l.quantity)}`;
@@ -77,9 +77,9 @@ function addressLines(d: OrderMailData): string[] {
   const a = d.address;
   return [line(d.customerName, 80), line(a.street, 160), `${line(a.city, 80)}, ${line(a.state, 80)} ${line(a.zipCode, 20)}`, line(a.country, 80)].filter((l) => l.trim() !== "" && l.trim() !== ",");
 }
-const addressHtml = (d: OrderMailData) =>
+export const addressHtml = (d: OrderMailData) =>
   `${sectionTitle("Delivery address")}<p style="margin:0 0 8px;font-size:14px;line-height:1.7;color:${COLORS.ink};">${addressLines(d).map(esc).join("<br/>")}</p>`;
-const addressText = (d: OrderMailData) => `Delivery address\n${addressLines(d).join("\n")}`;
+export const addressText = (d: OrderMailData) => `Delivery address\n${addressLines(d).join("\n")}`;
 
 const ordersButton = () => button(`${getSiteUrl()}${ORDERS_PATH}`, "View My Orders");
 const ordersLinkText = () => `View your orders: ${getSiteUrl()}${ORDERS_PATH}`;

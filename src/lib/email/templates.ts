@@ -1,6 +1,7 @@
 import { escapeHtml, singleLine, bodyText } from "./sanitize";
 import { SENDER_NAMES } from "./config";
 import type { EmailData, EmailType } from "./types";
+import { renderOwnerFailedSummary, renderOwnerLowStock, renderOwnerNewOrder, renderOwnerPaymentAlert } from "./owner-templates";
 import { renderOrderCancelled, renderOrderConfirmation, renderOrderDelivered, renderOrderRefunded, renderOrderShipped, renderPasswordChanged } from "./order-templates";
 
 /** What a template produces. Every user value is escaped in the HTML; the text part is plain text. */
@@ -199,6 +200,14 @@ export function render<T extends EmailType>(type: T, to: string, data: EmailData
       return renderOrderDelivered(data as EmailData["order-delivered"]);
     case "password-changed":
       return renderPasswordChanged(data as EmailData["password-changed"]);
+    case "owner-new-order":
+      return renderOwnerNewOrder(data as EmailData["owner-new-order"]);
+    case "owner-payment-alert":
+      return renderOwnerPaymentAlert(data as EmailData["owner-payment-alert"]);
+    case "owner-failed-summary":
+      return renderOwnerFailedSummary(data as EmailData["owner-failed-summary"]);
+    case "owner-low-stock":
+      return renderOwnerLowStock(data as EmailData["owner-low-stock"]);
     default:
       throw new Error("Unknown e-mail type");
   }

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { withAdmin, errorResponse, successResponse } from '@/lib/api-helpers';
+import mongoose from 'mongoose';
 import { Order } from '@/models/order.model';
 import { Product } from '@/models/product.model';
 import { parsePagination, paginationMeta } from '@/lib/pagination';
@@ -15,7 +16,11 @@ export const GET = withAdmin(async (req: NextRequest) => {
 
     const base = { paymentStatus: 'PAID' };
     const query: Record<string, unknown> = { ...base };
-    if (status === 'REFUND_PENDING') {
+    // A link from an owner e-mail: just that one order, whatever tab it would be on
+    const only = searchParams.get('order');
+    if (only && mongoose.isValidObjectId(only)) {
+      query._id = only;
+    } else if (status === 'REFUND_PENDING') {
       query.refundStatus = 'PENDING'; // the "Refund pending" tab (a filter, not an order status)
     } else if (status && status !== 'ALL') {
       query.status = status;

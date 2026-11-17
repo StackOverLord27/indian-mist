@@ -17,6 +17,8 @@ export interface IEmailLog {
   lastErrorCode?: string;
   nextAttemptAt?: Date;
   sentAt?: Date;
+  /** The day (shop time, YYYY-MM-DD) of the failed-e-mail summary that reported this permanent failure */
+  summaryDate?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,6 +37,7 @@ const EmailLogSchema = new mongoose.Schema<IEmailLog>(
     lastErrorCode: { type: String },
     nextAttemptAt: { type: Date },
     sentAt: { type: Date },
+    summaryDate: { type: String },
   },
   { timestamps: true },
 );

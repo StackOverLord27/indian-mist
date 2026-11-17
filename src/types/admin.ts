@@ -245,7 +245,7 @@ export interface SiteSettings {
   contactPageSettings?: ContactPageSettings;
   blogPageSettings?: BlogPageSettings;
   /** Customer e-mails the admin can switch on or off ("Delivered" is off until turned on) */
-  emailSettings?: { sendDeliveredEmail?: boolean };
+  emailSettings?: { sendDeliveredEmail?: boolean; ownerLowStockAlert?: boolean; lowStockThreshold?: number };
 }
 
 export interface AdminCategory {

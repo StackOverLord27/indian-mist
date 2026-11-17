@@ -25,6 +25,8 @@ export interface IProduct extends Document {
   stockQuantity: number;
   sizeStock?: { size: string; quantity: number }[];
   trackInventory?: boolean;
+  /** Set when the owner was told this product is low on stock; cleared when stock is back above the threshold (once per drop) */
+  lowStockAlertedAt?: Date;
   badge?: "New" | "Sale" | "Sold Out" | "";
   isFeatured?: boolean;
   isCategoryFeatured?: boolean;
@@ -78,6 +80,7 @@ const ProductSchema: Schema = new Schema(
     // Units per size, used only when trackInventory is on and the product has sizes
     sizeStock: [{ _id: false, size: { type: String, required: true }, quantity: { type: Number, default: 0 } }],
     trackInventory: { type: Boolean, default: false },
+    lowStockAlertedAt: { type: Date },
     badge: { type: String, enum: ["New", "Sale", "Sold Out", ""] },
     isFeatured: { type: Boolean, default: false },
     isCategoryFeatured: { type: Boolean, default: false },

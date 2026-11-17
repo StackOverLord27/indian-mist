@@ -188,8 +188,11 @@ describe("order confirmation", () => {
     await Settings.create({ contactPageSettings: { email: "help@shop.test", phone: "+91 98765 43210", businessHours: "Mon-Sat 10-6" } });
     const order = await paidOrder(1);
 
-    expect(sink.state.messages).toHaveLength(1);
-    const [m] = mails();
+    // the owner's own new-order alert (an address is configured here) is another message; this is the customer's
+    const customer = mails().filter((x) => x.rcptTo.join().includes(ACCOUNT));
+    expect(customer).toHaveLength(1);
+    expect(sink.state.messages.every((x) => !x.rcptTo.join().includes(TYPED))).toBe(true);
+    const [m] = customer;
     expect(m.rcptTo.join()).toContain(ACCOUNT);
     expect(m.rcptTo.join()).not.toContain(TYPED);
     expect(m.subject).toBe(`Order confirmed: ${orderNumber(order._id)}`);

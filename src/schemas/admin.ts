@@ -330,7 +330,13 @@ export const SettingsSchema = z.object({
     .optional(),
 
   // Customer e-mails
-  emailSettings: z.object({ sendDeliveredEmail: z.boolean().optional() }).optional(),
+  emailSettings: z
+    .object({
+      sendDeliveredEmail: z.boolean().optional(),
+      ownerLowStockAlert: z.boolean().optional(),
+      lowStockThreshold: z.number().int().min(0).max(1000).optional(),
+    })
+    .optional(),
 
   // Contact page
   contactPageSettings: z

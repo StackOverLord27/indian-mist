@@ -12,6 +12,7 @@ import { orderIdForRazorpayOrder } from "@/lib/order-id";
 import { samePaymentText } from "@/lib/duplicate-note";
 import { orderNumber } from "@/lib/order-number";
 import { queueOrderEmail } from "@/lib/email/order-mail";
+import { queueLowStockCheck, queueNewOrderAlert, queuePaymentAlert, queueReviewAlert } from "@/lib/email/owner-mail";
 
 type PendingOrder = Record<string, unknown> & {
   userId: string;
@@ -162,6 +163,8 @@ export async function finalizeOrder(opts: {
     }
     await checkPaidAmount(existing, paidAmountPaise);
     await resolveUnmatched(razorpayOrderId, existing._id);
+    // A late event may have added a note (an amount that does not match): the owner hears of it once
+    await queueReviewAlert(existing._id);
     return { ok: true, order: existing, alreadyProcessed: true };
   };
 
@@ -200,6 +203,8 @@ export async function finalizeOrder(opts: {
       console.error("[finalizeOrder] saving the unmatched payment failed:", error);
       return { ok: false, status: 500, message: "Order session expired or not found. If you were charged, contact support." };
     }
+    // Saved: URGENT e-mail to the owner, once per payment (a webhook retry does not repeat it)
+    await queuePaymentAlert("payment-without-order", razorpayPaymentId);
     return {
       ok: false,
       status: 404,
@@ -278,6 +283,11 @@ export async function finalizeOrder(opts: {
   // lost the race returned above), and the order id is the e-mail's own once-only key as well.
   // Sent after the response; never throws, so a mail problem cannot undo or fail the order.
   await queueOrderEmail("order-confirmation", order._id);
+  // The owner: the new order, anything that needs review (every note has been written by now),
+  // and (only if switched on) a product that has fallen to its low-stock level
+  await queueNewOrderAlert(order._id);
+  await queueReviewAlert(order._id);
+  await queueLowStockCheck(order.items.map((i) => i.productId));
 
   return { ok: true, order, alreadyProcessed: false };
 }

@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 // Uploads to Cloudinary can take a while (up to 10 images in one request); allow a full minute
 export const maxDuration = 60;
 
+import { resetLowStockFlags } from '@/lib/low-stock';
 import mongoose from 'mongoose';
 import { withAdmin, parseFormData, validateImageFile, errorResponse, successResponse, validationError, ApiError } from '@/lib/api-helpers';
 import { Product } from '@/models/product.model';
@@ -126,6 +127,7 @@ export const PUT = withAdmin(async (req, context) => {
 
     // 3. save -------------------------------------------------------------------------------
     await product.save();
+    await resetLowStockFlags([product._id]); // the admin may have restocked: the next drop may alert again
   } catch (error) {
     // The product was not changed: put Cloudinary back to how it was
     if (uploaded.length) await deleteManyImages(uploaded.map((img) => img.publicId));

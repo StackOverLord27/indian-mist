@@ -178,18 +178,21 @@ function RefundPanel({ order, saveRefund }: { order: AdminOrder; saveRefund: Ref
 
 function OrderRow({
   order,
+  startOpen,
   updateStatus,
   saveRefund,
   resendEmail,
   getStatusColor,
 }: {
   order: AdminOrder;
+  /** Opened from a link in an e-mail: show the details at once */
+  startOpen?: boolean;
   updateStatus: StatusUpdater;
   saveRefund: RefundSaver;
   resendEmail: EmailResender;
   getStatusColor: (status: string) => string;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(!!startOpen);
   // What the admin typed for the Shipped e-mail; the Shipped menu item sends it along with the status
   const [shipping, setShipping] = useState<Required<ShippingInput>>({
     courier: order.courier ?? "", trackingNumber: order.trackingNumber ?? "", trackingUrl: order.trackingUrl ?? "",
@@ -435,13 +438,19 @@ function OrderRow({
 export default function AdminOrdersPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState("ALL");
+  // "?order=<id>": a link from an e-mail to the owner opens that one order (read once; "Show all orders" leaves it)
+  const [onlyOrder, setOnlyOrder] = useState<string | null>(null);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("order");
+    if (id && /^[a-f0-9]{24}$/i.test(id)) setOnlyOrder(id);
+  }, []);
 
   const [page, setPage] = useState(1);
 
   const { data: response, isLoading, isError, error, refetch, isPlaceholderData } = useQuery({
-    queryKey: ["admin", "orders", filter, page],
+    queryKey: ["admin", "orders", filter, page, onlyOrder],
     queryFn: async (): Promise<OrdersResponse> => {
-      const res = await adminAxios.get("/api/admin/orders", { params: { status: filter, page, limit: PAGE_SIZE } });
+      const res = await adminAxios.get("/api/admin/orders", { params: { status: filter, page, limit: PAGE_SIZE, ...(onlyOrder ? { order: onlyOrder } : {}) } });
       return res.data;
     },
     placeholderData: keepPreviousData,
@@ -542,6 +551,19 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
+      {onlyOrder && (
+        <p data-testid="single-order-banner" className="flex flex-wrap items-center gap-3 rounded-sm border border-olive/20 bg-white px-3 py-2 font-montserrat text-xs text-forest">
+          Showing one order (from a link).
+          <button
+            type="button"
+            onClick={() => { setOnlyOrder(null); window.history.replaceState(null, "", "/admin/orders"); }}
+            className="font-semibold uppercase tracking-wider text-olive underline underline-offset-2"
+          >
+            Show all orders
+          </button>
+        </p>
+      )}
+
       <div className="flex overflow-x-auto border-b border-olive/20 mb-4">
         {tabs.map((tab) => (
           <button
@@ -609,7 +631,7 @@ export default function AdminOrdersPage() {
               </TableRow>
             ) : (
               data.map((order) => (
-                <OrderRow key={order._id} order={order} updateStatus={updateStatus} saveRefund={saveRefund} resendEmail={resendEmail} getStatusColor={getStatusColor} />
+                <OrderRow key={onlyOrder && !isPlaceholderData ? `${order._id}:one` : order._id} order={order} startOpen={!!onlyOrder && !isPlaceholderData} updateStatus={updateStatus} saveRefund={saveRefund} resendEmail={resendEmail} getStatusColor={getStatusColor} />
               ))
             )}
           </TableBody>

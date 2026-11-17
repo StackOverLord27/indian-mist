@@ -4,7 +4,7 @@ import dbConnect from "@/lib/db";
 import { EmailLog } from "@/models/email-log.model";
 import { checkRecipient, getFromAddress } from "./config";
 import { SAFE_ADDRESS, domainOf, singleLine } from "./sanitize";
-import { STATIC_BUILDERS } from "./order-data";
+import { STATIC_BUILDERS } from "./builders";
 import { render } from "./templates";
 import { getTransport, logMailError } from "./transport";
 import type { EmailData, EmailType, MailError, SendMailResult } from "./types";
@@ -50,6 +50,11 @@ export const EMAIL_TYPES: Record<EmailType, TypePolicy> = {
   "order-delivered": orderPolicy,
   // The related id is "<user id>.<time>" (see passwordChangedId): every change is its own e-mail.
   "password-changed": orderPolicy,
+  // Owner e-mails: the related id says what it is about (order id, "kind:paymentId", day, product + drop)
+  "owner-new-order": orderPolicy,
+  "owner-payment-alert": orderPolicy,
+  "owner-failed-summary": orderPolicy,
+  "owner-low-stock": orderPolicy,
   // A sign-in code is one-off: every request is its own e-mail (rate limits sit in the routes).
   "otp-signup": { timeCritical: true, defaultRelatedId: () => randomUUID() },
   "otp-reset": { timeCritical: true, defaultRelatedId: () => randomUUID() },

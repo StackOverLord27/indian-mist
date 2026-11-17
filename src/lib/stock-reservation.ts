@@ -1,3 +1,4 @@
+import { resetLowStockFlags } from "@/lib/low-stock";
 import mongoose, { type ClientSession, type Types } from "mongoose";
 import { Product } from "@/models/product.model";
 import { StockReservation } from "@/models/stock-reservation.model";
@@ -178,6 +179,7 @@ export async function releaseReservation(filter: Record<string, unknown>): Promi
   if (!released) return false;
   // Stock is back on sale: an automatic "Sold Out" label set while it was all held no longer applies
   await clearSoldOutWhereInStock(released.items.map((i) => i.productId));
+  await resetLowStockFlags(released.items.map((i) => i.productId)); // back on sale: the next drop may alert again
   return true;
 }
 

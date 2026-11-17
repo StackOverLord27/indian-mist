@@ -136,6 +136,16 @@ export const getFallbackContactEmail = () => getSuperAdminEmailRaw();
  */
 export const isProductionDeploy = () => read("VERCEL_ENV") === "production";
 
+/**
+ * How many e-mails the mail plan allows per day (Brevo free plan: 300). Only used to keep the
+ * owner's non-urgent alerts (new order, low stock) out of the way when the day's allowance is
+ * nearly used, so payment-problem alerts and customers' e-mails still get through. Optional.
+ */
+export function getEmailDailyLimit(): number {
+  const n = Number.parseInt(read("EMAIL_DAILY_LIMIT") ?? "", 10);
+  return Number.isFinite(n) && n >= 10 && n <= 1_000_000 ? n : 300;
+}
+
 export function getEmailPolicy() {
   const flag = (read("EMAIL_ENABLED") ?? "true").toLowerCase();
   const allowlist = (read("EMAIL_ALLOWLIST") ?? "")
