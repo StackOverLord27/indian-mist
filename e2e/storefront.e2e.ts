@@ -173,8 +173,12 @@ test("/products: Sort works from the keyboard (open, arrows, Enter, Escape)", as
   await expect(sortList(page)).toHaveCount(0);
   await expect(sortButton(page)).toBeFocused();
   await page.keyboard.press("Enter");
+  // wait for the list to be open with focus on the active option before pressing arrows (a key pressed earlier is lost)
+  await expect(sortList(page).getByRole("option", { name: "Sort by: Featured" })).toBeFocused();
   await page.keyboard.press("ArrowDown");
+  await expect(sortList(page).getByRole("option", { name: "Newest Arrivals" })).toBeFocused();
   await page.keyboard.press("ArrowDown");
+  await expect(sortList(page).getByRole("option", { name: "Price: Low to High" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(sortList(page)).toHaveCount(0);
   await expect(sortButton(page)).toContainText("Price: Low to High");
