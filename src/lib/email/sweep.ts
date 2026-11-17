@@ -3,6 +3,7 @@ import { EmailLog } from "@/models/email-log.model";
 import { checkRecipient } from "./config";
 import { EMAIL_TYPES, deliverAndRecord, getBuilder, isResendable, MAX_ATTEMPTS } from "./index";
 import { maybeSendFailedSummary } from "./owner-mail";
+import { repairMissingOrderEmailsThrottled } from "./repair";
 import type { EmailType } from "./types";
 
 /**
@@ -27,6 +28,7 @@ export async function sweepThrottled(now = Date.now()): Promise<number | null> {
   if (now - lastSweepAt < SWEEP_MIN_GAP_MS) return null;
   lastSweepAt = now;
   const retried = await sweepFailedEmails(now);
+  await repairMissingOrderEmailsThrottled(now); // paid orders whose e-mail was never queued (crash gap), every 10 min at most
   await maybeSendFailedSummary(now); // at most one warning a day, only if something failed for good
   return retried;
 }
