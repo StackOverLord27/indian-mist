@@ -27,6 +27,7 @@ import { Product } from "@/models/product.model";
 import { Order } from "@/models/order.model";
 import { User } from "@/models/user.model";
 import Settings from "@/models/settings.model";
+import LegalPage from "@/models/legal-page.model";
 import { EmailLog } from "@/models/email-log.model";
 import { RefreshToken } from "@/models/refreshToken.model";
 import { finalizeOrder } from "@/lib/finalize-order";
@@ -802,5 +803,42 @@ describe("money and tracking input", () => {
     expect(parseTracking({ courier: "", trackingUrl: "" })).toEqual({ set: {}, unset: ["courier", "trackingUrl"], ignored: [] });
     expect(parseTracking({ trackingUrl: "ftp://x", courier: 5, trackingNumber: "x".repeat(81) }).ignored.sort()).toEqual(["courier", "trackingNumber", "trackingUrl"]);
     expect(parseTracking({ trackingUrl: "javascript:alert(1)" }).ignored).toEqual(["trackingUrl"]);
+  });
+});
+
+describe("footer policy links", () => {
+  const footerLinks = async () => {
+    await paidOrder(1);
+    const m = mails().filter((x) => x.rcptTo.join().includes(ACCOUNT)).at(-1)!;
+    const hrefs = [...m.html.matchAll(/href="([^"]+)"/g)].map((x) => x[1]).filter((h) => !h.startsWith("mailto:"));
+    return { hrefs, text: m.text };
+  };
+  const has = (hrefs: string[], path: string) => hrefs.some((h) => h.endsWith(path));
+
+  it("with no refund or shipping page saved, only Privacy and Terms are linked (no link to a missing page)", async () => {
+    const { hrefs, text } = await footerLinks();
+    expect(has(hrefs, "/privacy-policy")).toBe(true);
+    expect(has(hrefs, "/terms-and-conditions")).toBe(true);
+    expect(hrefs.some((h) => /refund-policy|shipping-policy/.test(h))).toBe(false);
+    expect(text).not.toMatch(/refund-policy|shipping-policy/);
+  });
+
+  it("a page saved with an empty editor (<p></p>) or only spaces is not linked", async () => {
+    await LegalPage.create({ slug: "refund-policy", title: "Refunds", content: "<p></p>" });
+    await LegalPage.create({ slug: "shipping-policy", title: "Shipping", content: "<p>&nbsp; </p>" });
+    const { hrefs } = await footerLinks();
+    expect(hrefs.some((h) => /refund-policy|shipping-policy/.test(h))).toBe(false);
+  });
+
+  it("each page with saved text is linked, in the HTML and in the plain-text part", async () => {
+    await LegalPage.create({ slug: "refund-policy", title: "Refunds", content: "<p>Contact the shop within 7 days.</p>" });
+    const one = await footerLinks();
+    expect(has(one.hrefs, "/refund-policy")).toBe(true);
+    expect(has(one.hrefs, "/shipping-policy")).toBe(false);
+    expect(one.text).toMatch(/refund-policy/);
+    expect(one.text).not.toMatch(/shipping-policy/);
+    await LegalPage.create({ slug: "shipping-policy", title: "Shipping", content: "<p>We ship in 3 days.</p>" });
+    const both = await footerLinks();
+    expect(has(both.hrefs, "/refund-policy") && has(both.hrefs, "/shipping-policy")).toBe(true);
   });
 });

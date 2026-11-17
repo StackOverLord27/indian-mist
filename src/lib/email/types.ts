@@ -42,7 +42,11 @@ export const ORDER_EMAIL_TYPES = ["order-confirmation", "order-shipped", "order-
 export type OrderEmailType = (typeof ORDER_EMAIL_TYPES)[number];
 
 /** How to reach the shop, from the admin contact settings. Every part is optional. */
-export type ShopInfo = { email?: string; phone?: string; hours?: string };
+export type ShopInfo = {
+  email?: string; phone?: string; hours?: string;
+  /** Optional policy pages that exist (saved, non-empty text): only these are linked in the footer */
+  policies?: ("refund-policy" | "shipping-policy")[];
+};
 
 /**
  * An order as an e-mail needs it: plain values, assembled by `buildOrderMail` from the order as it

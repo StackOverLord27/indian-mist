@@ -98,12 +98,20 @@ export type LayoutInput = {
   reason: string;
 };
 
-export function footerHtml(i: Pick<LayoutInput, "shop" | "siteUrl" | "reason">): string {
-  const c = contactLines(i.shop);
-  const links = [
+/** Privacy and Terms always; Refund and Shipping only when those pages exist (so no link ever points to an empty or missing page) */
+function policyLinks(i: Pick<LayoutInput, "shop" | "siteUrl">): [string, string][] {
+  const has = (slug: "refund-policy" | "shipping-policy") => !!i.shop.policies?.includes(slug);
+  return [
     ["Privacy Policy", `${i.siteUrl}/privacy-policy`],
     ["Terms & Conditions", `${i.siteUrl}/terms-and-conditions`],
-  ]
+    ...(has("refund-policy") ? [["Refund & Cancellation Policy", `${i.siteUrl}/refund-policy`] as [string, string]] : []),
+    ...(has("shipping-policy") ? [["Shipping & Delivery Policy", `${i.siteUrl}/shipping-policy`] as [string, string]] : []),
+  ];
+}
+
+export function footerHtml(i: Pick<LayoutInput, "shop" | "siteUrl" | "reason">): string {
+  const c = contactLines(i.shop);
+  const links = policyLinks(i)
     .map(([label, href]) => `<a href="${esc(href)}" style="color:${COLORS.accent};text-decoration:none;">${esc(label)}</a>`)
     .join("&nbsp;&middot;&nbsp;");
   return `${c.html.length ? `${c.html.join("<br/>")}<br/>` : ""}${links}<br/>${esc(i.reason)}<br/>&copy; ${new Date().getFullYear()} Indian Mist`;
@@ -113,8 +121,7 @@ export function footerText(i: Pick<LayoutInput, "shop" | "siteUrl" | "reason">):
   const c = contactLines(i.shop);
   return [
     ...c.text,
-    `Privacy Policy: ${i.siteUrl}/privacy-policy`,
-    `Terms & Conditions: ${i.siteUrl}/terms-and-conditions`,
+    ...policyLinks(i).map(([label, href]) => `${label}: ${href}`),
     i.reason,
     `© ${new Date().getFullYear()} Indian Mist`,
   ].join("\n");

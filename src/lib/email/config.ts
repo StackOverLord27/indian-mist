@@ -2,6 +2,8 @@ import dbConnect from "@/lib/db";
 import SiteSettingsModel from "@/models/settings.model";
 import type { SiteSettings } from "@/types/admin";
 import type { ShopInfo } from "./types";
+import LegalPage from "@/models/legal-page.model";
+import { hasLegalText, OPTIONAL_LEGAL_SLUGS, type OptionalLegalSlug } from "@/lib/legal-pages";
 import { getEmailPolicy, getFallbackContactEmail, getSmtpConfig } from "@/lib/env";
 import { SAFE_ADDRESS } from "./sanitize";
 
@@ -26,10 +28,14 @@ export async function loadShopInfo(): Promise<ShopInfo> {
   await dbConnect();
   const settings = await SiteSettingsModel.findOne().lean<SiteSettings>();
   const contact = settings?.contactPageSettings;
+  // The refund and shipping policies are linked only when the page really exists (saved text), the same rule the page itself uses
+  const saved = await LegalPage.find({ slug: { $in: OPTIONAL_LEGAL_SLUGS } }).select("slug content").lean<{ slug: OptionalLegalSlug; content?: string }[]>();
+  const policies = OPTIONAL_LEGAL_SLUGS.filter((slug) => hasLegalText(saved.find((p) => p.slug === slug)?.content));
   return {
     email: contact?.email || getFallbackContactEmail() || undefined,
     phone: contact?.phone || undefined,
     hours: contact?.businessHours || undefined,
+    policies,
   };
 }
 
