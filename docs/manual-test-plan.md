@@ -201,6 +201,11 @@ The browser suite checked the shrinking in the browser, but it never sent files 
 5. With a wrong `SMTP_PASS` (Preview), change an order status twice: the status changes, the order shows the e-mail as failed; once the key is fixed Resend works. After the failures become permanent (or you press Resend on a permanently refused address), expect at most ONE "Warning: ... could not be delivered" e-mail that day.
 6. Check each of these e-mails on a phone, and that none contains a secret or a card number (they never should).
 
+### 5.4d Missed-e-mail repair and footer links [MANUAL: real e-mail]
+(The logic is [AUTO]: `tests/repair-emails.test.ts`, the "footer policy links" tests in `tests/order-emails.test.ts`.)
+1. Footer: Admin > Refund Policy and Shipping Policy empty. Place a test order: the confirmation footer links only Privacy Policy and Terms & Conditions. Save text in Refund Policy: the next e-mail also links "Refund & Cancellation Policy" (and it opens a real page). Same for Shipping Policy. Save an empty editor: the link is gone again. No link may ever open a 404.
+2. Repair pass (only if you can stop the server on purpose; otherwise trust the automated test): place a test order and stop the server right after the payment is confirmed but before the e-mails go out. Restart; within about 10 minutes of anyone using the site or opening the admin dashboard, the confirmation (and your new-order alert) arrives ONCE. Vercel Logs show `[email] repairing the missing e-mails of a paid order`. An order that already got its e-mail never gets a second one.
+
 ### 5.5 Contact form and newsletter [MANUAL: real e-mail]
 1. Contact page > send a message. Expected: success message; the message arrives in the mailbox set as the Contact Page e-mail (Admin > Contact Page); if that is empty it goes to the admin e-mail. The sender's address is set as reply-to.
 2. Send 6 messages quickly. Expected: the 6th is refused ("too many requests").
