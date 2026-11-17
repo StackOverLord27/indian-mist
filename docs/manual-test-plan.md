@@ -182,6 +182,16 @@ The browser suite checked the shrinking in the browser, but it never sent files 
 3. Clear every item in the homepage trust strip / eco numbers / brand-story tags and save. Expected: the home page shows none of those sections (no placeholder text comes back).
 4. Trust strip is exactly what you typed (nothing is added or changed automatically).
 
+### 5.4b Customer order e-mails [MANUAL: real e-mail, Preview/local needs `EMAIL_ALLOWLIST`]
+(The logic is [AUTO]: `tests/order-emails.test.ts`, `e2e/order-emails.e2e.ts`. What only you can judge is how they read and look in a real inbox and on a phone.)
+1. Place a real test order with an account whose address you can read. Expected: ONE "Order confirmed: #XXXXXX" e-mail to the **account's** address with the items, quantities, prices, shipping, discount, total, delivery address, how to reach the shop and a "View My Orders" button; no invoice or delivery date is promised. Check it on a phone and in dark mode (it must stay readable).
+2. Admin > Orders > open the order > "E-mails to the customer" lists the confirmation as sent.
+3. Fill in courier / tracking number / tracking link, choose Shipped. Expected: one "has shipped" e-mail with those details; they also show in My Orders. Choose Shipped again, or Processing then Shipped: no second e-mail.
+4. Cancel an order you paid for. Expected: an e-mail that says a refund is due and that Razorpay refunds usually take several working days, with no date. Mark the refund Refunded: a "Refund issued" e-mail.
+5. Reset your password: a short "password was changed" notice, with the shop's contact address and no sign-in link.
+6. Admin > Site Settings > "Customer e-mails": tick "Also e-mail the customer when ... Delivered", mark an order Completed: a "delivered" e-mail. Untick it: no e-mail.
+7. [Optional, needs a broken mail setting] with a wrong `SMTP_PASS`, change a status: the status still changes, the order detail shows the e-mail as failed, Resend after fixing the password sends it.
+
 ### 5.5 Contact form and newsletter [MANUAL: real e-mail]
 1. Contact page > send a message. Expected: success message; the message arrives in the mailbox set as the Contact Page e-mail (Admin > Contact Page); if that is empty it goes to the admin e-mail. The sender's address is set as reply-to.
 2. Send 6 messages quickly. Expected: the 6th is refused ("too many requests").

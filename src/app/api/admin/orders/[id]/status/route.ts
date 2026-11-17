@@ -5,6 +5,11 @@ import type { HydratedDocument } from 'mongoose';
 import { Order, type IOrder } from '@/models/order.model';
 import { restoreStock, clearSoldOutWhereInStock, settleOrderStock, inTransaction } from '@/lib/stock-reservation';
 import { revalidateCatalog } from '@/lib/revalidate-storefront';
+import { parseTracking } from '@/lib/order-tracking';
+import { queueDeliveredEmail, queueOrderEmail } from '@/lib/email/order-mail';
+
+// The customer e-mails (shipped, cancelled) go out after the response, and may take a while to retry
+export const maxDuration = 60;
 
 const VALID_STATUSES = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 
@@ -12,17 +17,22 @@ export const PATCH = withAdmin(async (req: NextRequest, context) => {
   const { id } = await context.params;
   if (!id || !mongoose.isValidObjectId(id)) return errorResponse('Invalid order ID', 400);
 
-  let body: { status?: unknown };
+  let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
     return errorResponse('Invalid request', 400);
   }
 
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return errorResponse('Invalid request', 400);
   const status = typeof body.status === 'string' ? body.status : '';
   if (!VALID_STATUSES.includes(status)) {
     return errorResponse('Invalid status', 400);
   }
+  // Optional courier / tracking number / tracking link: a bad one is left out, never a reason to refuse the status change
+  const tracking = parseTracking(body);
+  const update: Record<string, unknown> = { $set: { status, ...tracking.set } };
+  if (tracking.unset.length) update.$unset = Object.fromEntries(tracking.unset.map((f) => [f, 1]));
 
   // A cancelled order is final: its stock has already been returned, so it can't be revived.
   // The status change and the restocking are ONE transaction (a crash can neither lose nor repeat
@@ -40,7 +50,7 @@ export const PATCH = withAdmin(async (req: NextRequest, context) => {
       previous = await inTransaction(async (session) => {
         const before = await Order.findOneAndUpdate(
           { _id: id, status: { $ne: 'CANCELLED' } },
-          { status },
+          update,
           { returnDocument: 'before', session },
         );
         if (!before) return null;
@@ -79,6 +89,16 @@ export const PATCH = withAdmin(async (req: NextRequest, context) => {
   }
 
   const order = await Order.findById(id);
+
+  // The change is saved: now (after the response) tell the customer. Only a REAL change sends
+  // anything (saving the same status again does not), and the order id as the e-mail's key means
+  // Shipped / Cancelled can go out only once per order however often the status moves.
+  if (previous.paymentStatus === 'PAID' && previous.status !== status) {
+    if (status === 'SHIPPED') await queueOrderEmail('order-shipped', id);
+    else if (status === 'DELIVERED') await queueDeliveredEmail(id);
+    else if (status === 'CANCELLED') await queueOrderEmail('order-cancelled', id);
+  }
+
   const refundReminder = status === 'CANCELLED' && previous.paymentStatus === 'PAID' && order?.refundStatus === 'PENDING';
-  return successResponse({ order, refundReminder, message: 'Status updated successfully' });
+  return successResponse({ order, refundReminder, ignoredTracking: tracking.ignored, message: 'Status updated successfully' });
 });

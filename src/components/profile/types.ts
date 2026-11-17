@@ -38,6 +38,10 @@ export type OrderData = {
   paymentStatus: string;
   /** Only the neutral state (PENDING / REFUNDED / NOT_NEEDED); notes and ids stay with the shop */
   refundStatus?: string;
+  /** Optional shipping details the shop added */
+  courier?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
   createdAt: string;
   shippingAddress?: ShippingAddress;
   items: OrderItemData[];

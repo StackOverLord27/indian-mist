@@ -1,5 +1,6 @@
 "use client";
 
+import { safeHttpUrl } from "@/lib/email/layout";
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, Package, MapPin, FileText, CheckCircle2 } from "lucide-react";
@@ -213,6 +214,19 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                         </p>
                       </div>
                     </div>
+
+                    {(order.courier || order.trackingNumber || safeHttpUrl(order.trackingUrl)) && (
+                      <div data-testid="order-tracking" className="p-3 bg-white/70 border border-olive-leaf/15 rounded-sm font-montserrat text-xs text-forest space-y-0.5">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-olive-leaf">Tracking</p>
+                        {order.courier && <p>Courier: <strong>{order.courier}</strong></p>}
+                        {order.trackingNumber && <p className="wrap-anywhere">Tracking number: <strong>{order.trackingNumber}</strong></p>}
+                        {safeHttpUrl(order.trackingUrl) && (
+                          <p>
+                            <a href={safeHttpUrl(order.trackingUrl)!} target="_blank" rel="noopener noreferrer" className="font-semibold text-olive-leaf underline underline-offset-2">Track your parcel</a>
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     {/* Product Items Breakdown */}
                     <div>

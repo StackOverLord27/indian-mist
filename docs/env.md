@@ -42,6 +42,8 @@ Vercel environments: **Production** (the live site), **Preview** (every branch/P
 
 **Mail provider (Brevo SMTP relay, see `docs/deploy-checklist.md` section 8):** `SMTP_HOST=smtp-relay.brevo.com`, `SMTP_PORT=587` (STARTTLS; 465 = implicit TLS; 2525 is Brevo's fallback when 587 is blocked), `SMTP_USER` = the **SMTP login** shown on Brevo's SMTP & API > SMTP tab (not necessarily an e-mail address), `SMTP_PASS` = an **SMTP key** from the same tab (not an API key), `SMTP_FROM` = a sender on a domain you authenticated in Brevo. The variable names stay `SMTP_*` (not `MAIL_*`). The owner's address (where contact messages go) is the one saved in Admin > Contact, else `SUPER_ADMIN_EMAIL`.
 
+No new variable is needed for the customer order e-mails: they use the same `SMTP_*`, `EMAIL_ENABLED`, `EMAIL_ALLOWLIST` and `NEXT_PUBLIC_SITE_URL` (the links in them). Their recipient is the account's e-mail; "how to reach the shop" in their footer is the Contact page settings (e-mail, phone, hours), else `SUPER_ADMIN_EMAIL`. The optional "Delivered" e-mail is a setting (Admin > Site Settings), not an environment variable. **Outside production a Preview/local run e-mails only addresses in `EMAIL_ALLOWLIST`, including order e-mails, so test orders reach nobody else.**
+
 Where mail is sent from: everything goes through `src/lib/email` (`sendMail(type, to, data)`); `SMTP_USER` is no longer used as a fallback owner address (with Brevo it is a login, not a mailbox).
 
 `NODE_ENV` is set by Next.js (`production` for `next build`/`next start`); do not set it yourself.

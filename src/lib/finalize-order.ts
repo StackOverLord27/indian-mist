@@ -11,6 +11,7 @@ import { revalidateCatalog } from "@/lib/revalidate-storefront";
 import { orderIdForRazorpayOrder } from "@/lib/order-id";
 import { samePaymentText } from "@/lib/duplicate-note";
 import { orderNumber } from "@/lib/order-number";
+import { queueOrderEmail } from "@/lib/email/order-mail";
 
 type PendingOrder = Record<string, unknown> & {
   userId: string;
@@ -272,6 +273,11 @@ export async function finalizeOrder(opts: {
   } catch (error) {
     console.error("[finalizeOrder] removing the pending order failed:", error);
   }
+
+  // The confirmation e-mail. Only the path that really CREATED the order gets here (the one that
+  // lost the race returned above), and the order id is the e-mail's own once-only key as well.
+  // Sent after the response; never throws, so a mail problem cannot undo or fail the order.
+  await queueOrderEmail("order-confirmation", order._id);
 
   return { ok: true, order, alreadyProcessed: false };
 }

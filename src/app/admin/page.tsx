@@ -1,5 +1,6 @@
 'use client';
 
+import { emailTypeLabel } from "@/lib/email-labels";
 import AdminProtectedRoute from '@/components/admin/AdminProtectedRoute';
 import AdminCard from '@/components/admin/ui/AdminCard';
 import { Package, Megaphone, Images, Activity, Library, PenLine } from 'lucide-react';
@@ -136,7 +137,7 @@ export default function AdminDashboardPage() {
           <ul className="mt-2 space-y-1">
             {failedEmails.emails.map((e) => (
               <li key={e.id} className="flex flex-wrap items-center gap-x-4 gap-y-0.5 border-t border-olive/15 pt-1">
-                <span><b>{e.type}</b></span>
+                <span><b>{emailTypeLabel(e.type)}</b></span>
                 <span>{formatShopDate(e.createdAt)}</span>
                 <span>{e.attempts} attempt{e.attempts === 1 ? '' : 's'}</span>
                 <span>error {e.lastErrorCode ?? '—'}</span>

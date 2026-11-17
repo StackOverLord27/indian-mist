@@ -329,6 +329,9 @@ export const SettingsSchema = z.object({
     })
     .optional(),
 
+  // Customer e-mails
+  emailSettings: z.object({ sendDeliveredEmail: z.boolean().optional() }).optional(),
+
   // Contact page
   contactPageSettings: z
     .object({

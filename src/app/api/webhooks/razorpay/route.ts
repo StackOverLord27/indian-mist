@@ -1,4 +1,5 @@
 export const runtime = "nodejs";
+export const maxDuration = 60; // the confirmation e-mail goes out after the response
 
 import { NextRequest } from "next/server";
 import dbConnect from "@/lib/db";

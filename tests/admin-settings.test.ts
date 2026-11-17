@@ -32,6 +32,7 @@ const fullDocument = (): SiteSettings & Record<string, unknown> => ({
   __v: 0,
   sizeChart: { url: "https://res.cloudinary.com/x/size.jpg", publicId: "indian-mist/size-chart/s" },
   tagline: "Born wild",
+  emailSettings: { sendDeliveredEmail: true },
   contactEmail: "hello@shop.test",
   footerNote: "Made with care",
   metaTitle: "Shop",

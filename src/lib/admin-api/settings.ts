@@ -16,7 +16,7 @@ export const updateSiteSettings = async (settings: Partial<SiteSettings>) => {
  * saves only the sections it receives, so saving one page can never overwrite another's.
  */
 export const SETTINGS_SECTIONS = {
-  general: ['tagline', 'contactEmail', 'footerNote', 'metaTitle', 'metaDescription', 'socialLinks'],
+  general: ['tagline', 'contactEmail', 'footerNote', 'metaTitle', 'metaDescription', 'socialLinks', 'emailSettings'],
   homepage: ['heroSettings', 'brandStorySettings', 'trustStripSettings', 'ecoCommitmentSettings'],
   contact: ['contactPageSettings'],
   blogs: ['blogPageSettings'],

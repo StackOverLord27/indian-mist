@@ -73,6 +73,24 @@ export default function AdminSettingsPage() {
           </div>
         </AdminCard>
 
+        <AdminCard title="Customer e-mails">
+          <p className="mb-4 font-montserrat text-xs text-forest/70">
+            Customers always get an e-mail for: order confirmed, shipped, cancelled, refund completed and password changed.
+          </p>
+          <label className="flex items-start gap-3 font-montserrat text-sm text-forest">
+            <input
+              type="checkbox"
+              checked={settings.emailSettings?.sendDeliveredEmail === true}
+              onChange={e => setSettings(prev => ({ ...prev, emailSettings: { ...(prev.emailSettings || {}), sendDeliveredEmail: e.target.checked } }))}
+              className="mt-0.5 size-4"
+            />
+            <span>
+              Also e-mail the customer when an order is marked <b>Completed (Delivered)</b>
+              <span className="block text-xs text-forest/60">Off by default. Only orders marked delivered after you switch it on are e-mailed.</span>
+            </span>
+          </label>
+        </AdminCard>
+
         <AdminCard title="SEO & Meta">
           <div className="space-y-4">
             <AdminFormField label="Meta Title">

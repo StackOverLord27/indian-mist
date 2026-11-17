@@ -244,6 +244,8 @@ export interface SiteSettings {
   pricingSettings?: PricingSettings;
   contactPageSettings?: ContactPageSettings;
   blogPageSettings?: BlogPageSettings;
+  /** Customer e-mails the admin can switch on or off ("Delivered" is off until turned on) */
+  emailSettings?: { sendDeliveredEmail?: boolean };
 }
 
 export interface AdminCategory {
@@ -302,6 +304,20 @@ export interface AdminOrderItem {
   selectedColorHex?: string;
 }
 
+export interface AdminOrderEmail {
+  id: string;
+  type: 'order-confirmation' | 'order-shipped' | 'order-cancelled' | 'order-refunded' | 'order-delivered';
+  status: 'queued' | 'sent' | 'failed';
+  attempts: number;
+  /** true = it will not be retried any more */
+  permanent: boolean;
+  lastErrorCode: string | null;
+  createdAt: string;
+  sentAt: string | null;
+  /** The Resend button is offered (a failed e-mail that can be rebuilt) */
+  canResend: boolean;
+}
+
 export interface AdminOrder {
   _id: string;
   createdAt: string;
@@ -323,6 +339,12 @@ export interface AdminOrder {
   refundStatus?: 'NOT_NEEDED' | 'PENDING' | 'REFUNDED';
   refundNote?: string;
   razorpayRefundId?: string;
+  /** Shipping details the admin added (optional) */
+  courier?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+  /** The customer e-mails of this order and what became of them (newest last) */
+  emails?: AdminOrderEmail[];
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   /** Which path turned the payment into this order, and when (absent on older orders) */

@@ -38,7 +38,7 @@ export async function listFailedEmails(now = Date.now()) {
   return { emails, permanentFailures };
 }
 
-export type ResendResult = "sent-attempted" | "not-found" | "not-failed" | "not-resendable";
+export type ResendResult = "sent-attempted" | "not-found" | "not-failed" | "not-resendable" | "blocked" | "no-source";
 
 /** Sends a failed e-mail again, once, now (the Resend button). The outcome is recorded in the log row. */
 export async function resendEmail(id: string): Promise<ResendResult> {
@@ -48,5 +48,11 @@ export async function resendEmail(id: string): Promise<ResendResult> {
   if (row.status !== "failed") return "not-failed";
   if (!isResendable(row.type as EmailType)) return "not-resendable";
   const ran = await retryRow(row._id, row.type as EmailType, row.relatedId, row.dedupeKey, row.attempts);
-  return ran ? "sent-attempted" : "not-failed";
+  if (ran) return "sent-attempted";
+  // Not sent: say why. The guard (kill switch / allowlist) or a missing order or account address
+  // marks the row failed for good with its own code; anything else means another click got there first.
+  const after = await EmailLog.findById(id).select("lastErrorCode").lean();
+  if (after?.lastErrorCode === "EGUARD") return "blocked";
+  if (after?.lastErrorCode === "ENOSOURCE") return "no-source";
+  return "not-failed";
 }

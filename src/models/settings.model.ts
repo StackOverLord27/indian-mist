@@ -100,6 +100,10 @@ const SettingsSchema = new mongoose.Schema({
     heading: { type: String },
     subtitle: { type: String },
   },
+  // Customer e-mails the admin can switch. "Delivered" is OFF unless turned on.
+  emailSettings: {
+    sendDeliveredEmail: { type: Boolean, default: false },
+  },
   contactPageSettings: {
     title: { type: String, default: '' },
     subtitle: { type: String, default: '' },

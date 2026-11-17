@@ -6,6 +6,9 @@ import { verifyOtp, deleteOtp } from "@/lib/otp-store";
 import { setTokenCookies } from "@/lib/auth-tokens";
 import { startSession } from "@/lib/auth-session";
 import { ResetPasswordSchema } from "@/schemas/auth/forgot-password.schema";
+import { queuePasswordChangedEmail } from "@/lib/email/order-mail";
+
+export const maxDuration = 60; // the notice e-mail goes out after the response
 
 export async function POST(req: Request) {
   try {
@@ -50,6 +53,9 @@ export async function POST(req: Request) {
 
     // A password reset must end every existing session (including any stolen one)
     await RefreshToken.deleteMany({ userId: user._id });
+
+    // The password is changed: tell the owner of the account (after the response, never fails the reset)
+    await queuePasswordChangedEmail({ id: user._id, email: user.email, name: user.name });
 
     // ── Issue a fresh session and auto-signin ──────────────────────────────────
     const { role: userRole, accessToken, refreshToken: rawRefreshToken, refreshMaxAge } = await startSession(user);

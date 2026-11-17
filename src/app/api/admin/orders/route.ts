@@ -3,6 +3,9 @@ import { withAdmin, errorResponse, successResponse } from '@/lib/api-helpers';
 import { Order } from '@/models/order.model';
 import { Product } from '@/models/product.model';
 import { parsePagination, paginationMeta } from '@/lib/pagination';
+import { EmailLog } from '@/models/email-log.model';
+import { isResendable } from '@/lib/email';
+import { ORDER_EMAIL_TYPES, type EmailType } from '@/lib/email/types';
 
 export const GET = withAdmin(async (req: NextRequest) => {
   try {
@@ -75,7 +78,18 @@ export const GET = withAdmin(async (req: NextRequest) => {
         if (ids && ids.length > 1) samePaymentAs.set(String(order._id), ids.filter((id) => id !== String(order._id)));
       }
     }
-    const withDuplicates = orders.map((o) => (samePaymentAs.has(String(o._id)) ? { ...o, samePaymentAs: samePaymentAs.get(String(o._id)) } : o));
+    // The customer e-mails of these orders and what became of each (one lookup by the unique key, no extra index)
+    const keys = orders.flatMap((o) => ORDER_EMAIL_TYPES.map((t) => `${t}:${String(o._id)}`));
+    const logs = keys.length ? await EmailLog.find({ dedupeKey: { $in: keys } }).sort({ createdAt: 1 }).lean() : [];
+    const emailsByOrder = new Map<string, unknown[]>();
+    for (const l of logs) {
+      emailsByOrder.set(l.relatedId, [...(emailsByOrder.get(l.relatedId) ?? []), {
+        id: String(l._id), type: l.type, status: l.status, attempts: l.attempts, permanent: l.permanent,
+        lastErrorCode: l.lastErrorCode ?? null, createdAt: l.createdAt.toISOString(), sentAt: l.sentAt ? l.sentAt.toISOString() : null,
+        canResend: l.status === 'failed' && isResendable(l.type as EmailType),
+      }]);
+    }
+    const withDuplicates = orders.map((o) => ({ ...o, emails: emailsByOrder.get(String(o._id)) ?? [], ...(samePaymentAs.has(String(o._id)) ? { samePaymentAs: samePaymentAs.get(String(o._id)) } : {}) }));
 
     return successResponse({ orders: withDuplicates, statusCounts, ...paginationMeta(total, pagination) });
   } catch (error) {

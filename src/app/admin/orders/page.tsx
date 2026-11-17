@@ -1,6 +1,7 @@
 "use client";
 
-import type { AdminOrder } from "@/types/admin";
+import type { AdminOrder, AdminOrderEmail } from "@/types/admin";
+import { emailTypeLabel } from "@/lib/email-labels";
 import { getApiErrorMessage } from "@/lib/admin-error";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient, keepPreviousData, type UseMutationResult } from "@tanstack/react-query";
@@ -33,7 +34,10 @@ import { reviewNoteForDisplay } from "@/lib/duplicate-note";
 import { orderNumber } from "@/lib/order-number";
 import { formatShopDate } from "@/lib/shop-time";
 
-type StatusUpdater = UseMutationResult<unknown, Error, { id: string; status: string }>;
+type ShippingInput = { courier?: string; trackingNumber?: string; trackingUrl?: string };
+type StatusInput = { id: string; status: string } & ShippingInput;
+type StatusUpdater = UseMutationResult<unknown, Error, StatusInput>;
+type EmailResender = UseMutationResult<unknown, Error, string>;
 type RefundInput = { id: string; refundStatus: string; refundNote: string; razorpayRefundId: string };
 type RefundSaver = UseMutationResult<unknown, Error, RefundInput>;
 
@@ -50,6 +54,81 @@ function RefundBadge({ status }: { status?: string }) {
     >
       {status === "PENDING" ? "Refund pending" : "Refunded"}
     </span>
+  );
+}
+
+const EMAIL_STATUS_STYLE: Record<AdminOrderEmail["status"], string> = {
+  sent: "bg-emerald-100 text-emerald-900",
+  queued: "bg-sky-100 text-sky-900",
+  failed: "bg-red-100 text-red-800",
+};
+
+/** Optional courier, tracking number and link. Saved with the status change, never required for it. */
+function ShippingPanel({ order, value, onChange, save }: { order: AdminOrder; value: Required<ShippingInput>; onChange: (v: Required<ShippingInput>) => void; save: StatusUpdater }) {
+  const field = "block w-full min-w-0 rounded-sm border border-olive/25 bg-cornsilk px-2.5 py-1.5 font-montserrat text-xs text-forest outline-none focus:border-olive";
+  return (
+    <div data-testid="shipping-panel" className="mt-4 min-w-0 space-y-2 whitespace-normal rounded-sm border border-olive/10 bg-white p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-text">Shipping details (optional)</p>
+      <p className="font-montserrat text-[11px] text-muted-text">Shown to the customer in the Shipped e-mail and in My Orders. Fill them in before you choose Shipped, or save them afterwards (no second e-mail is sent).</p>
+      <label className="block font-montserrat text-[11px] text-muted-text">
+        Courier
+        <input aria-label="Courier" value={value.courier} onChange={(e) => onChange({ ...value, courier: e.target.value })} maxLength={80} className={`${field} mt-0.5`} />
+      </label>
+      <label className="block font-montserrat text-[11px] text-muted-text">
+        Tracking number
+        <input aria-label="Tracking number" value={value.trackingNumber} onChange={(e) => onChange({ ...value, trackingNumber: e.target.value })} maxLength={80} className={`${field} mt-0.5`} />
+      </label>
+      <label className="block font-montserrat text-[11px] text-muted-text">
+        Tracking link
+        <input aria-label="Tracking link" value={value.trackingUrl} onChange={(e) => onChange({ ...value, trackingUrl: e.target.value })} maxLength={500} placeholder="https://..." className={`${field} mt-0.5`} />
+      </label>
+      <Button
+        type="button"
+        disabled={save.isPending}
+        onClick={() => save.mutate({ id: order._id, status: order.status, ...value })}
+        className="h-8 w-full rounded-sm bg-forest px-3 font-montserrat text-[11px] font-semibold uppercase tracking-wider text-cornsilk hover:bg-olive"
+      >
+        Save shipping details
+      </Button>
+    </div>
+  );
+}
+
+/** Which customer e-mails of this order were sent, are waiting, or failed (Resend for the failed ones). */
+function EmailsPanel({ order, resend }: { order: AdminOrder; resend: EmailResender }) {
+  const emails = order.emails ?? [];
+  return (
+    <div data-testid="order-emails" className="mt-4 min-w-0 space-y-2 whitespace-normal rounded-sm border border-olive/10 bg-white p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-text">E-mails to the customer</p>
+      {emails.length === 0 ? (
+        <p className="font-montserrat text-xs text-muted-text">None sent yet.</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {emails.map((e) => (
+            <li key={e.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 font-montserrat text-xs text-forest">
+              <span className="font-semibold">{emailTypeLabel(e.type)}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${EMAIL_STATUS_STYLE[e.status]}`}>
+                {e.status === "failed" && e.permanent ? "failed for good" : e.status === "failed" ? "failed, will retry" : e.status}
+              </span>
+              <span className="text-[10px] text-muted-text">
+                {e.status === "sent" && e.sentAt ? formatShopDate(e.sentAt, "dateTime", { withZone: true }) : formatShopDate(e.createdAt, "dateTime", { withZone: true })}
+                {e.lastErrorCode && e.status === "failed" ? ` · error ${e.lastErrorCode}` : ""}
+              </span>
+              {e.canResend && (
+                <Button
+                  type="button"
+                  disabled={resend.isPending}
+                  onClick={() => resend.mutate(e.id)}
+                  className="h-6 rounded-sm bg-forest px-2 font-montserrat text-[10px] font-semibold uppercase tracking-wider text-cornsilk hover:bg-olive"
+                >
+                  Resend
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -101,14 +180,20 @@ function OrderRow({
   order,
   updateStatus,
   saveRefund,
+  resendEmail,
   getStatusColor,
 }: {
   order: AdminOrder;
   updateStatus: StatusUpdater;
   saveRefund: RefundSaver;
+  resendEmail: EmailResender;
   getStatusColor: (status: string) => string;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  // What the admin typed for the Shipped e-mail; the Shipped menu item sends it along with the status
+  const [shipping, setShipping] = useState<Required<ShippingInput>>({
+    courier: order.courier ?? "", trackingNumber: order.trackingNumber ?? "", trackingUrl: order.trackingUrl ?? "",
+  });
 
   return (
     <>
@@ -180,7 +265,7 @@ function OrderRow({
                 Processing
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => updateStatus.mutate({ id: order._id, status: "SHIPPED" })}
+                onClick={() => updateStatus.mutate({ id: order._id, status: "SHIPPED", ...shipping })}
                 className="hover:bg-olive/10 focus:bg-olive/10"
               >
                 Shipped
@@ -333,6 +418,8 @@ function OrderRow({
                       </p>
                     )}
                   </div>
+                  {order.status !== "CANCELLED" && <ShippingPanel order={order} value={shipping} onChange={setShipping} save={updateStatus} />}
+                  <EmailsPanel order={order} resend={resendEmail} />
                   <RefundPanel key={`${order.refundStatus}|${order.refundNote}|${order.razorpayRefundId}`} order={order} saveRefund={saveRefund} />
                 </div>
               </div>
@@ -367,11 +454,14 @@ export default function AdminOrdersPage() {
   }, [response, isPlaceholderData, page]);
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const res = await adminAxios.patch(`/api/admin/orders/${id}/status`, { status });
+    mutationFn: async ({ id, ...body }: StatusInput) => {
+      const res = await adminAxios.patch(`/api/admin/orders/${id}/status`, body);
       return res.data;
     },
-    onSuccess: (data: { refundReminder?: boolean; order?: { totalAmount?: number } }) => {
+    onSuccess: (data: { refundReminder?: boolean; ignoredTracking?: string[]; order?: { totalAmount?: number } }) => {
+      if (data?.ignoredTracking?.length) {
+        toast(`Saved, but these shipping details were not valid and were left out: ${data.ignoredTracking.map((f) => ({ courier: "courier", trackingNumber: "tracking number", trackingUrl: "tracking link (it must start with https://)" })[f] ?? f).join(", ")}.`, { duration: 9000, icon: "⚠️" });
+      }
       if (data?.refundReminder) {
         toast(
           `Order cancelled. Remember to refund ₹${(data.order?.totalAmount ?? 0).toLocaleString("en-IN")} in the Razorpay dashboard: it is NOT refunded automatically. It is listed under "Refund pending" until you mark it refunded.`,
@@ -385,6 +475,18 @@ export default function AdminOrdersPage() {
     onError: (err) => {
       toast.error(getApiErrorMessage(err, "Failed to update status"));
     },
+  });
+
+  const resendEmail = useMutation({
+    mutationFn: async (emailId: string) => {
+      const res = await adminAxios.post(`/api/admin/emails/${emailId}/resend`);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success("Sent again");
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err, "Could not send it again")),
   });
 
   const saveRefund = useMutation({
@@ -507,7 +609,7 @@ export default function AdminOrdersPage() {
               </TableRow>
             ) : (
               data.map((order) => (
-                <OrderRow key={order._id} order={order} updateStatus={updateStatus} saveRefund={saveRefund} getStatusColor={getStatusColor} />
+                <OrderRow key={order._id} order={order} updateStatus={updateStatus} saveRefund={saveRefund} resendEmail={resendEmail} getStatusColor={getStatusColor} />
               ))
             )}
           </TableBody>

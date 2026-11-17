@@ -1,6 +1,7 @@
 import dbConnect from "@/lib/db";
 import SiteSettingsModel from "@/models/settings.model";
 import type { SiteSettings } from "@/types/admin";
+import type { ShopInfo } from "./types";
 import { getEmailPolicy, getFallbackContactEmail, getSmtpConfig } from "@/lib/env";
 import { SAFE_ADDRESS } from "./sanitize";
 
@@ -18,6 +19,25 @@ export async function resolveOwnerAddress(): Promise<string | null> {
   await dbConnect();
   const settings = await SiteSettingsModel.findOne().lean<SiteSettings>();
   return settings?.contactPageSettings?.email || getFallbackContactEmail() || null;
+}
+
+/** How a customer can reach the shop (shown in the footer of every customer e-mail): the admin contact settings. */
+export async function loadShopInfo(): Promise<ShopInfo> {
+  await dbConnect();
+  const settings = await SiteSettingsModel.findOne().lean<SiteSettings>();
+  const contact = settings?.contactPageSettings;
+  return {
+    email: contact?.email || getFallbackContactEmail() || undefined,
+    phone: contact?.phone || undefined,
+    hours: contact?.businessHours || undefined,
+  };
+}
+
+/** The admin switch for the optional "delivered" e-mail. Off unless the admin turned it on. */
+export async function deliveredEmailEnabled(): Promise<boolean> {
+  await dbConnect();
+  const settings = await SiteSettingsModel.findOne().select("emailSettings").lean<SiteSettings>();
+  return settings?.emailSettings?.sendDeliveredEmail === true;
 }
 
 export type Guard = { allowed: true } | { allowed: false; reason: "disabled" | "not-allowlisted" };

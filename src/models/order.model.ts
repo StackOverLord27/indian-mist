@@ -43,6 +43,11 @@ export interface IOrder extends Document {
   /** Razorpay's refund id (rfnd_...), entered by the admin */
   razorpayRefundId?: string;
   paymentStatus: "UNPAID" | "PAID" | "FAILED";
+  /** Shipping details the admin may add when shipping (all optional; never required to change a status) */
+  courier?: string;
+  trackingNumber?: string;
+  /** An http(s) address (checked when saved and again before it becomes a link) */
+  trackingUrl?: string;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   razorpaySignature?: string;
@@ -101,6 +106,9 @@ const OrderSchema: Schema = new Schema(
       enum: ["UNPAID", "PAID", "FAILED"],
       default: "UNPAID",
     },
+    courier: { type: String },
+    trackingNumber: { type: String },
+    trackingUrl: { type: String },
     razorpayOrderId: { type: String, unique: true, sparse: true },
     razorpayPaymentId: { type: String },
     razorpaySignature: { type: String },

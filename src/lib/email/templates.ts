@@ -1,6 +1,7 @@
 import { escapeHtml, singleLine, bodyText } from "./sanitize";
 import { SENDER_NAMES } from "./config";
 import type { EmailData, EmailType } from "./types";
+import { renderOrderCancelled, renderOrderConfirmation, renderOrderDelivered, renderOrderRefunded, renderOrderShipped, renderPasswordChanged } from "./order-templates";
 
 /** What a template produces. Every user value is escaped in the HTML; the text part is plain text. */
 export type Rendered = { senderName: string; subject: string; html: string; text: string; replyTo?: string };
@@ -186,6 +187,18 @@ export function render<T extends EmailType>(type: T, to: string, data: EmailData
       return renderOtp(to, (data as EmailData["otp-signup"]).otp);
     case "contact":
       return renderContact(data as EmailData["contact"]);
+    case "order-confirmation":
+      return renderOrderConfirmation(data as EmailData["order-confirmation"]);
+    case "order-shipped":
+      return renderOrderShipped(data as EmailData["order-shipped"]);
+    case "order-cancelled":
+      return renderOrderCancelled(data as EmailData["order-cancelled"]);
+    case "order-refunded":
+      return renderOrderRefunded(data as EmailData["order-refunded"]);
+    case "order-delivered":
+      return renderOrderDelivered(data as EmailData["order-delivered"]);
+    case "password-changed":
+      return renderPasswordChanged(data as EmailData["password-changed"]);
     default:
       throw new Error("Unknown e-mail type");
   }

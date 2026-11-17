@@ -4,6 +4,7 @@ import dbConnect from "@/lib/db";
 import { EmailLog } from "@/models/email-log.model";
 import { checkRecipient, getFromAddress } from "./config";
 import { SAFE_ADDRESS, domainOf, singleLine } from "./sanitize";
+import { STATIC_BUILDERS } from "./order-data";
 import { render } from "./templates";
 import { getTransport, logMailError } from "./transport";
 import type { EmailData, EmailType, MailError, SendMailResult } from "./types";
@@ -35,7 +36,20 @@ type TypePolicy = {
 
 const CONTACT_DOUBLE_CLICK_WINDOW_MS = 10 * 60 * 1000;
 
+const needsRelatedId = (): string => {
+  throw new Error("this e-mail needs its related id (the order id)");
+};
+// Order e-mails: once per order for ever (the order id is the key), whatever the code path or retry.
+const orderPolicy: TypePolicy = { timeCritical: false, defaultRelatedId: needsRelatedId };
+
 export const EMAIL_TYPES: Record<EmailType, TypePolicy> = {
+  "order-confirmation": orderPolicy,
+  "order-shipped": orderPolicy,
+  "order-cancelled": orderPolicy,
+  "order-refunded": orderPolicy,
+  "order-delivered": orderPolicy,
+  // The related id is "<user id>.<time>" (see passwordChangedId): every change is its own e-mail.
+  "password-changed": orderPolicy,
   // A sign-in code is one-off: every request is its own e-mail (rate limits sit in the routes).
   "otp-signup": { timeCritical: true, defaultRelatedId: () => randomUUID() },
   "otp-reset": { timeCritical: true, defaultRelatedId: () => randomUUID() },
@@ -162,8 +176,8 @@ const builders: Partial<Record<EmailType, EmailBuilder>> = {};
 export function registerEmailBuilder<T extends EmailType>(type: T, builder: EmailBuilder<T>) {
   builders[type] = builder as EmailBuilder;
 }
-export const getBuilder = (type: EmailType) => builders[type];
-export const isResendable = (type: EmailType) => !EMAIL_TYPES[type]?.timeCritical && !!builders[type];
+export const getBuilder = (type: EmailType): EmailBuilder | undefined => builders[type] ?? (STATIC_BUILDERS[type] as EmailBuilder | undefined);
+export const isResendable = (type: EmailType) => !EMAIL_TYPES[type]?.timeCritical && !!getBuilder(type);
 export function resetBuildersForTests() {
   for (const k of Object.keys(builders)) delete builders[k as EmailType];
 }

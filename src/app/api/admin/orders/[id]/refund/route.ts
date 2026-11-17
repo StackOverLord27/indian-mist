@@ -3,6 +3,9 @@ import mongoose from 'mongoose';
 import { withAdmin, parseJsonBody, errorResponse, successResponse, validationError } from '@/lib/api-helpers';
 import { Order } from '@/models/order.model';
 import { OrderRefundSchema } from '@/schemas/admin';
+import { queueOrderEmail } from '@/lib/email/order-mail';
+
+export const maxDuration = 60; // the refund e-mail goes out after the response
 
 /**
  * Records a refund by hand: nothing is sent to Razorpay (refunds are made in its dashboard).
@@ -26,12 +29,18 @@ export const PATCH = withAdmin(async (req: NextRequest, context) => {
     else if (value !== undefined) unset[key] = 1; // sent empty: clear it
   }
 
-  const order = await Order.findOneAndUpdate(
+  // The document BEFORE the change tells whether this save is the one that makes it REFUNDED
+  const before = await Order.findOneAndUpdate(
     { _id: id, paymentStatus: 'PAID' },
     { $set: set, ...(Object.keys(unset).length ? { $unset: unset } : {}) },
-    { returnDocument: 'after', runValidators: true },
-  ).select('-razorpaySignature');
+    { returnDocument: 'before', runValidators: true },
+  ).select('refundStatus');
+  if (!before) return errorResponse('Order not found', 404);
+  const order = await Order.findById(id).select('-razorpaySignature');
   if (!order) return errorResponse('Order not found', 404);
+
+  // Saved: tell the customer once, when the refund BECOMES completed (saving it again sends nothing)
+  if (refundStatus === 'REFUNDED' && before.refundStatus !== 'REFUNDED') await queueOrderEmail('order-refunded', id);
 
   return successResponse({ order, message: 'Refund details saved' });
 });
