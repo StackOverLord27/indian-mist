@@ -4,6 +4,11 @@ const isDev = process.env.NODE_ENV === "development";
 
 // Which places the browser may load code and content from.
 // 'unsafe-inline' is needed because Next.js and React add small inline scripts and styles themselves.
+// A nonce-based policy would be stricter, but nonces need every page rendered per request, which
+// would undo the page caching (ISR). Reviewed against Razorpay Checkout: Razorpay publishes no CSP
+// list, and https://*.razorpay.com already covers the hosts it uses (checkout, api, cdn, lumberjack)
+// for scripts, frames, requests, images, fonts and styles, so nothing needs loosening. Confirm with
+// a real Test Mode payment in a browser and watch /api/csp-report for blocked requests.
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://*.razorpay.com`,
@@ -23,7 +28,12 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   experimental: {
-    proxyClientMaxBodySize: 52428800, // 50MB in bytes
+    // What this option does (see the Next.js docs): the proxy buffers each request body so the route
+    // can read it again, and bodies above this size are cut off at the limit. Set to Vercel's real
+    // request cap (4.5 MB, see src/lib/image-budget.ts REQUEST_LIMIT_BYTES) so local development
+    // behaves like production: an oversize upload is refused instead of quietly working. The upload
+    // routes also reject it up front from its Content-Length, with a readable 413 message.
+    proxyClientMaxBodySize: 4_500_000,
     agentUpgrade: "security",
   },
   turbopack: {
@@ -31,6 +41,12 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // Belt and braces for search engines: the admin and the API are never to be indexed
+      // (the admin pages also say so themselves, and robots.txt disallows both)
+      ...["/admin/:path*", "/api/:path*"].map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      })),
       {
         source: "/(.*)",
         headers: [

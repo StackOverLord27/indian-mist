@@ -12,15 +12,17 @@ import AdminFormField, {
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SiteSettings, ContactPageSettings } from "@/types/admin";
+import { settingsForSection } from "@/lib/admin-api/settings";
 
+// Nothing is pre-filled: the contact page shows only what is typed here (examples are in the placeholders)
 const defaultContactSettings: ContactPageSettings = {
-  title: "Contact Us",
-  subtitle: "We would love to hear from you. Get in touch with us for any queries.",
-  address: "123 Forest Lane, Nature Valley, Earth 456789",
-  phone: "+91 98765 43210",
-  whatsapp: "+91 98765 43210",
-  email: "hello@indianmist.com",
-  businessHours: "Mon-Fri, 9:00 AM - 6:00 PM",
+  title: "",
+  subtitle: "",
+  address: "",
+  phone: "",
+  whatsapp: "",
+  email: "",
+  businessHours: "",
   faqs: [],
 };
 
@@ -84,10 +86,10 @@ export default function AdminContactPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanedFaqs = faqs.filter((f) => f.question.trim() && f.answer.trim());
-    updateMutation.mutate({
-      ...settings,
-      contactPageSettings: { ...contact, faqs: cleanedFaqs },
-    });
+    // This page owns the contact page section only: other pages' settings are not sent
+    updateMutation.mutate(
+      settingsForSection({ contactPageSettings: { ...contact, faqs: cleanedFaqs } }, "contact"),
+    );
     setFaqs(cleanedFaqs);
   };
 

@@ -8,10 +8,20 @@ import dbConnect from "@/lib/db";
 import { Blog } from "@/models/blog.model";
 import { Calendar, Clock, ArrowLeft, ArrowRight, User } from "lucide-react";
 import type { Metadata } from "next";
+import { cache } from "react";
+import { NOINDEX, pageMetadata, summarise } from "@/lib/seo";
+import { formatShopDate } from "@/lib/shop-time";
 
-export const revalidate = 0;
+// Built on the first visit, then cached (ISR). Saving a post in the admin refreshes it straight
+// away (revalidateStorefront). Nothing is prebuilt, so the build does not read the posts.
+export const revalidate = 300;
 
-async function getBlogBySlug(slug: string) {
+export function generateStaticParams() {
+  return [];
+}
+
+// Cached per render: generateMetadata and the page both need the post
+const getBlogBySlug = cache(async (slug: string) => {
   await dbConnect();
   const blog = await Blog.findOne({ slug, isPublished: true }).lean();
   if (!blog) return null;
@@ -30,7 +40,7 @@ async function getBlogBySlug(slug: string) {
     blog: JSON.parse(JSON.stringify(blog)) as BlogPostData,
     related: JSON.parse(JSON.stringify(related)) as BlogPostData[],
   };
-}
+});
 
 export async function generateMetadata({
   params,
@@ -38,17 +48,18 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  await dbConnect();
-  const blog = await Blog.findOne({ slug, isPublished: true })
-    .select("title excerpt")
-    .lean<{ title: string; excerpt: string }>();
+  const data = await getBlogBySlug(slug);
 
-  if (!blog) return { title: "Blog Post Not Found | Indian Mist" };
+  if (!data) return { title: "Blog Post Not Found", robots: NOINDEX };
 
-  return {
-    title: `${blog.title} | Indian Mist Blog`,
-    description: blog.excerpt,
-  };
+  return pageMetadata({
+    title: data.blog.title,
+    description: summarise(data.blog.excerpt),
+    path: `/blogs/${data.blog.slug}`,
+    image: data.blog.coverImage?.url || undefined,
+    type: "article",
+    publishedTime: data.blog.publishedAt,
+  });
 }
 
 export default async function BlogPostPage({
@@ -63,20 +74,15 @@ export default async function BlogPostPage({
 
   const { blog, related } = data;
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  };
+  // India time, not the server's (UTC): see src/lib/shop-time.ts
+  const formatDate = (dateStr: string) => formatShopDate(dateStr, "dateLong");
 
   return (
     <div className="bg-cornsilk min-h-screen page-enter">
       {/* Breadcrumb section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 pt-6 pb-2">
+      <div className="max-w-page mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-2">
         <Breadcrumb
-          className="pt-2 pb-2"
+          className="pb-2"
           items={[
             { label: "Home", href: "/" },
             { label: "Blog", href: "/blogs" },
@@ -90,11 +96,11 @@ export default async function BlogPostPage({
       </div>
 
       {/* Main split layout container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 pt-4 pb-16">
+      <div className="max-w-page mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-4 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 xl:gap-16 items-start">
           
           {/* Left Column: Framed cover image box (compact, bounded height) */}
-          <div className="lg:col-span-4 xl:col-span-4 lg:sticky lg:top-24">
+          <div className="lg:col-span-4 xl:col-span-4 lg:sticky lg:top-20">
             {blog.coverImage?.url ? (
               <div className="bg-card/90 backdrop-blur-xs border-2 border-olive/20 rounded-md p-3 sm:p-3.5 shadow-sm hover:shadow-md transition-shadow">
                 {/* Gallery frame matting & border */}
@@ -226,7 +232,7 @@ export default async function BlogPostPage({
       {/* Related posts */}
       {related.length > 0 && (
         <section className="bg-warm-mist border-t border-olive/8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 py-16">
+          <div className="max-w-page mx-auto px-4 sm:px-6 md:px-10 lg:px-16 py-16">
             <h2 className="font-merriweather text-xl text-forest mb-8">
               More from {blog.category}
             </h2>

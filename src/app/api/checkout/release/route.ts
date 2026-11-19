@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest } from "next/server";
 import { withDB, errorResponse, successResponse } from "@/lib/api-helpers";
 import { releaseReservation } from "@/lib/stock-reservation";
+import { revalidateCatalogThrottled } from "@/lib/revalidate-storefront";
 
 // Called when a shopper closes the payment window without paying, so the held stock goes back on sale.
 export const POST = withDB(async (req: NextRequest) => {
@@ -21,5 +22,6 @@ export const POST = withDB(async (req: NextRequest) => {
 
   // Only the shopper who started this checkout can release its stock
   const released = await releaseReservation({ razorpayOrderId, userId });
+  if (released) revalidateCatalogThrottled(); // the stock is back on sale: refresh the product pages
   return successResponse({ released });
 });

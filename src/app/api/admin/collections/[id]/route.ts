@@ -3,11 +3,16 @@ export const runtime = 'nodejs';
 import { NextRequest } from 'next/server';
 import { withAdmin, errorResponse, successResponse } from '@/lib/api-helpers';
 import { Collection } from '@/models/collection.model';
+// registered for populate('products') below; a server instance that had not loaded it answered 500
+import '@/models/product.model';
 import { CollectionSchema } from '@/schemas/admin';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 
 export const GET = withAdmin(async (req, { params }) => {
   const { id } = await params;
-  const collection = await Collection.findById(id).populate('products').lean();
+  const collection = await Collection.findById(id)
+    .populate({ path: 'products', select: { name: 1, slug: 1, category: 1, images: { $slice: 1 } } })
+    .lean();
   if (!collection) {
     return errorResponse('Collection not found', 404);
   }
@@ -42,6 +47,7 @@ export const PUT = withAdmin(async (req, { params }) => {
     return errorResponse('Collection not found', 404);
   }
 
+  revalidateStorefront();
   return successResponse({ collection });
 });
 
@@ -51,5 +57,6 @@ export const DELETE = withAdmin(async (req, { params }) => {
   if (!collection) {
     return errorResponse('Collection not found', 404);
   }
+  revalidateStorefront();
   return successResponse({ message: 'Collection deleted successfully' });
 });

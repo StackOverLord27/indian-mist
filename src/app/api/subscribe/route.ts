@@ -4,7 +4,8 @@ import Subscriber from '@/models/subscriber.model';
 import { z } from 'zod';
 
 const subscribeSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  // Trimmed and lower-cased before any check, so "A@b.com" and "a@b.com " are the same subscriber
+  email: z.string().trim().toLowerCase().email('Please enter a valid email address').max(120),
 });
 
 export async function POST(req: Request) {
@@ -41,6 +42,13 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error) {
+    // Two requests for the same address at once: the second hits the unique index
+    if ((error as { code?: number } | null)?.code === 11000) {
+      return NextResponse.json(
+        { message: 'You are already subscribed!' },
+        { status: 200 }
+      );
+    }
     console.error('Subscription error:', error);
     return NextResponse.json(
       { message: 'Internal server error. Please try again later.' },

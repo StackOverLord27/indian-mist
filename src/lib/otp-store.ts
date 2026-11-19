@@ -1,24 +1,5 @@
-import { Redis } from '@upstash/redis'
+import { requireRedis } from '@/lib/redis'
 import { timingSafeEqual } from 'crypto'
-
-// ─── Lazy Redis singleton ─────────────────────────────────────────────────────
-// Defer client creation until first use so that the module doesn't crash
-// at import time when Upstash env vars are placeholder values.
-
-let _redis: Redis | null = null;
-
-function getRedis(): Redis {
-  if (_redis) return _redis;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token || url.startsWith("your_")) {
-    throw new Error(
-      "Upstash Redis is not configured. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in .env"
-    );
-  }
-  _redis = new Redis({ url, token });
-  return _redis;
-}
 
 export interface OtpData {
   otp: string;
@@ -48,7 +29,7 @@ export async function setOtp(
   password?: string,
 ) {
   const data: OtpData = { otp, name, password };
-  const redis = getRedis();
+  const redis = requireRedis();
   // Upstash auto-serializes objects — do NOT JSON.stringify manually.
   await redis.set(otpKey(purpose, email), data, { ex: OTP_TTL_SECONDS });
   await redis.del(attemptsKey(purpose, email));
@@ -63,13 +44,17 @@ export async function verifyOtp(
   email: string,
   providedOtp: string,
 ): Promise<OtpData | null> {
-  const redis = getRedis();
+  const redis = requireRedis();
   const data = await redis.get<OtpData>(otpKey(purpose, email));
 
   if (!data) return null;
 
-  const attempts = await redis.incr(attemptsKey(purpose, email));
-  if (attempts === 1) await redis.expire(attemptsKey(purpose, email), OTP_TTL_SECONDS);
+  // One atomic step: add one and make sure the counter expires (never left without a time limit)
+  const [attempts] = await redis
+    .multi()
+    .incr(attemptsKey(purpose, email))
+    .expire(attemptsKey(purpose, email), OTP_TTL_SECONDS, "NX")
+    .exec<[number, number]>();
   if (attempts > MAX_OTP_ATTEMPTS) {
     await redis.del(otpKey(purpose, email), attemptsKey(purpose, email));
     return null;
@@ -88,7 +73,7 @@ export async function verifyOtp(
  * Deletes the OTP data (and its attempt counter) from Redis.
  */
 export async function deleteOtp(purpose: OtpPurpose, email: string) {
-  await getRedis().del(otpKey(purpose, email), attemptsKey(purpose, email));
+  await requireRedis().del(otpKey(purpose, email), attemptsKey(purpose, email));
 }
 
 /**
@@ -96,6 +81,6 @@ export async function deleteOtp(purpose: OtpPurpose, email: string) {
  * Useful for preventing rapid overlapping requests.
  */
 export async function checkOtpExists(purpose: OtpPurpose, email: string): Promise<boolean> {
-  const data = await getRedis().get<OtpData>(otpKey(purpose, email));
+  const data = await requireRedis().get<OtpData>(otpKey(purpose, email));
   return !!data;
 }

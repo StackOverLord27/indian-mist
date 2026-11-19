@@ -11,60 +11,29 @@ import AdminFormField, {
 } from "@/components/admin/ui/AdminFormField";
 import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SiteSettings, HeroSettings, BrandStorySettings } from "@/types/admin";
 import ImageUploadZone from "@/components/admin/ui/ImageUploadZone";
-import { adminAxios } from "@/lib/admin-axios";
+import { uploadAdminImage, discardUploadedImage } from "@/lib/admin-api/upload";
+import { getApiErrorMessage } from "@/lib/admin-error";
 import toast from "react-hot-toast";
 import { AVAILABLE_ICONS } from "@/lib/icon-map";
+import { settingsForSection } from "@/lib/admin-api/settings";
 
+// Nothing is pre-filled: the storefront shows only what is typed here, and a section with no
+// content is not shown. (The example texts live in the inputs' placeholder attributes.)
 const defaultHeroSettings: HeroSettings = {
-  ecoBadge: { text: "Certified Organic", subtext: "GOTS", isVisible: true },
+  ecoBadge: { text: "", subtext: "", isVisible: true },
 };
 
-const defaultTrustItems = [
-  { icon: "Truck", title: "Free shipping", subtitle: "Above ₹999" },
-  { icon: "Leaf", title: "1 tree per order", subtitle: "Planted with care" },
-  {
-    icon: "Recycle",
-    title: "Sustainable materials",
-    subtitle: "Low-impact goods",
-  },
-  { icon: "ShieldCheck", title: "Easy returns", subtitle: "Simple exchanges" },
-  { icon: "Award", title: "Ethically sourced", subtitle: "Traceable makers" },
-];
+const defaultTrustItems: { icon: string; title: string; subtitle: string }[] = [];
 
-const defaultEcoItems = [
-  {
-    icon: "TreePine",
-    number: "12k+",
-    label: "Trees planted",
-    description: "Native saplings funded through every order.",
-  },
-  {
-    icon: "Recycle",
-    number: "100%",
-    label: "Recycled packaging",
-    description: "Mailers, tags, and inserts made to be reused.",
-  },
-  {
-    icon: "PackageCheck",
-    number: "0",
-    label: "Plastic used",
-    description: "Plastic-free shipping across our core catalog.",
-  },
-  {
-    icon: "HandHeart",
-    number: "1%",
-    label: "Revenue donated",
-    description: "Annual giving toward rewilding and maker welfare.",
-  },
-];
+const defaultEcoItems: { icon: string; number: string; label: string; description: string }[] = [];
 
 const defaultEcoSettings = {
-  subtitle: "Our commitment",
-  titleLine1: "Every order shapes a gentler ",
-  titleLine2: "future.",
+  subtitle: "",
+  titleLine1: "",
+  titleLine2: "",
   items: defaultEcoItems,
 };
 
@@ -72,19 +41,25 @@ export default function AdminHomepageContentPage() {
   const { data, isLoading } = useSiteSettings();
   const updateMutation = useUpdateSettings();
   const [isUploading, setIsUploading] = useState(false);
+  // Uploaded when picked, but only part of the page once saved: a photo replaced or removed
+  // before saving is deleted again (the server refuses to delete anything still in use).
+  const unsaved = useRef(new Set<string>());
+  const dropPhoto = (publicId?: string) => {
+    if (publicId && unsaved.current.delete(publicId)) void discardUploadedImage(publicId);
+  };
 
   const [settings, setSettings] = useState<SiteSettings>({
     heroSettings: defaultHeroSettings,
     brandStorySettings: {
-      subtitle: "OUR ROOTS",
-      titleLine1: "We make things the forest would ",
-      titleLine2: "keep.",
-      description:
-        "Indian Mist began with the simple belief that useful goods should leave less behind. Every pack, tee, pin, and page starts with better materials, durable making, and a supply chain we can explain.",
-      tags: "Organic cotton, Natural dyes, Zero plastic, Fair trade",
-      buttonText: "Read our story",
-      buttonLink: "/about",
+      subtitle: "",
+      titleLine1: "",
+      titleLine2: "",
+      description: "",
+      tags: "",
+      buttonText: "",
+      buttonLink: "",
       imageUrl: "",
+      imagePublicId: "",
     },
     trustStripSettings: { items: defaultTrustItems },
     ecoCommitmentSettings: defaultEcoSettings,
@@ -101,14 +76,8 @@ export default function AdminHomepageContentPage() {
           ecoBadge: {
             ...defaultHeroSettings.ecoBadge,
             ...(data.heroSettings?.ecoBadge || {}),
-            text:
-              data.heroSettings?.ecoBadge?.text ??
-              defaultHeroSettings.ecoBadge?.text ??
-              "",
-            subtext:
-              data.heroSettings?.ecoBadge?.subtext ??
-              defaultHeroSettings.ecoBadge?.subtext ??
-              "",
+            text: data.heroSettings?.ecoBadge?.text ?? "",
+            subtext: data.heroSettings?.ecoBadge?.subtext ?? "",
             isVisible:
               data.heroSettings?.ecoBadge?.isVisible ??
               defaultHeroSettings.ecoBadge?.isVisible ??
@@ -116,25 +85,19 @@ export default function AdminHomepageContentPage() {
           },
         },
         brandStorySettings: {
-          subtitle: data.brandStorySettings?.subtitle ?? "OUR ROOTS",
-          titleLine1:
-            data.brandStorySettings?.titleLine1 ??
-            "We make things the forest would ",
-          titleLine2: data.brandStorySettings?.titleLine2 ?? "keep.",
-          description:
-            data.brandStorySettings?.description ??
-            "Indian Mist began with the simple belief that useful goods should leave less behind. Every pack, tee, pin, and page starts with better materials, durable making, and a supply chain we can explain.",
-          tags:
-            data.brandStorySettings?.tags ??
-            "Organic cotton, Natural dyes, Zero plastic, Fair trade",
-          buttonText: data.brandStorySettings?.buttonText ?? "Read our story",
-          buttonLink: data.brandStorySettings?.buttonLink ?? "/about",
+          subtitle: data.brandStorySettings?.subtitle ?? "",
+          titleLine1: data.brandStorySettings?.titleLine1 ?? "",
+          titleLine2: data.brandStorySettings?.titleLine2 ?? "",
+          description: data.brandStorySettings?.description ?? "",
+          tags: data.brandStorySettings?.tags ?? "",
+          buttonText: data.brandStorySettings?.buttonText ?? "",
+          buttonLink: data.brandStorySettings?.buttonLink ?? "",
           imageUrl: data.brandStorySettings?.imageUrl ?? "",
+          imagePublicId: data.brandStorySettings?.imagePublicId ?? "",
         },
         trustStripSettings: {
-          items: data.trustStripSettings?.items?.length
-            ? data.trustStripSettings.items
-            : defaultTrustItems,
+          // An empty saved list stays empty: the owner can delete every item
+          items: data.trustStripSettings?.items ?? defaultTrustItems,
         },
         ecoCommitmentSettings: {
           subtitle:
@@ -145,9 +108,7 @@ export default function AdminHomepageContentPage() {
           titleLine2:
             data.ecoCommitmentSettings?.titleLine2 ??
             defaultEcoSettings.titleLine2,
-          items: data.ecoCommitmentSettings?.items?.length
-            ? data.ecoCommitmentSettings.items
-            : defaultEcoItems,
+          items: data.ecoCommitmentSettings?.items ?? defaultEcoItems,
         },
       }));
     }
@@ -227,11 +188,7 @@ export default function AdminHomepageContentPage() {
       const newItems = [
         ...(prev.trustStripSettings?.items || defaultTrustItems),
       ];
-      newItems.push({
-        icon: "Leaf",
-        title: "New Feature",
-        subtitle: "Feature details",
-      });
+      newItems.push({ icon: "Leaf", title: "", subtitle: "" });
       return { ...prev, trustStripSettings: { items: newItems } };
     });
   };
@@ -277,12 +234,7 @@ export default function AdminHomepageContentPage() {
       const newItems = [
         ...(prev.ecoCommitmentSettings?.items || defaultEcoItems),
       ];
-      newItems.push({
-        icon: "TreePine",
-        number: "0",
-        label: "New Metric",
-        description: "Metric description",
-      });
+      newItems.push({ icon: "TreePine", number: "", label: "", description: "" });
       return {
         ...prev,
         ecoCommitmentSettings: {
@@ -311,7 +263,11 @@ export default function AdminHomepageContentPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateMutation.mutate(settings);
+    // This page owns the homepage sections only: other pages' settings are not sent
+    updateMutation.mutate(
+      settingsForSection(settings, "homepage"),
+      { onSuccess: () => unsaved.current.clear() },
+    );
   };
 
   if (isLoading)
@@ -647,27 +603,24 @@ export default function AdminHomepageContentPage() {
                         ]
                       : []
                   }
-                  onRemoveExisting={() =>
-                    handleBrandStoryChange("imageUrl", "")
-                  }
+                  onRemoveExisting={() => {
+                    dropPhoto(brandStory.imagePublicId);
+                    handleBrandStoryChange("imageUrl", "");
+                    handleBrandStoryChange("imagePublicId", "");
+                  }}
                   onFilesSelected={async (files) => {
                     if (files.length === 0) return;
                     setIsUploading(true);
                     try {
-                      const formData = new FormData();
-                      formData.append("file", files[0]);
-                      formData.append("context", "brand-story");
-                      const { data } = await adminAxios.post(
-                        "/api/admin/upload",
-                        formData,
-                        {
-                          headers: { "Content-Type": "multipart/form-data" },
-                        },
-                      );
-                      handleBrandStoryChange("imageUrl", data.url);
-                      toast.success("Image uploaded successfully");
+                      const { url, publicId } = await uploadAdminImage(files[0], "brand-story");
+                      unsaved.current.add(publicId);
+                      // A photo picked earlier in this session but never saved is replaced: delete it
+                      dropPhoto(brandStory.imagePublicId);
+                      handleBrandStoryChange("imageUrl", url);
+                      handleBrandStoryChange("imagePublicId", publicId);
+                      toast.success("Image uploaded. Save to publish.");
                     } catch (error) {
-                      toast.error("Failed to upload image");
+                      toast.error(getApiErrorMessage(error, "Failed to upload image"));
                     } finally {
                       setIsUploading(false);
                     }
@@ -681,7 +634,7 @@ export default function AdminHomepageContentPage() {
           </div>
         </AdminCard>
 
-        <AdminCard title="Trust Strip Settings">
+        <AdminCard title="Trust Strip Settings" description="The strip under the hero is shown only when it has items. Remove every item to hide it.">
           <div className="space-y-6">
             {trustStrip.items.map((item, index) => (
               <div
@@ -706,6 +659,7 @@ export default function AdminHomepageContentPage() {
                 <AdminFormField label="Title">
                   <input
                     value={item.title}
+                    placeholder="e.g. Free shipping"
                     onChange={(e) =>
                       handleTrustItemChange(index, "title", e.target.value)
                     }
@@ -715,6 +669,7 @@ export default function AdminHomepageContentPage() {
                 <AdminFormField label="Subtitle">
                   <input
                     value={item.subtitle}
+                    placeholder="e.g. On orders above ₹999"
                     onChange={(e) =>
                       handleTrustItemChange(index, "subtitle", e.target.value)
                     }
@@ -740,7 +695,7 @@ export default function AdminHomepageContentPage() {
           </div>
         </AdminCard>
 
-        <AdminCard title="Eco Commitment Settings">
+        <AdminCard title="Eco Commitment Settings" description="The section is shown only when it has items. Remove every item to hide it, and only state figures you can stand behind.">
           <div className="space-y-6">
             <div className="space-y-4">
               <AdminFormField label="Subtitle">

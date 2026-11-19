@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Pencil, X } from "lucide-react";
 import type { UserData } from "./types";
+import { useRouter } from "next/navigation";
+import { customerApi, classifyFailure, failureMessage } from "@/lib/customer-session";
 
 export function AccountDetailsForm({
   user,
@@ -13,6 +15,7 @@ export function AccountDetailsForm({
   setGlobalError: (err: string | null) => void;
   setGlobalSuccess: (msg: string | null) => void;
 }) {
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState({ name: user.name || "", phone: user.phone || "" });
   const [saving, setSaving] = useState(false);
@@ -27,19 +30,20 @@ export function AccountDetailsForm({
     setGlobalError(null);
     setGlobalSuccess(null);
     try {
-      const res = await fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name, phone: form.phone }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to update account details");
+      const { data } = await customerApi.put("/api/profile", { name: form.name, phone: form.phone });
       onUpdate(data.user);
       setIsEditing(false);
       setGlobalSuccess("Account details updated successfully.");
       setTimeout(() => setGlobalSuccess(null), 3000);
     } catch (err) {
-      setGlobalError(err instanceof Error ? err.message : "Something went wrong");
+      const failure = classifyFailure(err);
+      setGlobalError(
+        failure.kind === "other" && failure.serverMessage
+          ? failure.serverMessage
+          : failureMessage(failure),
+      );
+      // A 401 that survived a renewal: the session is over, go and sign in again
+      if (failure.kind === "signed-out") setTimeout(() => router.replace("/signin?callbackUrl=/profile"), 1500);
     } finally {
       setSaving(false);
     }

@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Leaf, LogIn, AlertCircle, CheckCircle2 } from "lucide-react";
 
-export default function SignInPage() {
-  const router = useRouter();
+function SignInContent() {
   const searchParams = useSearchParams();
   const requestedUrl = searchParams.get("callbackUrl") || "/";
   // Only allow redirects to pages on this site ("/path"), never to another website ("//evil.com", "https://...")
@@ -57,7 +56,14 @@ export default function SignInPage() {
         setError(data.error || "Something went wrong. Please try again.");
       } else {
         setSuccess("Signed in successfully! Redirecting…");
-        setTimeout(() => router.push(callbackUrl), 1200);
+        // A full page load, on purpose. While signed out, the navbar's links were prefetched and the
+        // router remembered their answers (for /profile and /checkout that answer is "go to the
+        // sign-in page"). A client-side push can replay that stale redirect and bounce the
+        // customer straight back here, so the next page is loaded fresh with the new session.
+        // callbackUrl was checked above to be a path on this site.
+        setTimeout(() => {
+          window.location.assign(callbackUrl);
+        }, 1200);
       }
     } catch {
       setError("Network error. Please check your connection and try again.");
@@ -212,5 +218,14 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// useSearchParams needs its own Suspense boundary (same pattern as /admin/products/new)
+export default function SignInPage() {
+  return (
+    <Suspense>
+      <SignInContent />
+    </Suspense>
   );
 }

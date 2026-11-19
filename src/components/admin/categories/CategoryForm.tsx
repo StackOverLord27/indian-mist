@@ -72,6 +72,7 @@ export default function CategoryForm({ category }: { category?: AdminCategory })
     setRemovedImageId(publicId);
   };
 
+  const [optimisingImages, setOptimisingImages] = useState(false);
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
@@ -153,6 +154,7 @@ export default function CategoryForm({ category }: { category?: AdminCategory })
               currentImages={currentImages}
               onRemoveExisting={handleRemoveExisting}
               onFilesSelected={(files) => setNewFiles(files)}
+              onBusyChange={setOptimisingImages}
             />
           </div>
           <div className="bg-warm border border-olive/15 rounded-sm p-3 font-montserrat text-xs text-forest/60">
@@ -172,10 +174,10 @@ export default function CategoryForm({ category }: { category?: AdminCategory })
           </button>
           <button 
             type="submit" 
-            disabled={isPending}
+            disabled={isPending || optimisingImages}
             className="bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider px-5 py-2.5 rounded-sm hover:bg-olive transition-colors flex items-center justify-center min-w-30"
           >
-            {isPending ? <Loader2 className="animate-spin size-4" /> : (category ? 'Save Changes' : 'Create Category')}
+            {isPending || optimisingImages ? <Loader2 className="animate-spin size-4" /> : (category ? 'Save Changes' : 'Create Category')}
           </button>
         </div>
       </div>

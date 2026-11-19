@@ -1,32 +1,28 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { LockKeyhole, RefreshCw, Leaf } from "lucide-react";
+import { LockKeyhole } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
-import { SHIPPING_THRESHOLD, SHIPPING_COST, GST_RATE } from "@/lib/constants";
+import { computeOrderTotals, freeShippingProgress } from "@/lib/order-totals";
+import type { PricingSettings } from "@/hooks/usePricingSettings";
 import { useCartStore } from "@/lib/cart-store";
 import { Button } from "@/components/ui/button";
 
 export function OrderSummary({
   checkoutRef,
+  pricing,
 }: {
   checkoutRef?: React.RefObject<HTMLButtonElement | null>;
+  /** The shipping rules from the server. While they are not ready no shipping number is shown. */
+  pricing: PricingSettings;
 }) {
   const { items } = useCartStore();
 
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const shippingFree = subtotal >= SHIPPING_THRESHOLD;
-  const shipping = shippingFree ? 0 : SHIPPING_COST;
-  // GST disabled — no GST registration yet
-  // const tax = Math.round((subtotal + shipping) * GST_RATE);
-  const tax = 0;
-  const total = subtotal + shipping + tax;
-
-  const freeShippingProgress = Math.min(
-    (subtotal / SHIPPING_THRESHOLD) * 100,
-    100
-  );
-  const remaining = Math.max(SHIPPING_THRESHOLD - subtotal, 0);
+  // Same calculation as the checkout page and the server (src/lib/order-totals.ts)
+  const totals = pricing.ready ? computeOrderTotals({ subtotal, rules: pricing }) : null;
+  const shippingFree = totals?.shippingFree ?? false;
+  const progress = pricing.ready ? freeShippingProgress(subtotal, pricing) : null;
 
   const router = useRouter();
 
@@ -59,7 +55,7 @@ export function OrderSummary({
                 shippingFree ? "text-olive" : "text-forest"
               )}
             >
-              {shippingFree ? "Free" : formatPrice(shipping)}
+              {totals ? (shippingFree ? "Free" : formatPrice(totals.shippingCost)) : "Calculated at checkout"}
             </span>
           </div>
           {shippingFree && (
@@ -87,20 +83,21 @@ export function OrderSummary({
           Total
         </span>
         <span className="font-merriweather text-2xl font-bold text-forest">
-          {formatPrice(total)}
+          {totals ? formatPrice(totals.total) : "—"}
         </span>
       </div>
 
       {/* Free shipping progress */}
-      {!shippingFree && (
+      {/* (hidden until the rules have arrived) */}
+      {progress && !shippingFree && (
         <div className="mt-4 pt-4 border-t border-olive/10">
           <p className="font-montserrat text-xs font-normal text-muted-text mb-2">
-            Add {formatPrice(remaining)} more for free shipping
+            Add {formatPrice(progress.remaining)} more for free shipping
           </p>
           <div className="w-full h-1 bg-olive/15 rounded-full overflow-hidden">
             <div
               className="h-full bg-olive rounded-full transition-all duration-500"
-              style={{ width: `${freeShippingProgress}%` }}
+              style={{ width: `${progress.percent}%` }}
             />
           </div>
         </div>
@@ -116,26 +113,12 @@ export function OrderSummary({
         Proceed to Checkout
       </Button>
 
-      {/* Trust signals */}
-      <div className="mt-4 space-y-2">
-        <div className="flex items-center justify-center gap-1.5">
-          <LockKeyhole className="text-olive/80 size-[12px]" />
-          <span className="font-montserrat text-[10px] text-muted-text font-normal">
-            256-bit SSL encrypted checkout
-          </span>
-        </div>
-        <div className="flex items-center justify-center gap-1.5">
-          <RefreshCw className="text-olive/80 size-[12px]" />
-          <span className="font-montserrat text-[10px] text-muted-text font-normal">
-            Free returns within 30 days
-          </span>
-        </div>
-        <div className="flex items-center justify-center gap-1.5">
-          <Leaf className="text-olive/80 size-[12px]" />
-          <span className="font-montserrat text-[10px] text-muted-text font-normal">
-            Carbon-neutral delivery
-          </span>
-        </div>
+      {/* Only statements that are always true: the claims (returns window, carbon, etc.) are the shop's to make in its own policy pages */}
+      <div className="mt-4 flex items-center justify-center gap-1.5">
+        <LockKeyhole className="text-olive/80 size-[12px]" />
+        <span className="font-montserrat text-[10px] text-muted-text font-normal">
+          Secure checkout
+        </span>
       </div>
 
       {/* Payment methods */}

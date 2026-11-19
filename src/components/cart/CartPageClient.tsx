@@ -4,17 +4,23 @@ import { useRef, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCartStore } from "@/lib/cart-store";
+import { formatPrice } from "@/lib/utils";
 import { EmptyCart } from "@/components/cart/EmptyCart";
 import { CartItemList } from "@/components/cart/CartItemList";
 import { OrderSummary } from "@/components/cart/OrderSummary";
 import { RelatedProducts } from "@/components/product/RelatedProducts";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { useCartSync } from "@/lib/use-cart-sync";
+import { CartSyncNotice } from "@/components/cart/CartSyncNotice";
+import { PageSkeleton } from "@/components/ui/PageSkeleton";
+import { usePricingSettings } from "@/hooks/usePricingSettings";
+import { computeOrderTotals } from "@/lib/order-totals";
 
 export function CartPageClient() {
   const router = useRouter();
   const { items, setBuyNowItem } = useCartStore();
-  useCartSync();
+  const cartSync = useCartSync();
+  const pricing = usePricingSettings();
   const checkoutBtnRef = useRef<HTMLButtonElement | null>(null);
   const [showStickyBar, setShowStickyBar] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -34,26 +40,21 @@ export function CartPageClient() {
     );
     observer.observe(btn);
     return () => observer.disconnect();
-  }, [items.length]); // re-init if cart empties/fills
+  }, [items.length, isMounted]); // re-init if the bag empties/fills, and once the page has rendered the button
 
   // Worked out from the items themselves so the count and total follow every change to the bag
   const itemCount = items.reduce((n, i) => n + i.quantity, 0);
-  const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const formatPrice = (p: number) =>
-    new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(p);
-
+  const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  // The same total the order summary shows (shipping included); no number until the rules have arrived
+  const total = pricing.ready ? computeOrderTotals({ subtotal, rules: pricing }).total : null;
   if (!isMounted) {
-    return null; // Prevent hydration mismatch by returning nothing until mounted
+    return <PageSkeleton label="Loading your bag" />; // nothing real until mounted (avoids a hydration mismatch), but never a blank page
   }
 
   return (
     <>
       <div className="bg-cornsilk min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-20 lg:pb-20">
+        <div className="max-w-page mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-20 lg:pb-20">
 
           {/* Breadcrumb */}
           <Breadcrumb
@@ -78,13 +79,16 @@ export function CartPageClient() {
             <EmptyCart />
           ) : (
             <>
+              <div className="mt-6">
+                <CartSyncNotice sync={cartSync} />
+              </div>
               {/* 2-column grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 mt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8">
                 {/* Left — Items */}
                 <CartItemList />
 
                 {/* Right — Order Summary */}
-                <OrderSummary checkoutRef={checkoutBtnRef} />
+                <OrderSummary checkoutRef={checkoutBtnRef} pricing={pricing} />
               </div>
 
               {/* You may also like */}
@@ -102,7 +106,7 @@ export function CartPageClient() {
           <div>
             <p className="font-montserrat text-xs text-muted-text">Total</p>
             <p className="font-merriweather text-xl font-bold text-forest">
-              {formatPrice(total)}
+              {total === null ? "—" : formatPrice(total)}
             </p>
           </div>
           <button

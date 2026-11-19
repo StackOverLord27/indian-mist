@@ -4,61 +4,51 @@ import { useState, useEffect } from "react";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
-import type { UserData, OrderData } from "./types";
 import { ProfileHeader } from "./ProfileHeader";
 import { AccountDetailsForm } from "./AccountDetailsForm";
 import { DeliveryAddressForm } from "./DeliveryAddressForm";
 import { OrderHistory } from "./OrderHistory";
+import { ProfileSkeleton } from "./ProfileSkeleton";
+import { LoadFailure } from "./LoadFailure";
+import { useCustomerProfile } from "@/hooks/useCustomerProfile";
+import { failureMessage } from "@/lib/customer-session";
 
 export function ProfilePageClient() {
   const router = useRouter();
-  const [user, setUser] = useState<UserData | null>(null);
-  const [orders, setOrders] = useState<OrderData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { state, retry, setUser } = useCustomerProfile();
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // A 401 that survived a renewal: the session really is over (cart and bag stay in the browser)
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/profile");
-        if (!res.ok) {
-          if (res.status === 401) {
-            router.push("/signin?callbackUrl=/profile");
-            return;
-          }
-          throw new Error("Failed to load profile");
-        }
-        const data = await res.json();
-        setUser(data.user);
-        setOrders(data.orders ?? []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [router]);
+    if (state.status === "signed-out") router.replace("/signin?callbackUrl=/profile");
+  }, [state.status, router]);
 
   async function handleSignOut() {
     await fetch("/api/auth/signout", { method: "POST" }).catch(() => {});
     router.push("/");
   }
 
-  if (loading) {
+  if (state.status === "loading" || state.status === "signed-out") return <ProfileSkeleton />;
+
+  if (state.status === "error") {
     return (
-      <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center bg-cornsilk">
-        <div className="size-7 rounded-full border-2 border-olive-leaf/30 border-t-olive-leaf animate-spin" />
+      <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center bg-cornsilk px-4">
+        <LoadFailure
+          title="We couldn't load your profile"
+          message={failureMessage(state.failure)}
+          onRetry={retry}
+        />
       </div>
     );
   }
-  
-  if (!user) return null;
+
+  const { user, orders } = state;
 
   return (
     <div className="bg-cornsilk min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-20">
+      <div className="max-w-page mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-20">
         <Breadcrumb
           className="pb-2"
           items={[

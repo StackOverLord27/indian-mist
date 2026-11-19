@@ -10,34 +10,37 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import CarouselModel from "@/models/carousel.model";
 import { Category as CategoryModel } from "@/models/category.model";
 import { resolveAbout } from "@/lib/about-content";
+import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
-export const revalidate = 60;
+export const metadata: Metadata = pageMetadata({ title: "About Us", path: "/about" });
+
+// Content rarely changes, and saving it in the admin refreshes this page straight away.
+export const revalidate = 600;
 
 export default async function AboutPage() {
   let saved: Partial<AboutContent> | null = null;
   let fallbackPhotos: AboutImage[] = [];
 
-  try {
-    await dbConnect();
-    const [doc, imgs, cats] = await Promise.all([
-      About.findOne().lean(),
-      CarouselModel.find({ isActive: true }).sort({ order: 1 }).limit(5).lean(),
-      CategoryModel.find({ "image.url": { $exists: true, $ne: "" } }).limit(5).lean(),
-    ]);
-    saved = doc ? JSON.parse(JSON.stringify(doc)) : null;
+  // Errors are deliberately not caught: a failed regeneration must keep the last good page
+  // instead of caching the default text (see src/lib/storefront-data.ts).
+  await dbConnect();
+  const [doc, imgs, cats] = await Promise.all([
+    About.findOne().lean(),
+    CarouselModel.find({ isActive: true }).sort({ order: 1 }).limit(5).lean(),
+    CategoryModel.find({ "image.url": { $exists: true, $ne: "" } }).limit(5).lean(),
+  ]);
+  saved = doc ? JSON.parse(JSON.stringify(doc)) : null;
 
-    // Used only until photos are added in the admin gallery
-    const carousel = JSON.parse(JSON.stringify(imgs)) as { url: string; publicId?: string; alt?: string; altText?: string }[];
-    fallbackPhotos = carousel.map((c) => ({ url: c.url, publicId: c.publicId ?? "", alt: c.alt || c.altText || "" }));
-    const seen = new Set(fallbackPhotos.map((p) => p.url));
-    for (const c of JSON.parse(JSON.stringify(cats)) as { name: string; image?: { url?: string; alt?: string } }[]) {
-      if (fallbackPhotos.length >= 5) break;
-      if (!c.image?.url || seen.has(c.image.url)) continue;
-      seen.add(c.image.url);
-      fallbackPhotos.push({ url: c.image.url, publicId: "", alt: c.image.alt || c.name });
-    }
-  } catch (error) {
-    console.error("Failed to load about content:", error);
+  // Used only until photos are added in the admin gallery
+  const carousel = JSON.parse(JSON.stringify(imgs)) as { url: string; publicId?: string; alt?: string; altText?: string }[];
+  fallbackPhotos = carousel.map((c) => ({ url: c.url, publicId: c.publicId ?? "", alt: c.alt || c.altText || "" }));
+  const seen = new Set(fallbackPhotos.map((p) => p.url));
+  for (const c of JSON.parse(JSON.stringify(cats)) as { name: string; image?: { url?: string; alt?: string } }[]) {
+    if (fallbackPhotos.length >= 5) break;
+    if (!c.image?.url || seen.has(c.image.url)) continue;
+    seen.add(c.image.url);
+    fallbackPhotos.push({ url: c.image.url, publicId: "", alt: c.image.alt || c.name });
   }
 
   const about = resolveAbout(saved);
@@ -48,7 +51,7 @@ export default async function AboutPage() {
   const storyHtml = sanitizeRichText(about.story.body);
 
   const eyebrow = "font-montserrat text-[13px] font-semibold uppercase tracking-[0.24em]";
-  const gutter = "max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16";
+  const gutter = "max-w-page mx-auto px-4 sm:px-6 md:px-10 lg:px-16";
 
   return (
     <div className="bg-cornsilk min-h-screen page-enter">
@@ -59,7 +62,7 @@ export default async function AboutPage() {
       {/* Hero */}
       <section className="bg-forest text-cornsilk">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 md:py-16 text-center flex flex-col items-center gap-5">
-          <span className={`${eyebrow} text-clay`}>{about.hero.eyebrow}</span>
+          {about.hero.eyebrow && <span className={`${eyebrow} text-clay`}>{about.hero.eyebrow}</span>}
           <h1 className="font-merriweather text-3xl md:text-5xl font-normal leading-[1.15]">{about.hero.headline}</h1>
           {about.hero.lead && (
             <p className="max-w-xl font-montserrat text-base leading-relaxed text-cornsilk/75">{about.hero.lead}</p>
@@ -88,9 +91,11 @@ export default async function AboutPage() {
           </div>
           <div className="flex flex-col gap-6">
             <span className={`${eyebrow} text-copper`}>{about.story.eyebrow}</span>
-            <h2 className="font-merriweather text-3xl md:text-[40px] font-normal leading-tight text-forest">
-              {about.story.heading}
-            </h2>
+            {about.story.heading && (
+              <h2 className="font-merriweather text-3xl md:text-[40px] font-normal leading-tight text-forest">
+                {about.story.heading}
+              </h2>
+            )}
             {storyHtml && (
               <div
                 className="font-montserrat text-base md:text-[17px] leading-[1.8] text-muted-text [&_p+p]:mt-6 [&_a]:underline [&_strong]:text-forest [&_h2]:font-merriweather [&_h2]:text-2xl [&_h2]:text-forest [&_ul]:list-disc [&_ul]:pl-6"
@@ -139,15 +144,18 @@ export default async function AboutPage() {
       </section>
       </ScrollReveal>
 
-      {/* What inspires us */}
+      {/* Values: shown only when the admin has written some */}
+      {about.values.cards.length > 0 && (
       <ScrollReveal>
       <section className="bg-warm py-16 md:py-24">
         <div className={`${gutter} flex flex-col gap-12 md:gap-14`}>
-          <div className="text-center">
-            <h2 className="font-merriweather text-3xl md:text-[40px] font-normal text-forest">
-              {about.values.heading}
-            </h2>
-          </div>
+          {about.values.heading && (
+            <div className="text-center">
+              <h2 className="font-merriweather text-3xl md:text-[40px] font-normal text-forest">
+                {about.values.heading}
+              </h2>
+            </div>
+          )}
           <div className="flex flex-wrap justify-center gap-6">
             {about.values.cards.map((card, i) => (
               <div
@@ -165,18 +173,21 @@ export default async function AboutPage() {
         </div>
       </section>
       </ScrollReveal>
+      )}
 
-      {/* In the wild: photo mosaic */}
+      {/* Photo mosaic */}
       {showGallery && (
         <ScrollReveal>
         <section className="py-16 md:py-24">
           <div className={`${gutter} flex flex-col gap-12`}>
             <div className="flex items-end justify-between gap-4 flex-wrap">
               <div className="flex flex-col gap-3.5">
-                <span className={`${eyebrow} text-copper`}>{about.gallery.eyebrow}</span>
-                <h2 className="font-merriweather text-3xl md:text-[40px] font-normal text-forest">
-                  {about.gallery.heading}
-                </h2>
+                {about.gallery.eyebrow && <span className={`${eyebrow} text-copper`}>{about.gallery.eyebrow}</span>}
+                {about.gallery.heading && (
+                  <h2 className="font-merriweather text-3xl md:text-[40px] font-normal text-forest">
+                    {about.gallery.heading}
+                  </h2>
+                )}
               </div>
               {about.gallery.linkLabel && (
               <Link
@@ -222,12 +233,13 @@ export default async function AboutPage() {
         </ScrollReveal>
       )}
 
-      {/* CTA */}
+      {/* Call to action: shown only when the admin has written one */}
+      {(about.cta.heading || about.cta.subtext) && (
       <ScrollReveal>
       <section className="bg-forest text-cornsilk">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 md:py-20 text-center flex flex-col items-center gap-5">
-          <h2 className="font-merriweather text-3xl md:text-[44px] font-normal leading-tight">{about.cta.heading}</h2>
-          <p className="font-montserrat text-[17px] text-cornsilk/80 leading-relaxed">{about.cta.subtext}</p>
+          {about.cta.heading && <h2 className="font-merriweather text-3xl md:text-[44px] font-normal leading-tight">{about.cta.heading}</h2>}
+          {about.cta.subtext && <p className="font-montserrat text-[17px] text-cornsilk/80 leading-relaxed">{about.cta.subtext}</p>}
           <div className="flex gap-4 flex-wrap justify-center mt-2">
             {about.cta.primaryButtonLabel && (
               <Link
@@ -249,6 +261,7 @@ export default async function AboutPage() {
         </div>
       </section>
       </ScrollReveal>
+      )}
     </div>
   );
 }

@@ -8,6 +8,8 @@ import Link from 'next/link';
 import { useRef, useState, useEffect, use } from 'react';
 
 import BlogCategorySelect from '@/components/admin/BlogCategorySelect';
+import { buildBlogFormData } from '@/lib/admin-api/blog-form-data';
+import { useImagePreparation } from '@/hooks/admin/useImagePreparation';
 
 export default function AdminEditBlogPage({
   params,
@@ -29,6 +31,8 @@ export default function AdminEditBlogPage({
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [coverAlt, setCoverAlt] = useState('');
+  // true once the saved cover has been removed in this form, so saving deletes it
+  const [coverRemoved, setCoverRemoved] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
   // Populate form when blog data loads
@@ -47,45 +51,32 @@ export default function AdminEditBlogPage({
     }
   }, [blog, initialized]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const { prepare, optimising } = useImagePreparation();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0];
+    e.target.value = '';
+    if (!picked) return;
+    const file = await prepare(picked); // shrunk to the upload budget; null (with a toast) if impossible
     if (file) {
       setCoverFile(file);
       setCoverPreview(URL.createObjectURL(file));
+      setCoverRemoved(false);
     }
   };
 
   const removeCover = () => {
     setCoverFile(null);
     setCoverPreview(null);
+    // Only the saved cover needs deleting on the server; a just-picked file was never uploaded
+    if (blog?.coverImage?.url) setCoverRemoved(true);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('excerpt', excerpt);
-    formData.append('content', content);
-    formData.append('category', category);
-    formData.append('author', author);
-    formData.append('isPublished', String(isPublished));
-    formData.append(
-      'tags',
-      JSON.stringify(
-        tagsInput
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean)
-      )
-    );
-    if (coverFile) {
-      formData.append('file', coverFile);
-      formData.append('coverImageAlt', coverAlt || title);
-    } else if (coverAlt) {
-      formData.append('coverImageAlt', coverAlt);
-    }
+    const formData = buildBlogFormData({ title, excerpt, content, category, author, isPublished, tagsInput, coverFile, coverAlt, removeCover: coverRemoved });
 
     updateBlog.mutate(formData);
   };
@@ -201,7 +192,7 @@ export default function AdminEditBlogPage({
 
             <button
               type="submit"
-              disabled={updateBlog.isPending}
+              disabled={updateBlog.isPending || optimising}
               className="mt-4 w-full bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider py-3 rounded-sm hover:bg-olive transition-colors disabled:opacity-50"
             >
               {updateBlog.isPending ? 'Saving...' : 'Save Changes'}

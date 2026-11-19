@@ -7,12 +7,23 @@ import { AdminBlog } from '@/types/admin';
 import { Plus, Pencil, Trash2, Eye, FileText } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Pagination from '@/components/admin/ui/Pagination';
+import BlogPageHeaderCard from '@/components/admin/BlogPageHeaderCard';
+import { formatShopDate } from '@/lib/shop-time';
+
+const PAGE_SIZE = 50;
 
 export default function AdminBlogsPage() {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-  const { data, isLoading } = useAdminBlogs({ status: statusFilter });
+  const [page, setPage] = useState(1);
+  const { data, isLoading, isPlaceholderData } = useAdminBlogs({ status: statusFilter, page, limit: PAGE_SIZE });
   const deleteBlog = useDeleteBlog();
+
+  // After a delete (here or elsewhere) the current page may no longer exist: go back to the last one
+  useEffect(() => {
+    if (data && !isPlaceholderData && data.totalPages >= 1 && page > data.totalPages) setPage(data.totalPages);
+  }, [data, isPlaceholderData, page]);
 
   const handleDelete = (id: string, title: string) => {
     if (confirm(`Delete "${title}"? This action cannot be undone.`)) {
@@ -20,13 +31,7 @@ export default function AdminBlogsPage() {
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
+  const formatDate = (dateStr: string) => formatShopDate(dateStr, 'date');
 
   return (
     <AdminProtectedRoute>
@@ -47,6 +52,8 @@ export default function AdminBlogsPage() {
         </Link>
       </div>
 
+      <BlogPageHeaderCard />
+
       {/* Filter tabs */}
       <div className="flex gap-1 mb-6">
         {[
@@ -56,7 +63,7 @@ export default function AdminBlogsPage() {
         ].map((tab) => (
           <button
             key={tab.label}
-            onClick={() => setStatusFilter(tab.value)}
+            onClick={() => { setStatusFilter(tab.value); setPage(1); }}
             className={`font-montserrat text-xs font-medium uppercase tracking-wide px-4 py-2 rounded-sm transition-colors ${
               statusFilter === tab.value
                 ? 'bg-forest text-cornsilk'
@@ -128,7 +135,7 @@ export default function AdminBlogsPage() {
                   <h3 className="font-merriweather text-sm text-forest truncate">
                     {blog.title}
                   </h3>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
                     <span
                       className={`inline-block font-montserrat text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-sm ${
                         blog.isPublished
@@ -189,11 +196,16 @@ export default function AdminBlogsPage() {
         )}
       </AdminCard>
 
-      {/* Pagination info */}
-      {data && data.total > 0 && (
-        <p className="font-montserrat text-xs text-muted-text mt-4 text-center">
-          Showing {data.blogs.length} of {data.total} post{data.total !== 1 ? 's' : ''}
-        </p>
+      {data && (
+        <Pagination
+          className="mt-4"
+          page={page}
+          totalPages={data.totalPages}
+          total={data.total}
+          limit={PAGE_SIZE}
+          isLoading={isPlaceholderData}
+          onPageChange={setPage}
+        />
       )}
     </AdminProtectedRoute>
   );

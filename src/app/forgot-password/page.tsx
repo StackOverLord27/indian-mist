@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PasswordSchema } from "@/schemas/auth/password.schema";
 import { Eye, EyeOff, Leaf, AlertCircle, CheckCircle2, ArrowRight, KeyRound } from "lucide-react";
 
 export default function ForgotPasswordPage() {
@@ -47,7 +48,7 @@ export default function ForgotPasswordPage() {
       if (!res.ok) {
         setError(data.error || "Failed to request OTP. Please try again.");
       } else {
-        setSuccess("Verification code sent to your email!");
+        setSuccess(data.message || "If an account exists for that email, we've sent a verification code.");
         setTimeout(() => {
           setSuccess(null);
           setStep(2);
@@ -69,8 +70,9 @@ export default function ForgotPasswordPage() {
       setError("OTP must be exactly 6 digits.");
       return;
     }
-    if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters long.");
+    const passwordCheck = PasswordSchema.safeParse(newPassword);
+    if (!passwordCheck.success) {
+      setError(passwordCheck.error.issues[0].message + ".");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -128,7 +130,7 @@ export default function ForgotPasswordPage() {
               <p className="font-montserrat text-xs font-light text-muted-text mt-2 text-center tracking-wide">
                 {step === 1 
                   ? "Enter your email to receive a verification code" 
-                  : `Enter the 6-digit code sent to ${email}`}
+                  : `If an account exists for ${email}, enter the 6-digit code we sent.`}
               </p>
             </div>
 
@@ -216,7 +218,7 @@ export default function ForgotPasswordPage() {
                         setError(null);
                         setNewPassword(e.target.value);
                       }}
-                      placeholder="At least 8 characters"
+                      placeholder="Choose a strong password"
                       disabled={isLoading || !!success}
                       className="w-full rounded-sm border border-olive-leaf/25 bg-cornsilk px-4 py-3 pr-11 font-montserrat text-sm text-black-forest placeholder:text-olive-leaf/70 outline-none transition focus:border-olive-leaf focus:ring-1 focus:ring-olive-leaf/30 disabled:opacity-60"
                     />
@@ -228,6 +230,9 @@ export default function ForgotPasswordPage() {
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                  <p className="font-montserrat text-2xs text-muted-text">
+                    8–72 characters with an uppercase letter, a number and a special character.
+                  </p>
                 </div>
 
                 <div className="space-y-1.5">

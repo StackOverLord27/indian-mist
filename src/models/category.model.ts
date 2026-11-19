@@ -39,5 +39,11 @@ CategorySchema.pre("validate", async function (this: ICategory) {
   }
 });
 
+// In development the compiled model stays cached between code reloads, so a field added to the schema
+// would be dropped on save until the dev server is restarted: rebuild it when not in production.
+if (process.env.NODE_ENV !== "production") {
+  delete mongoose.models.Category;
+}
+
 export const Category: Model<ICategory> =
   mongoose.models.Category || mongoose.model<ICategory>("Category", CategorySchema);

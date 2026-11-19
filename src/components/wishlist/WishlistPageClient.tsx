@@ -6,16 +6,21 @@ import { EmptyWishlist } from "@/components/wishlist/EmptyWishlist";
 import { WishlistItemList } from "@/components/wishlist/WishlistItemList";
 import { RelatedProducts } from "@/components/product/RelatedProducts";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { PageSkeleton } from "@/components/ui/PageSkeleton";
+import { useStoreReady } from "@/lib/use-store-ready";
 
 export function WishlistPageClient() {
   const { items } = useWishlistStore();
+  const ready = useStoreReady(useWishlistStore);
+  // Until the saved list has loaded from the browser, "empty" would be a lie: show a skeleton
+  if (!ready) return <PageSkeleton label="Loading your wishlist" />;
 
   // use items.length for the count
   const itemCount = items.length;
 
   return (
     <div className="bg-cornsilk min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-20">
+      <div className="max-w-page mx-auto px-4 sm:px-6 md:px-10 lg:px-16 pt-6 pb-20">
 
         {/* Breadcrumb */}
         <Breadcrumb

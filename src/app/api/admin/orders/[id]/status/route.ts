@@ -1,9 +1,17 @@
 import { NextRequest } from 'next/server';
 import mongoose from 'mongoose';
 import { withAdmin, errorResponse, successResponse } from '@/lib/api-helpers';
-import { Order } from '@/models/order.model';
-import { Product } from '@/models/product.model';
-import { restoreStock } from '@/lib/stock-reservation';
+import type { HydratedDocument } from 'mongoose';
+import { Order, type IOrder } from '@/models/order.model';
+import { restoreStock, clearSoldOutWhereInStock, settleOrderStock, inTransaction } from '@/lib/stock-reservation';
+import { revalidateCatalog } from '@/lib/revalidate-storefront';
+import { parseTracking } from '@/lib/order-tracking';
+import { queueDeliveredEmail, queueOrderEmail } from '@/lib/email/order-mail';
+import { queuePaymentAlert } from '@/lib/email/owner-mail';
+import { resetLowStockFlags } from '@/lib/low-stock';
+
+// The customer e-mails (shipped, cancelled) go out after the response, and may take a while to retry
+export const maxDuration = 60;
 
 const VALID_STATUSES = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 
@@ -11,25 +19,64 @@ export const PATCH = withAdmin(async (req: NextRequest, context) => {
   const { id } = await context.params;
   if (!id || !mongoose.isValidObjectId(id)) return errorResponse('Invalid order ID', 400);
 
-  let body: { status?: unknown };
+  let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
     return errorResponse('Invalid request', 400);
   }
 
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return errorResponse('Invalid request', 400);
   const status = typeof body.status === 'string' ? body.status : '';
   if (!VALID_STATUSES.includes(status)) {
     return errorResponse('Invalid status', 400);
   }
+  // Optional courier / tracking number / tracking link: a bad one is left out, never a reason to refuse the status change
+  const tracking = parseTracking(body);
+  const update: Record<string, unknown> = { $set: { status, ...tracking.set } };
+  if (tracking.unset.length) update.$unset = Object.fromEntries(tracking.unset.map((f) => [f, 1]));
 
   // A cancelled order is final: its stock has already been returned, so it can't be revived.
-  // The status filter makes the change atomic, so a double click can't restock twice.
-  const previous = await Order.findOneAndUpdate(
-    { _id: id, status: { $ne: 'CANCELLED' } },
-    { status },
-    { new: false },
-  );
+  // The status change and the restocking are ONE transaction (a crash can neither lose nor repeat
+  // the restock), and the status filter makes a double click change it only once.
+  const NOT_SETTLED = new Error('stock not settled yet');
+  let previous: HydratedDocument<IOrder> | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    // A paid order whose stock was never settled (a crash, not yet repaired) is settled first, so
+    // cancelling gives back exactly what was taken
+    if (status === 'CANCELLED') {
+      const pending = await Order.findOne({ _id: id, stockSettled: false }).select('_id').lean();
+      if (pending) await settleOrderStock(pending._id);
+    }
+    try {
+      previous = await inTransaction(async (session) => {
+        const before = await Order.findOneAndUpdate(
+          { _id: id, status: { $ne: 'CANCELLED' } },
+          update,
+          { returnDocument: 'before', session },
+        );
+        if (!before) return null;
+        if (status === 'CANCELLED' && before.paymentStatus === 'PAID') {
+          // The money is NOT returned automatically: remind the admin by listing it as "refund pending"
+          // (unless they already recorded something for this order)
+          if (!before.refundStatus) {
+            await Order.updateOne({ _id: id }, { refundStatus: 'PENDING' }, { session });
+          }
+          if (before.stockSettled === false) throw NOT_SETTLED; // settled by someone else in between: start again
+          // Only what was really taken from stock goes back. Orders from before deductedQuantity
+          // existed have no record, so they give back the full quantity (as they always did).
+          await restoreStock(
+            before.items.map((i) => ({ productId: i.productId, size: i.selectedSize, quantity: i.deductedQuantity ?? i.quantity })),
+            session,
+          );
+        }
+        return before;
+      });
+      break;
+    } catch (error) {
+      if (error !== NOT_SETTLED || attempt === 2) throw error;
+    }
+  }
 
   if (!previous) {
     const exists = await Order.exists({ _id: id });
@@ -37,18 +84,28 @@ export const PATCH = withAdmin(async (req: NextRequest, context) => {
     return errorResponse('A cancelled order cannot be changed', 409);
   }
 
-  // Return stock for tracked products when a paid order is cancelled
   if (status === 'CANCELLED' && previous.paymentStatus === 'PAID') {
-    await restoreStock(
-      previous.items.map((i) => ({ productId: i.productId, size: i.selectedSize, quantity: i.quantity })),
-    );
     // Stock is back, so the automatic "Sold Out" label no longer applies
-    await Product.updateMany(
-      { _id: { $in: previous.items.map((i) => i.productId) }, trackInventory: true, badge: 'Sold Out', stockQuantity: { $gt: 0 } },
-      { $set: { badge: '' } },
-    );
+    await clearSoldOutWhereInStock(previous.items.map((i) => i.productId));
+    await resetLowStockFlags(previous.items.map((i) => i.productId)); // stock is back: the next drop may alert again
+    revalidateCatalog();
   }
 
   const order = await Order.findById(id);
-  return successResponse({ order, message: 'Status updated successfully' });
+
+  // The change is saved: now (after the response) tell the customer. Only a REAL change sends
+  // anything (saving the same status again does not), and the order id as the e-mail's key means
+  // Shipped / Cancelled can go out only once per order however often the status moves.
+  if (previous.paymentStatus === 'PAID' && previous.status !== status) {
+    if (status === 'SHIPPED') await queueOrderEmail('order-shipped', id);
+    else if (status === 'DELIVERED') await queueDeliveredEmail(id);
+    else if (status === 'CANCELLED') {
+      await queueOrderEmail('order-cancelled', id);
+      // The money is not returned by itself: tell the owner (URGENT), once per payment
+      if (order?.refundStatus === 'PENDING') await queuePaymentAlert('refund-due', order.razorpayPaymentId);
+    }
+  }
+
+  const refundReminder = status === 'CANCELLED' && previous.paymentStatus === 'PAID' && order?.refundStatus === 'PENDING';
+  return successResponse({ order, refundReminder, ignoredTracking: tracking.ignored, message: 'Status updated successfully' });
 });

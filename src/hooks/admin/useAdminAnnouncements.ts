@@ -1,70 +1,43 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as api from '@/lib/admin-api/announcements';
-// import { Announcement } from '@/types/admin';
+import { getApiErrorMessage } from '@/lib/admin-error';
+
+const KEY = ['admin-announcements'];
 
 export const useAnnouncements = () => {
   return useQuery({
-    queryKey: ['admin-announcements'],
+    queryKey: KEY,
     queryFn: api.fetchAnnouncements,
   });
 };
 
-export const useCreateAnnouncement = () => {
+function useAnnouncementMutation<V, R>(
+  mutationFn: (variables: V) => Promise<R>,
+  successMessage: string,
+  failureMessage: string,
+) {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: api.createAnnouncement,
+    mutationFn,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['admin-announcements'] });
-      toast.success('Announcement created');
+      void queryClient.invalidateQueries({ queryKey: KEY });
+      toast.success(successMessage);
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, failureMessage));
     },
   });
-};
+}
 
-export const useUpdateAnnouncement = () => {
-  const queryClient = useQueryClient();
+export const useCreateAnnouncement = () =>
+  useAnnouncementMutation(api.createAnnouncement, 'Announcement created', 'Failed to create announcement');
 
-  return useMutation({
-    mutationFn: api.updateAnnouncement,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['admin-announcements'] });
-      toast.success('Announcement updated');
-    },
-  });
-};
+export const useUpdateAnnouncement = () =>
+  useAnnouncementMutation(api.updateAnnouncement, 'Announcement updated', 'Failed to update announcement');
 
-export const useDeleteAnnouncement = () => {
-  const queryClient = useQueryClient();
+export const useDeleteAnnouncement = () =>
+  useAnnouncementMutation(api.deleteAnnouncement, 'Announcement deleted', 'Failed to delete announcement');
 
-  return useMutation({
-    mutationFn: api.deleteAnnouncement,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['admin-announcements'] });
-      toast.success('Announcement deleted');
-    },
-  });
-};
-
-export const useToggleAnnouncement = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: api.toggleAnnouncement,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['admin-announcements'] });
-      toast.success('Announcement status updated');
-    },
-  });
-};
-
-export const useReorderAnnouncements = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: api.reorderAnnouncements,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['admin-announcements'] });
-    },
-  });
-};
+export const useToggleAnnouncement = () =>
+  useAnnouncementMutation(api.toggleAnnouncement, 'Announcement status updated', 'Failed to update announcement');

@@ -1,17 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { randomUUID } from "crypto";
 import dbConnect from "@/lib/db";
 import { User } from "@/models/user.model";
-import { RefreshToken } from "@/models/refreshToken.model";
 import { verifyOtp, deleteOtp } from "@/lib/otp-store";
-import {
-  signAccessToken,
-  signRefreshToken,
-  hashToken,
-  setTokenCookies,
-  REFRESH_TOKEN_MAX_AGE,
-} from "@/lib/auth-tokens";
+import { setTokenCookies } from "@/lib/auth-tokens";
+import { startSession } from "@/lib/auth-session";
 
 const VerifyOtpSchema = z.object({
   email: z.string().email().toLowerCase().trim(),
@@ -52,50 +45,38 @@ export async function POST(req: Request) {
       );
     }
 
-    // OTP is valid. Now we create the user in the database.
-    // The password stored in Redis is ALREADY hashed (bcrypt), so we
-    // must bypass the User model's pre-save hook to avoid double-hashing.
-    // We do this by creating the document and then setting the password
-    // field directly (isModified('password') will be true, but we skip
-    // the hook by using updateOne after initial save without password).
-    const newUser = new User({
-      name: otpData.name,
-      email: email,
-      isVerified: true,
-    });
+    if (!otpData.name || !otpData.password) {
+      // A sign-up code always carries both; anything else is not a sign-up in progress
+      return NextResponse.json({ error: "Invalid or expired OTP" }, { status: 400 });
+    }
 
-    // Save first without password (triggers pre-save but password is empty, hook skips)
-    await newUser.save();
-
-    // Set the pre-hashed password directly, bypassing the pre-save hook
-    await User.updateOne(
-      { _id: newUser._id },
-      { $set: { password: otpData.password } }
-    );
+    // OTP is valid. Create the user in ONE write, with the password already hashed (bcrypt, when
+    // the code was requested). insertMany does not run the model's save hook, which would hash
+    // the hash again. Before, the user was saved without a password and the password was set in
+    // a second write, so a crash in between left a verified account nobody could sign in to, and
+    // the same e-mail could not sign up again.
+    let newUser;
+    try {
+      [newUser] = await User.insertMany([
+        { name: otpData.name, email, password: otpData.password, isVerified: true },
+      ]);
+    } catch (error) {
+      // Two verifications at the same moment: the other one created the account
+      if ((error as { code?: number } | null)?.code === 11000) {
+        await deleteOtp("signup", email);
+        return NextResponse.json(
+          { error: "An account with this email already exists. Please sign in." },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     // Consume the OTP immediately so it cannot be replayed.
     await deleteOtp("signup", email);
 
     // Issue tokens — log the user in automatically, no need to sign in again.
-    const family = randomUUID();
-
-    const accessToken = signAccessToken({
-      userId: String(newUser._id),
-      email: newUser.email,
-      role: newUser.role,
-    });
-
-    const rawRefreshToken = signRefreshToken({
-      userId: String(newUser._id),
-      family,
-    });
-
-    await RefreshToken.create({
-      userId: newUser._id,
-      tokenHash: hashToken(rawRefreshToken),
-      family,
-      expiresAt: new Date(Date.now() + REFRESH_TOKEN_MAX_AGE * 1000),
-    });
+    const { role: userRole, accessToken, refreshToken: rawRefreshToken, refreshMaxAge } = await startSession(newUser);
 
     const response = NextResponse.json(
       {
@@ -104,13 +85,13 @@ export async function POST(req: Request) {
           id: newUser._id,
           name: newUser.name,
           email: newUser.email,
-          role: newUser.role,
+          role: userRole,
         },
       },
       { status: 200 }
     );
 
-    setTokenCookies(response, accessToken, rawRefreshToken);
+    setTokenCookies(response, accessToken, rawRefreshToken, refreshMaxAge);
     return response;
   } catch (error: unknown) {
     console.error("OTP verification error:", error);

@@ -2,6 +2,9 @@ import { NextRequest } from "next/server";
 import { withDB, successResponse, errorResponse } from "@/lib/api-helpers";
 import { User } from "@/models/user.model";
 import { Order } from "@/models/order.model";
+// The product model must be registered for the order lookup below (populate). Without this import a
+// server instance that had not loaded it yet answered 500 for every customer who had orders.
+import { Product } from "@/models/product.model";
 import { ProfileUpdateSchema } from "@/schemas/checkout-api";
 
 export const GET = withDB(async (req: NextRequest) => {
@@ -10,17 +13,31 @@ export const GET = withDB(async (req: NextRequest) => {
     return errorResponse("Unauthenticated", 401);
   }
 
-  const user = await User.findById(userId).select("-password").lean();
+  // The checkout only needs the saved details to pre-fill the form: `?orders=0` skips the order
+  // history (up to 50 orders and a lookup of their products), which is by far the heavy part.
+  const wantOrders = new URL(req.url).searchParams.get("orders") !== "0";
+
+  // The two reads do not depend on each other: run them together (one round trip instead of two)
+  const [user, orders] = await Promise.all([
+    User.findById(userId).select("-password").lean(),
+    wantOrders
+      ? Order.find({ userId, paymentStatus: "PAID" })
+          .sort({ createdAt: -1 })
+          .limit(50) // the latest 50 orders: this list is not paged
+          // payment internals and the shop's own notes (review notes, refund notes and ids) are never sent to the customer
+          .select("-razorpaySignature -razorpayPaymentId -reviewNote -refundNote -razorpayRefundId -stockSettled -finalizedVia -finalizedAt")
+          // only the name, slug, price and FIRST photo of each product are shown; a product can carry many photos
+          .populate({ path: "items.productId", model: Product, select: { name: 1, price: 1, slug: 1, images: { $slice: 1 } } })
+          .lean()
+      : Promise.resolve([]),
+  ]);
   if (!user) {
     return errorResponse("User not found", 404);
   }
 
-  const orders = await Order.find({ userId, paymentStatus: "PAID" })
-    .sort({ createdAt: -1 })
-    .populate("items.productId", "name images price slug")
-    .lean();
-
-  return successResponse({ user, orders });
+  // Personal data: never cached by the browser or any shared cache, so a status change the shop
+  // makes shows on the very next load
+  return Response.json({ user, orders }, { headers: { "Cache-Control": "private, no-store" } });
 });
 
 export const PUT = withDB(async (req: NextRequest) => {

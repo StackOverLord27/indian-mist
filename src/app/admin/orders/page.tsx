@@ -1,9 +1,16 @@
 "use client";
 
-import type { AdminOrder } from "@/types/admin";
+import type { AdminOrder, AdminOrderEmail } from "@/types/admin";
+import { emailTypeLabel } from "@/lib/email-labels";
 import { getApiErrorMessage } from "@/lib/admin-error";
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient, type UseMutationResult } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient, keepPreviousData, type UseMutationResult } from "@tanstack/react-query";
+import Pagination from "@/components/admin/ui/Pagination";
+import type { PaginationMeta } from "@/types/admin";
+
+const PAGE_SIZE = 50;
+
+type OrdersResponse = { orders: AdminOrder[]; statusCounts: Record<string, number> } & PaginationMeta;
 import { adminAxios } from "@/lib/admin-axios";
 import { toast } from "react-hot-toast";
 import {
@@ -22,20 +29,174 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight, Package, MapPin, CreditCard } from "lucide-react";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/SafeImage";
+import { reviewNoteForDisplay } from "@/lib/duplicate-note";
+import { orderNumber } from "@/lib/order-number";
+import { formatShopDate } from "@/lib/shop-time";
 
-type StatusUpdater = UseMutationResult<unknown, Error, { id: string; status: string }>;
+type ShippingInput = { courier?: string; trackingNumber?: string; trackingUrl?: string };
+type StatusInput = { id: string; status: string } & ShippingInput;
+type StatusUpdater = UseMutationResult<unknown, Error, StatusInput>;
+type EmailResender = UseMutationResult<unknown, Error, string>;
+type RefundInput = { id: string; refundStatus: string; refundNote: string; razorpayRefundId: string };
+type RefundSaver = UseMutationResult<unknown, Error, RefundInput>;
+
+const REFUND_LABEL: Record<string, string> = { NOT_NEEDED: "Not needed", PENDING: "Pending", REFUNDED: "Refunded" };
+
+/** Small badge in the orders list: only for refunds that need attention or are done */
+function RefundBadge({ status }: { status?: string }) {
+  if (status !== "PENDING" && status !== "REFUNDED") return null;
+  return (
+    <span
+      className={`mt-1 inline-block rounded-full px-2 py-0.5 font-montserrat text-[10px] font-bold uppercase tracking-wider ${
+        status === "PENDING" ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-900"
+      }`}
+    >
+      {status === "PENDING" ? "Refund pending" : "Refunded"}
+    </span>
+  );
+}
+
+const EMAIL_STATUS_STYLE: Record<AdminOrderEmail["status"], string> = {
+  sent: "bg-emerald-100 text-emerald-900",
+  queued: "bg-sky-100 text-sky-900",
+  failed: "bg-red-100 text-red-800",
+};
+
+/** Optional courier, tracking number and link. Saved with the status change, never required for it. */
+function ShippingPanel({ order, value, onChange, save }: { order: AdminOrder; value: Required<ShippingInput>; onChange: (v: Required<ShippingInput>) => void; save: StatusUpdater }) {
+  const field = "block w-full min-w-0 rounded-sm border border-olive/25 bg-cornsilk px-2.5 py-1.5 font-montserrat text-xs text-forest outline-none focus:border-olive";
+  return (
+    <div data-testid="shipping-panel" className="mt-4 min-w-0 space-y-2 whitespace-normal rounded-sm border border-olive/10 bg-white p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-text">Shipping details (optional)</p>
+      <p className="font-montserrat text-[11px] text-muted-text">Shown to the customer in the Shipped e-mail and in My Orders. Fill them in before you choose Shipped, or save them afterwards (no second e-mail is sent).</p>
+      <label className="block font-montserrat text-[11px] text-muted-text">
+        Courier
+        <input aria-label="Courier" value={value.courier} onChange={(e) => onChange({ ...value, courier: e.target.value })} maxLength={80} className={`${field} mt-0.5`} />
+      </label>
+      <label className="block font-montserrat text-[11px] text-muted-text">
+        Tracking number
+        <input aria-label="Tracking number" value={value.trackingNumber} onChange={(e) => onChange({ ...value, trackingNumber: e.target.value })} maxLength={80} className={`${field} mt-0.5`} />
+      </label>
+      <label className="block font-montserrat text-[11px] text-muted-text">
+        Tracking link
+        <input aria-label="Tracking link" value={value.trackingUrl} onChange={(e) => onChange({ ...value, trackingUrl: e.target.value })} maxLength={500} placeholder="https://..." className={`${field} mt-0.5`} />
+      </label>
+      <Button
+        type="button"
+        disabled={save.isPending}
+        onClick={() => save.mutate({ id: order._id, status: order.status, ...value })}
+        className="h-8 w-full rounded-sm bg-forest px-3 font-montserrat text-[11px] font-semibold uppercase tracking-wider text-cornsilk hover:bg-olive"
+      >
+        Save shipping details
+      </Button>
+    </div>
+  );
+}
+
+/** Which customer e-mails of this order were sent, are waiting, or failed (Resend for the failed ones). */
+function EmailsPanel({ order, resend }: { order: AdminOrder; resend: EmailResender }) {
+  const emails = order.emails ?? [];
+  return (
+    <div data-testid="order-emails" className="mt-4 min-w-0 space-y-2 whitespace-normal rounded-sm border border-olive/10 bg-white p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-text">E-mails to the customer</p>
+      {emails.length === 0 ? (
+        <p className="font-montserrat text-xs text-muted-text">None sent yet.</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {emails.map((e) => (
+            <li key={e.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 font-montserrat text-xs text-forest">
+              <span className="font-semibold">{emailTypeLabel(e.type)}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${EMAIL_STATUS_STYLE[e.status]}`}>
+                {e.status === "failed" && e.permanent ? "failed for good" : e.status === "failed" ? "failed, will retry" : e.status}
+              </span>
+              <span className="text-[10px] text-muted-text">
+                {e.status === "sent" && e.sentAt ? formatShopDate(e.sentAt, "dateTime", { withZone: true }) : formatShopDate(e.createdAt, "dateTime", { withZone: true })}
+                {e.lastErrorCode && e.status === "failed" ? ` · error ${e.lastErrorCode}` : ""}
+              </span>
+              {e.canResend && (
+                <Button
+                  type="button"
+                  disabled={resend.isPending}
+                  onClick={() => resend.mutate(e.id)}
+                  className="h-6 rounded-sm bg-forest px-2 font-montserrat text-[10px] font-semibold uppercase tracking-wider text-cornsilk hover:bg-olive"
+                >
+                  Resend
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Refunds are made in the Razorpay dashboard; this only records them (nothing is sent to Razorpay). */
+function RefundPanel({ order, saveRefund }: { order: AdminOrder; saveRefund: RefundSaver }) {
+  const [status, setStatus] = useState(order.refundStatus ?? "NOT_NEEDED");
+  const [note, setNote] = useState(order.refundNote ?? "");
+  const [refundId, setRefundId] = useState(order.razorpayRefundId ?? "");
+  const needsRefund = order.status === "CANCELLED" && status === "PENDING";
+  const field = "block w-full min-w-0 rounded-sm border border-olive/25 bg-cornsilk px-2.5 py-1.5 font-montserrat text-xs text-forest outline-none focus:border-olive";
+  return (
+    <div className="mt-4 min-w-0 space-y-2 whitespace-normal rounded-sm border border-olive/10 bg-white p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-text">Refund</p>
+      {needsRefund && (
+        <p role="alert" className="rounded-sm border border-amber-300 bg-amber-50 p-2 font-montserrat text-xs text-amber-900">
+          Cancelled orders are <b>not refunded automatically</b>. Refund ₹{order.totalAmount.toLocaleString("en-IN")} in the Razorpay
+          dashboard (Payments, find {order.razorpayPaymentId ?? "the payment"}, Refund), then set this to Refunded.
+        </p>
+      )}
+      <label className="block font-montserrat text-[11px] text-muted-text">
+        Status
+        <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} className={`${field} mt-0.5`}>
+          {Object.entries(REFUND_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="block font-montserrat text-[11px] text-muted-text">
+        Razorpay refund id (optional)
+        <input value={refundId} onChange={(e) => setRefundId(e.target.value)} maxLength={64} placeholder="rfnd_..." className={`${field} mt-0.5`} />
+      </label>
+      <label className="block font-montserrat text-[11px] text-muted-text">
+        Note (optional, only you see it)
+        <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} className={`${field} mt-0.5`} />
+      </label>
+      <Button
+        type="button"
+        disabled={saveRefund.isPending}
+        onClick={() => saveRefund.mutate({ id: order._id, refundStatus: status, refundNote: note, razorpayRefundId: refundId })}
+        className="h-8 w-full rounded-sm bg-forest px-3 font-montserrat text-[11px] font-semibold uppercase tracking-wider text-cornsilk hover:bg-olive"
+      >
+        Save refund details
+      </Button>
+    </div>
+  );
+}
 
 function OrderRow({
   order,
+  startOpen,
   updateStatus,
+  saveRefund,
+  resendEmail,
   getStatusColor,
 }: {
   order: AdminOrder;
+  /** Opened from a link in an e-mail: show the details at once */
+  startOpen?: boolean;
   updateStatus: StatusUpdater;
+  saveRefund: RefundSaver;
+  resendEmail: EmailResender;
   getStatusColor: (status: string) => string;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(!!startOpen);
+  // What the admin typed for the Shipped e-mail; the Shipped menu item sends it along with the status
+  const [shipping, setShipping] = useState<Required<ShippingInput>>({
+    courier: order.courier ?? "", trackingNumber: order.trackingNumber ?? "", trackingUrl: order.trackingUrl ?? "",
+  });
 
   return (
     <>
@@ -47,16 +208,10 @@ function OrderRow({
             </button>
             <div>
               <span className="font-merriweather text-sm font-bold text-forest block">
-                #{order._id.slice(-6).toUpperCase()}
+                {orderNumber(order._id)}
               </span>
               <span className="font-montserrat text-[10px] text-muted-text">
-                {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatShopDate(order.createdAt, "dateTime", { withZone: true })}
               </span>
               <div className="mt-1 font-montserrat text-[11px] text-olive-leaf">
                 {order.items.length} item{order.items.length !== 1 ? "s" : ""}
@@ -104,6 +259,7 @@ function OrderRow({
               </span>
               <ChevronDown className="h-3 w-3 opacity-50" />
             </DropdownMenuTrigger>
+            <RefundBadge status={order.refundStatus} />
             <DropdownMenuContent align="end" className="font-montserrat text-xs bg-cornsilk border-olive/20">
               <DropdownMenuItem
                 onClick={() => updateStatus.mutate({ id: order._id, status: "PROCESSING" })}
@@ -112,7 +268,7 @@ function OrderRow({
                 Processing
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => updateStatus.mutate({ id: order._id, status: "SHIPPED" })}
+                onClick={() => updateStatus.mutate({ id: order._id, status: "SHIPPED", ...shipping })}
                 className="hover:bg-olive/10 focus:bg-olive/10"
               >
                 Shipped
@@ -124,7 +280,15 @@ function OrderRow({
                 Completed (Delivered)
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => updateStatus.mutate({ id: order._id, status: "CANCELLED" })}
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Cancel this order? The stock goes back on sale.\n\nThe customer is NOT refunded automatically: you must refund ₹${order.totalAmount.toLocaleString("en-IN")} in the Razorpay dashboard yourself. The order will be listed under "Refund pending" until you mark it refunded.`,
+                    )
+                  ) {
+                    updateStatus.mutate({ id: order._id, status: "CANCELLED" });
+                  }
+                }}
                 className="text-red-600 hover:bg-red-50 focus:bg-red-50"
               >
                 Cancelled
@@ -138,10 +302,11 @@ function OrderRow({
       {isExpanded && (
         <TableRow className="bg-warm-mist/30 hover:bg-warm-mist/30">
           <TableCell colSpan={5} className="p-0 border-b border-olive/20">
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 overflow-hidden">
+            {/* TableCell is whitespace-nowrap: without this reset long notes, ids and addresses ran past their boxes */}
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 overflow-hidden whitespace-normal">
               
               {/* Column 1: Shipping Address */}
-              <div className="space-y-3">
+              <div className="space-y-3 min-w-0">
                 <div className="flex items-center gap-2 text-forest font-merriweather font-semibold border-b border-olive/10 pb-2">
                   <MapPin className="h-4 w-4" />
                   Shipping Address
@@ -155,10 +320,10 @@ function OrderRow({
                   <p>Email: {order.email}</p>
                 </div>
 
-                {order.reviewNote && (
-                  <div className="mt-3 p-2.5 bg-red-50 border border-red-200 rounded-sm">
+                {(order.reviewNote || order.samePaymentAs?.length) && (
+                  <div data-testid="review-note" className="mt-3 w-full min-w-0 max-w-full p-2.5 bg-red-50 border border-red-200 rounded-sm">
                     <p className="font-montserrat text-[10px] text-red-700 uppercase tracking-widest font-semibold mb-1">Needs review</p>
-                    <p className="font-montserrat text-xs text-red-900">{order.reviewNote}</p>
+                    <p className="font-montserrat text-xs text-red-900 wrap-anywhere">{reviewNoteForDisplay(order.reviewNote, order.samePaymentAs)}</p>
                   </div>
                 )}
 
@@ -172,7 +337,7 @@ function OrderRow({
               </div>
 
               {/* Column 2: Order Items */}
-              <div className="space-y-3 lg:col-span-1">
+              <div className="space-y-3 lg:col-span-1 min-w-0">
                 <div className="flex items-center gap-2 text-forest font-merriweather font-semibold border-b border-olive/10 pb-2">
                   <Package className="h-4 w-4" />
                   Ordered Items
@@ -180,11 +345,9 @@ function OrderRow({
                 <div className="space-y-3 max-h-62.5 overflow-y-auto pr-2 custom-scrollbar">
                   {order.items.map((item, idx) => (
                     <div key={idx} className="flex gap-3 bg-white p-2 border border-olive/10 rounded-sm">
-                      {item.image && (
-                        <div className="relative w-12 h-16 bg-warm/50 shrink-0">
-                          <Image src={item.image} alt={item.name} fill className="object-cover" />
-                        </div>
-                      )}
+                      <div className="relative w-12 h-16 bg-warm/50 shrink-0 overflow-hidden">
+                        <SafeImage src={item.image} fallbackSrc={item.currentImage} alt={item.name} className="object-cover" sizes="48px" />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-merriweather text-xs font-semibold text-forest truncate">{item.name}</p>
                         <div className="flex flex-wrap items-center gap-x-2 font-montserrat text-[10px] text-muted-text mt-0.5">
@@ -215,7 +378,7 @@ function OrderRow({
               </div>
 
               {/* Column 3: Payment & Breakdown */}
-              <div className="space-y-3">
+              <div className="space-y-3 min-w-0">
                 <div className="flex items-center gap-2 text-forest font-merriweather font-semibold border-b border-olive/10 pb-2">
                   <CreditCard className="h-4 w-4" />
                   Payment Summary
@@ -248,11 +411,19 @@ function OrderRow({
 
                   <div className="mt-4 p-3 bg-white border border-olive/10 rounded-sm space-y-1.5">
                     <p className="text-[10px] text-muted-text uppercase tracking-widest font-semibold">Gateway Details</p>
-                    <p className="text-xs text-forest"><span className="text-muted-text">Order ID:</span> {order.razorpayOrderId}</p>
+                    <p className="text-xs text-forest wrap-anywhere"><span className="text-muted-text">Order ID:</span> {order.razorpayOrderId}</p>
                     {order.razorpayPaymentId && (
-                      <p className="text-xs text-forest"><span className="text-muted-text">Pay ID:</span> {order.razorpayPaymentId}</p>
+                      <p className="text-xs text-forest wrap-anywhere"><span className="text-muted-text">Pay ID:</span> {order.razorpayPaymentId}</p>
+                    )}
+                    {order.finalizedVia && order.finalizedAt && (
+                      <p data-testid="finalized-via" className="text-[10px] text-muted-text">
+                        Order created by {order.finalizedVia === 'webhook' ? 'the Razorpay webhook' : "the customer's browser confirmation"}, {formatShopDate(order.finalizedAt, 'dateTime', { withZone: true })}
+                      </p>
                     )}
                   </div>
+                  {order.status !== "CANCELLED" && <ShippingPanel order={order} value={shipping} onChange={setShipping} save={updateStatus} />}
+                  <EmailsPanel order={order} resend={resendEmail} />
+                  <RefundPanel key={`${order.refundStatus}|${order.refundNote}|${order.razorpayRefundId}`} order={order} saveRefund={saveRefund} />
                 </div>
               </div>
 
@@ -267,26 +438,77 @@ function OrderRow({
 export default function AdminOrdersPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState("ALL");
+  // "?order=<id>": a link from an e-mail to the owner opens that one order (read once; "Show all orders" leaves it)
+  const [onlyOrder, setOnlyOrder] = useState<string | null>(null);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("order");
+    if (id && /^[a-f0-9]{24}$/i.test(id)) setOnlyOrder(id);
+  }, []);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin", "orders", filter],
-    queryFn: async (): Promise<AdminOrder[]> => {
-      const res = await adminAxios.get(`/api/admin/orders?status=${filter}`);
-      return res.data.orders;
-    },
-  });
+  const [page, setPage] = useState(1);
 
-  const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const res = await adminAxios.patch(`/api/admin/orders/${id}/status`, { status });
+  const { data: response, isLoading, isError, error, refetch, isPlaceholderData } = useQuery({
+    queryKey: ["admin", "orders", filter, page, onlyOrder],
+    queryFn: async (): Promise<OrdersResponse> => {
+      const res = await adminAxios.get("/api/admin/orders", { params: { status: filter, page, limit: PAGE_SIZE, ...(onlyOrder ? { order: onlyOrder } : {}) } });
       return res.data;
     },
-    onSuccess: (data) => {
-      toast.success("Order status updated");
+    placeholderData: keepPreviousData,
+  });
+  const data = response?.orders;
+
+  // The page may stop existing (an order moved to another status tab): go back to the last page
+  useEffect(() => {
+    if (response && !isPlaceholderData && response.totalPages >= 1 && page > response.totalPages) setPage(response.totalPages);
+  }, [response, isPlaceholderData, page]);
+
+  const updateStatus = useMutation({
+    mutationFn: async ({ id, ...body }: StatusInput) => {
+      const res = await adminAxios.patch(`/api/admin/orders/${id}/status`, body);
+      return res.data;
+    },
+    onSuccess: (data: { refundReminder?: boolean; ignoredTracking?: string[]; order?: { totalAmount?: number } }) => {
+      if (data?.ignoredTracking?.length) {
+        toast(`Saved, but these shipping details were not valid and were left out: ${data.ignoredTracking.map((f) => ({ courier: "courier", trackingNumber: "tracking number", trackingUrl: "tracking link (it must start with https://)" })[f] ?? f).join(", ")}.`, { duration: 9000, icon: "⚠️" });
+      }
+      if (data?.refundReminder) {
+        toast(
+          `Order cancelled. Remember to refund ₹${(data.order?.totalAmount ?? 0).toLocaleString("en-IN")} in the Razorpay dashboard: it is NOT refunded automatically. It is listed under "Refund pending" until you mark it refunded.`,
+          { duration: 12000, icon: "⚠️" },
+        );
+      } else {
+        toast.success("Order status updated");
+      }
       queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
     },
     onError: (err) => {
       toast.error(getApiErrorMessage(err, "Failed to update status"));
+    },
+  });
+
+  const resendEmail = useMutation({
+    mutationFn: async (emailId: string) => {
+      const res = await adminAxios.post(`/api/admin/emails/${emailId}/resend`);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success("Sent again");
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err, "Could not send it again")),
+  });
+
+  const saveRefund = useMutation({
+    mutationFn: async ({ id, ...body }: RefundInput) => {
+      const res = await adminAxios.patch(`/api/admin/orders/${id}/refund`, body);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success("Refund details saved");
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+    },
+    onError: (err) => {
+      toast.error(getApiErrorMessage(err, "Could not save the refund details"));
     },
   });
 
@@ -313,6 +535,7 @@ export default function AdminOrdersPage() {
     { label: "Shipped", value: "SHIPPED" },
     { label: "Completed", value: "DELIVERED" },
     { label: "Cancelled", value: "CANCELLED" },
+    { label: "Refund pending", value: "REFUND_PENDING" },
   ];
 
   return (
@@ -328,18 +551,34 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      <div className="flex border-b border-olive/20 mb-4">
+      {onlyOrder && (
+        <p data-testid="single-order-banner" className="flex flex-wrap items-center gap-3 rounded-sm border border-olive/20 bg-white px-3 py-2 font-montserrat text-xs text-forest">
+          Showing one order (from a link).
+          <button
+            type="button"
+            onClick={() => { setOnlyOrder(null); window.history.replaceState(null, "", "/admin/orders"); }}
+            className="font-semibold uppercase tracking-wider text-olive underline underline-offset-2"
+          >
+            Show all orders
+          </button>
+        </p>
+      )}
+
+      <div className="flex overflow-x-auto border-b border-olive/20 mb-4">
         {tabs.map((tab) => (
           <button
             key={tab.value}
-            onClick={() => setFilter(tab.value)}
-            className={`px-4 py-2 font-montserrat text-xs uppercase tracking-widest font-semibold transition-colors ${
+            onClick={() => { setFilter(tab.value); setPage(1); }}
+            className={`whitespace-nowrap px-4 py-2 font-montserrat text-xs uppercase tracking-widest font-semibold transition-colors ${
               filter === tab.value
                 ? "border-b-2 border-forest text-forest"
                 : "text-muted-text hover:text-forest"
             }`}
           >
             {tab.label}
+            {response?.statusCounts && (
+              <span className="ml-1.5 text-[10px] opacity-60">({response.statusCounts[tab.value] ?? 0})</span>
+            )}
           </button>
         ))}
       </div>
@@ -374,6 +613,13 @@ export default function AdminOrdersPage() {
                   </p>
                 </TableCell>
               </TableRow>
+            ) : isError ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-12">
+                  <p className="font-montserrat text-sm text-copper mb-2">{getApiErrorMessage(error, "Could not load orders")}</p>
+                  <button onClick={() => refetch()} className="text-xs font-montserrat uppercase tracking-wider text-olive hover:underline">Try again</button>
+                </TableCell>
+              </TableRow>
             ) : !data || data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-12">
@@ -385,12 +631,23 @@ export default function AdminOrdersPage() {
               </TableRow>
             ) : (
               data.map((order) => (
-                <OrderRow key={order._id} order={order} updateStatus={updateStatus} getStatusColor={getStatusColor} />
+                <OrderRow key={onlyOrder && !isPlaceholderData ? `${order._id}:one` : order._id} order={order} startOpen={!!onlyOrder && !isPlaceholderData} updateStatus={updateStatus} saveRefund={saveRefund} resendEmail={resendEmail} getStatusColor={getStatusColor} />
               ))
             )}
           </TableBody>
         </Table>
       </div>
+
+      {response && (
+        <Pagination
+          page={page}
+          totalPages={response.totalPages}
+          total={response.total}
+          limit={PAGE_SIZE}
+          isLoading={isPlaceholderData}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

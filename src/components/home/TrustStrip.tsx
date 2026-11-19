@@ -10,22 +10,15 @@ interface TrustStripProps {
   items?: TrustStripItemProps[];
 }
 
-const defaultTrustItems: TrustStripItemProps[] = [
-  { icon: "Truck", title: "Free shipping", subtitle: "Above ₹999" },
-  { icon: "Leaf", title: "1 tree per order", subtitle: "Planted with care" },
-  { icon: "Recycle", title: "Sustainable materials", subtitle: "Low-impact goods" },
-  { icon: "ShieldCheck", title: "Easy returns", subtitle: "Simple exchanges" },
-  { icon: "Award", title: "Ethically sourced", subtitle: "Traceable makers" },
-];
-
-export function TrustStrip({ items = defaultTrustItems }: TrustStripProps) {
-  const displayItems = items && items.length > 0 ? items : defaultTrustItems;
-
+export function TrustStrip({ items = [] }: TrustStripProps) {
+  // Exactly what the admin typed and nothing else: an item with no text is not shown, and no
+  // items means no strip. Nothing is added or rewritten from other settings.
+  const displayItems = (items ?? []).filter((i) => i.title?.trim() || i.subtitle?.trim());
   if (displayItems.length === 0) return null;
 
   return (
     <section className="bg-warm-mist">
-      <div className="mx-auto max-w-screen-2xl overflow-x-auto sm:overflow-x-visible hide-scrollbar">
+      <div className="mx-auto w-full max-w-page overflow-x-auto sm:overflow-x-visible hide-scrollbar">
         <div className="flex min-w-max sm:min-w-0 sm:flex-wrap sm:justify-center divide-x divide-olive-leaf/20">
           {displayItems.map((item, index) => {
             const IconComponent = IconMap[item.icon as IconName] || IconMap.Leaf;

@@ -280,7 +280,7 @@ export function ProductInfo({ product, sizeChartUrl }: { product: Product; sizeC
           onClick={handleAddToCart}
           disabled={isAdded || isSoldOut}
           className={cn(
-            "w-full sm:flex-1 font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto transition-all duration-200",
+            "w-full sm:min-w-0 sm:flex-1 font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto transition-all duration-200",
             isAdded || isSoldOut
               ? "bg-olive/80 text-cornsilk cursor-not-allowed"
               : "bg-forest text-cornsilk hover:bg-olive active:scale-[0.98]",
@@ -300,12 +300,12 @@ export function ProductInfo({ product, sizeChartUrl }: { product: Product; sizeC
             </>
           )}
         </Button>
-        {/* Buy Now — desktop full label, mobile icon+label */}
+        {/* Buy Now: the same width as Add to Bag (50 / 50 side by side; stacked full width on phones) */}
         <button
           type="button"
           disabled={isSoldOut}
           onClick={handleBuyNowClick}
-          className="w-full sm:w-auto border border-olive-leaf/40 text-forest bg-olive-leaf/10 hover:bg-olive-leaf/20 hover:border-olive-leaf/60 font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full sm:min-w-0 sm:flex-1 border border-olive-leaf/40 text-forest bg-olive-leaf/10 hover:bg-olive-leaf/20 hover:border-olive-leaf/60 font-montserrat text-xs font-semibold uppercase tracking-wider py-3.5 px-6 rounded-sm h-auto flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <Zap className="mr-2 size-3.5" />
           Buy Now
@@ -313,24 +313,9 @@ export function ProductInfo({ product, sizeChartUrl }: { product: Product; sizeC
       </div>
 
 
-      {/* Material tags */}
-      {product.tags && product.tags.length > 0 && (
-        <div className="mt-5 pt-5 border-t border-olive/10">
-          <p className="font-montserrat text-[10px] uppercase tracking-widest text-muted-text mb-2">
-            Highlights
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {product.tags.map((tag) => (
-              <span
-                key={tag}
-                className="text-[11px] font-montserrat text-olive border border-olive/30 px-2.5 py-1 rounded-sm"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Highlights (outlined) and the admin's second list, "Ideal for" or whatever heading was typed (filled) */}
+      <ChipList title="Highlights" items={product.tags} variant="outline" />
+      <ChipList title={product.idealForHeading.trim() || "Ideal for"} items={product.idealFor} variant="filled" />
 
       <AlertDialog open={showMergeDialog} onOpenChange={setShowMergeDialog}>
         <AlertDialogContent className="bg-cornsilk border-olive/20 max-w-md w-[90vw]">
@@ -361,5 +346,30 @@ export function ProductInfo({ product, sizeChartUrl }: { product: Product; sizeC
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+
+/** A labelled row of tags. Nothing is shown when there are no items. */
+function ChipList({ title, items, variant }: { title: string; items?: string[]; variant: "outline" | "filled" }) {
+  const list = (items ?? []).filter((t) => t.trim());
+  if (list.length === 0) return null;
+  return (
+    <section className="mt-7 border-t border-olive/10 pt-7">
+      <h3 className="mb-3.5 font-montserrat text-xs font-semibold uppercase tracking-[0.2em] text-forest">{title}</h3>
+      <ul className="flex flex-wrap gap-2.5">
+        {list.map((item) => (
+          <li
+            key={item}
+            className={cn(
+              "rounded-full px-4 py-2 font-montserrat text-sm font-medium text-forest",
+              variant === "outline" ? "border border-olive/40 bg-transparent" : "bg-olive/12",
+            )}
+          >
+            {item}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

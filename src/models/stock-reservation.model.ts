@@ -28,6 +28,12 @@ const StockReservationSchema = new Schema<IStockReservation>(
 StockReservationSchema.index({ status: 1, expiresAt: 1 });
 StockReservationSchema.index({ userId: 1, status: 1 });
 
+// In development the compiled model stays cached between code reloads, so a field added to the schema
+// would be dropped on save until the dev server is restarted: rebuild it when not in production.
+if (process.env.NODE_ENV !== "production") {
+  delete mongoose.models.StockReservation;
+}
+
 export const StockReservation: Model<IStockReservation> =
   mongoose.models.StockReservation ||
   mongoose.model<IStockReservation>("StockReservation", StockReservationSchema);

@@ -2,17 +2,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextRequest } from "next/server";
-import { withAdmin, successResponse, errorResponse } from "@/lib/api-helpers";
+import { z } from "zod";
+import { withAdmin, successResponse, parseJsonBody, validationError } from "@/lib/api-helpers";
 import { BlogCategory } from "@/models/blog-category.model";
 import { Blog } from "@/models/blog.model";
-
-const DEFAULT_CATEGORIES = [
-  "Trail Stories",
-  "Gear Guides",
-  "Sustainability",
-  "Brand Updates",
-  "Tips & Tricks",
-];
+import { escapeRegex } from "@/lib/pagination";
 
 async function getAllMergedCategories(): Promise<string[]> {
   const [saved, distinctFromBlogs] = await Promise.all([
@@ -37,8 +31,7 @@ async function getAllMergedCategories(): Promise<string[]> {
   saved.forEach((s) => add(s.name));
   // Add any existing categories currently on blogs
   distinctFromBlogs.forEach((c) => add(String(c)));
-  // Add defaults
-  DEFAULT_CATEGORIES.forEach((c) => add(c));
+  // (No built-in suggestions: the list is only what the owner created or has already used)
 
   return categories;
 }
@@ -48,39 +41,23 @@ export const GET = withAdmin(async () => {
   return successResponse({ categories });
 });
 
+const CategoryNameSchema = z.object({ name: z.string().trim().min(1, "Category name is required").max(60, "Category name is at most 60 characters") });
+
 export const POST = withAdmin(async (req: NextRequest) => {
-  try {
-    const body = await req.json();
-    const name = body?.name;
+  const parsed = CategoryNameSchema.safeParse(await parseJsonBody(req));
+  if (!parsed.success) return validationError(parsed.error);
+  const trimmedName = parsed.data.name;
 
-    if (!name || typeof name !== "string" || !name.trim()) {
-      return errorResponse("Category name is required", 400);
-    }
+  // Check if category already exists (case-insensitive)
+  let categoryDoc = await BlogCategory.findOne({
+    name: { $regex: new RegExp(`^${escapeRegex(trimmedName)}$`, "i") },
+  });
 
-    const trimmedName = name.trim();
-
-    // Check if category already exists (case-insensitive)
-    let categoryDoc = await BlogCategory.findOne({
-      name: { $regex: new RegExp(`^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") },
-    });
-
-    if (!categoryDoc) {
-      categoryDoc = await BlogCategory.create({
-        name: trimmedName,
-      });
-    }
-
-    const categories = await getAllMergedCategories();
-
-    return successResponse(
-      {
-        category: categoryDoc.name,
-        categories,
-      },
-      201
-    );
-  } catch (error) {
-    console.error("Failed to create blog category:", error);
-    return errorResponse(error instanceof Error ? error.message : "Failed to create category", 500);
+  if (!categoryDoc) {
+    categoryDoc = await BlogCategory.create({ name: trimmedName });
   }
+
+  const categories = await getAllMergedCategories();
+
+  return successResponse({ category: categoryDoc.name, categories }, 201);
 });

@@ -1,8 +1,9 @@
 export const runtime = 'nodejs';
 
 import { revalidatePath } from 'next/cache';
+import { revalidateStorefront } from '@/lib/revalidate-storefront';
 import { z } from 'zod';
-import { withAdmin, successResponse, errorResponse } from '@/lib/api-helpers';
+import { withAdmin, successResponse, errorResponse, parseJsonBody, validationError } from '@/lib/api-helpers';
 import LegalPage from '@/models/legal-page.model';
 import { isLegalSlug } from '@/lib/legal-pages';
 import { sanitizeRichText } from '@/lib/sanitize';
@@ -23,14 +24,8 @@ export const PUT = withAdmin(async (req, { params }) => {
   const { slug } = await params;
   if (!isLegalSlug(slug)) return errorResponse('Page not found', 404);
 
-  const parsed = LegalPageSchema.safeParse(await req.json());
-  if (!parsed.success) {
-    const errors: Record<string, string> = {};
-    parsed.error.issues.forEach((err) => {
-      errors[err.path.join('.')] = err.message;
-    });
-    return errorResponse('Validation failed', 400, errors);
-  }
+  const parsed = LegalPageSchema.safeParse(await parseJsonBody(req));
+  if (!parsed.success) return validationError(parsed.error);
 
   const page = await LegalPage.findOneAndUpdate(
     { slug },
@@ -39,5 +34,8 @@ export const PUT = withAdmin(async (req, { params }) => {
   );
 
   revalidatePath(`/${slug}`);
+  // The footer links and the sitemap list the optional policy pages only while they have text
+  revalidateStorefront();
+  revalidatePath('/sitemap.xml');
   return successResponse({ page });
 });

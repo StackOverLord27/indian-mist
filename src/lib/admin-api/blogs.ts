@@ -1,8 +1,8 @@
 import { adminAxios } from '../admin-axios';
-import { AdminBlog } from '@/types/admin';
+import { AdminBlog, PaginationMeta } from '@/types/admin';
 
 export const fetchAdminBlogs = async (filters?: { category?: string; status?: string; page?: number; limit?: number }) => {
-  const { data } = await adminAxios.get<{ blogs: AdminBlog[]; total: number; page: number; totalPages: number }>('/api/admin/blogs', { params: filters });
+  const { data } = await adminAxios.get<{ blogs: AdminBlog[] } & PaginationMeta>('/api/admin/blogs', { params: filters });
   return data;
 };
 

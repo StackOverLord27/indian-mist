@@ -9,6 +9,11 @@ export interface IOrderItem {
   selectedSize?: string;
   selectedColor?: string;
   selectedColorHex?: string;
+  /**
+   * Units actually taken from stock when this order was settled. Cancelling gives back exactly
+   * this many. Absent on orders created before it existed (those give back the full quantity).
+   */
+  deductedQuantity?: number;
 }
 
 export interface IOrder extends Document {
@@ -23,10 +28,32 @@ export interface IOrder extends Document {
   promoCode?: string;
   deliveryNotes?: string;
   reviewNote?: string;
+  /**
+   * false = paid, stock not settled yet (a repair pass finishes it); true = settled.
+   * Absent on orders created before it existed: those are treated as settled.
+   */
+  stockSettled?: boolean;
+  /**
+   * Refunds are made by hand in the Razorpay dashboard; this only records them. Absent = nothing
+   * recorded. Set to PENDING when a paid order is cancelled; the admin changes it by hand.
+   */
+  refundStatus?: "NOT_NEEDED" | "PENDING" | "REFUNDED";
+  /** Admin-only note about the refund (never shown to the customer) */
+  refundNote?: string;
+  /** Razorpay's refund id (rfnd_...), entered by the admin */
+  razorpayRefundId?: string;
   paymentStatus: "UNPAID" | "PAID" | "FAILED";
+  /** Shipping details the admin may add when shipping (all optional; never required to change a status) */
+  courier?: string;
+  trackingNumber?: string;
+  /** An http(s) address (checked when saved and again before it becomes a link) */
+  trackingUrl?: string;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   razorpaySignature?: string;
+  /** Which path turned the payment into this order, and when (absent on orders from before it was recorded) */
+  finalizedVia?: "verify-payment" | "webhook";
+  finalizedAt?: Date;
   customerName: string;
   email: string;
   phone: string;
@@ -50,6 +77,7 @@ const OrderItemSchema: Schema = new Schema({
   selectedSize: { type: String },
   selectedColor: { type: String },
   selectedColorHex: { type: String },
+  deductedQuantity: { type: Number, min: 0 },
 });
 
 const OrderSchema: Schema = new Schema(
@@ -69,14 +97,23 @@ const OrderSchema: Schema = new Schema(
     promoCode: { type: String },
     deliveryNotes: { type: String },
     reviewNote: { type: String },
+    stockSettled: { type: Boolean },
+    refundStatus: { type: String, enum: ["NOT_NEEDED", "PENDING", "REFUNDED"] }, // no default: absent = nothing recorded
+    refundNote: { type: String },
+    razorpayRefundId: { type: String },
     paymentStatus: {
       type: String,
       enum: ["UNPAID", "PAID", "FAILED"],
       default: "UNPAID",
     },
+    courier: { type: String },
+    trackingNumber: { type: String },
+    trackingUrl: { type: String },
     razorpayOrderId: { type: String, unique: true, sparse: true },
     razorpayPaymentId: { type: String },
     razorpaySignature: { type: String },
+    finalizedVia: { type: String, enum: ["verify-payment", "webhook"] },
+    finalizedAt: { type: Date },
     customerName: { type: String, required: true },
     email: { type: String, required: true },
     phone: { type: String, required: true },
@@ -93,7 +130,20 @@ const OrderSchema: Schema = new Schema(
 
 // Add compound index to make promo code validation instantaneous
 OrderSchema.index({ userId: 1, promoCode: 1 });
+// Total uses of a promo code (only PAID orders count): promo route, create-order, finalizeOrder
+OrderSchema.index({ promoCode: 1, paymentStatus: 1 });
+// Admin orders list: the PAID orders of one status tab, newest first, and the per-tab counts
+OrderSchema.index({ paymentStatus: 1, status: 1, createdAt: -1 });
+// ...and the "All orders" tab (PAID, newest first)
+OrderSchema.index({ paymentStatus: 1, createdAt: -1 });
 OrderSchema.index({ userId: 1, createdAt: -1 });
+// "Is this payment already on another order?" (finalizeOrder's duplicate check, the admin orders list)
+OrderSchema.index({ razorpayPaymentId: 1 }, { sparse: true });
+// Repair pass: paid orders whose stock was never settled (a handful at most; sparse keeps it tiny)
+OrderSchema.index({ stockSettled: 1, createdAt: 1 }, { partialFilterExpression: { stockSettled: false } });
+
+// "Refund pending" tab of the admin orders list (a handful of rows at most)
+OrderSchema.index({ refundStatus: 1, createdAt: -1 }, { partialFilterExpression: { refundStatus: "PENDING" } });
 
 if (process.env.NODE_ENV === "development") {
   delete mongoose.models.Order;
@@ -101,4 +151,12 @@ if (process.env.NODE_ENV === "development") {
 
 export const Order: Model<IOrder> =
   mongoose.models.Order || mongoose.model<IOrder>("Order", OrderSchema);
+
+// Mongoose builds the declared indexes in the background when the model is first used. If an index
+// of the same name already exists with other options (the live "razorpayOrderId_1" was a plain
+// index), the build fails with IndexKeySpecsConflict and Mongoose only emits an event. Nothing
+// else listens, so before this the failure was completely silent.
+Order.on("index", (error?: unknown) => {
+  if (error) console.error("[db] CRITICAL: building the orders indexes failed:", error instanceof Error ? error.message : error, "(run: npm run ensure:indexes)");
+});
 

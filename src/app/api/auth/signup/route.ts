@@ -4,8 +4,12 @@ import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/db";
 import { User } from "@/models/user.model";
 import { setOtp, deleteOtp } from "@/lib/otp-store";
-import { sendOTPVerificationEmail } from "@/lib/mailer";
+import { allowOtpEmail } from "@/lib/attempt-limit";
+import { sendMail } from "@/lib/email";
 import { SignUpSchema } from "@/schemas/auth/signup.schema";
+
+// A send is capped at 15 s and a sign-in code gets one immediate second try (src/lib/email).
+export const maxDuration = 60;
 
 /**
  * Generate a cryptographically secure 6-digit OTP.
@@ -44,6 +48,14 @@ export async function POST(req: Request) {
       );
     }
 
+    // One address cannot be flooded with verification e-mails
+    if (!(await allowOtpEmail("signup", email))) {
+      return NextResponse.json(
+        { error: "Too many verification emails requested for this address. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     // Hash the password BEFORE storing in Redis so that plaintext
     // passwords are never persisted in any intermediate storage.
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -53,10 +65,11 @@ export async function POST(req: Request) {
     const otpCode = generateOTP();
     await setOtp("signup", email, otpCode, name, hashedPassword);
 
-    const emailSent = await sendOTPVerificationEmail(email, otpCode);
+    const sent = await sendMail("otp-signup", email, { otp: otpCode });
 
-    if (!emailSent) {
-      // If email fails, clean up the Redis entry immediately.
+    if (sent.status !== "sent") {
+      // Not delivered (permanently failed, still failing after the one immediate retry, or held
+      // back by the e-mail guard): the code is useless, so delete it and let the customer ask again.
       await deleteOtp("signup", email);
       return NextResponse.json(
         { error: "Failed to send verification email. Please try again." },

@@ -8,12 +8,14 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import AdminFormField, { inputClass } from '@/components/admin/ui/AdminFormField';
+import { useRouter } from 'next/navigation';
 import ImageUploadZone from '@/components/admin/ui/ImageUploadZone';
 import { AdminProduct } from '@/types/admin';
 import { Loader2, X } from 'lucide-react';
-import { useAdminProducts, useCreateProduct, useUpdateProduct } from '@/hooks/admin/useAdminProducts';
+import { useColorGroups, useCreateProduct, useUpdateProduct } from '@/hooks/admin/useAdminProducts';
 import { useAdminCategories } from '@/hooks/admin/useAdminCategories';
 import * as categoryApi from '@/lib/admin-api/categories';
+import { buildProductFormData } from '@/lib/admin-api/product-form-data';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
@@ -39,6 +41,8 @@ const productSchema = z.object({
   colorHex: z.string().regex(/^(#[0-9a-fA-F]{6})?$/, 'Use a hex code like #1a2b3c').optional(),
   colorGroup: z.string().max(80).optional(),
   tags: z.string(),
+  idealForHeading: z.string().max(40, 'At most 40 characters').optional(),
+  idealFor: z.string().optional(),
   badge: z.enum(['New', 'Sale', 'Sold Out', '']).optional(),
   isFeatured: z.boolean().default(false),
   trackInventory: z.boolean().default(false),
@@ -71,11 +75,10 @@ const CARE_ICONS = [
 
 // `duplicateOf` pre-fills a new product from an existing one (images and colour are not copied)
 export default function ProductForm({ product, duplicateOf }: { product?: AdminProduct; duplicateOf?: AdminProduct }) {
+  const router = useRouter();
   const source = product ?? duplicateOf;
-  const { data: allProducts } = useAdminProducts({ limit: 50 });
-  const existingGroups = Array.from(
-    new Set((allProducts?.products ?? []).map((p) => p.colorGroup).filter((g): g is string => !!g)),
-  );
+  // Every colour group in use, from a small dedicated endpoint (not from a page of products)
+  const { data: existingGroups = [] } = useColorGroups();
 
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct(product?._id || '');
@@ -112,7 +115,8 @@ export default function ProductForm({ product, duplicateOf }: { product?: AdminP
   
   useEffect(() => {
     if (product?.images) {
-      const cImg = product.images.find(img => img.isCategoryCover);
+      // The category cover is stored as the URL of one of the images
+      const cImg = product.images.find(img => !!product.categoryCoverImage && img.url === product.categoryCoverImage);
       if (cImg) setCoverImageId(cImg.publicId);
       // Initialise order to existing array order; primary is always first
       const sorted = [...product.images].sort((a, b) => (a.isPrimary ? -1 : b.isPrimary ? 1 : 0));
@@ -134,6 +138,8 @@ export default function ProductForm({ product, duplicateOf }: { product?: AdminP
       colorHex: product?.colorHex || '#000000',
       colorGroup: source?.colorGroup || '',
       tags: source?.tags?.join(', ') || '',
+      idealForHeading: source?.idealForHeading || '',
+      idealFor: source?.idealFor?.join(', ') || '',
       badge: product?.badge || '',
       isFeatured: source?.isFeatured || false,
       trackInventory: source?.trackInventory || false,
@@ -141,8 +147,8 @@ export default function ProductForm({ product, duplicateOf }: { product?: AdminP
       sizeStock: Object.fromEntries((source?.sizeStock ?? []).map((s) => [s.size, s.quantity])),
       materials: source?.materials || [''],
       careInstructions: source?.careInstructions?.length ? source.careInstructions : [{ text: '', icon: 'droplets' }],
-      shippingStandard: source?.shippingInfo?.standard || '3-5 business days',
-      shippingExpress: source?.shippingInfo?.express || '1-2 business days',
+      shippingStandard: source?.shippingInfo?.standard || '',
+      shippingExpress: source?.shippingInfo?.express || '',
     }
   });
 
@@ -162,53 +168,7 @@ export default function ProductForm({ product, duplicateOf }: { product?: AdminP
   });
 
   const onSubmit = async (data: ProductFormData) => {
-    const formData = new FormData();
-    
-    // Append scalar fields
-    formData.append('name', data.name);
-    formData.append('category', data.category);
-    formData.append('price', data.price.toString());
-    if (data.originalPrice) formData.append('originalPrice', data.originalPrice.toString());
-    formData.append('description', data.description);
-    if (data.badge) formData.append('badge', data.badge);
-    formData.append('isFeatured', data.isFeatured ? 'true' : 'false');
-    formData.append('trackInventory', data.trackInventory ? 'true' : 'false');
-    formData.append('stockQuantity', String(data.stockQuantity || 0));
-    // Per-size counts, only for the sizes currently selected
-    formData.append('sizeStock', JSON.stringify(
-      Object.fromEntries((data.sizes ?? []).map((size) => [size, Math.max(0, Math.floor(Number(data.sizeStock?.[size]) || 0))])),
-    ));
-    
-    // Arrays need special handling or JSON stringification
-    formData.append('features', JSON.stringify(data.features.filter(s => s.trim())));
-    if (data.sizes) formData.append('sizes', JSON.stringify(data.sizes));
-    const colorName = (data.colorName ?? '').trim();
-    formData.append('colorName', colorName);
-    formData.append('colorHex', colorName ? (data.colorHex ?? '') : '');
-    formData.append('colorGroup', data.colorGroup ?? '');
-    formData.append('tags', JSON.stringify(data.tags.split(',').map(t => t.trim()).filter(Boolean)));
-    formData.append('materials', JSON.stringify(data.materials.filter(s => s.trim())));
-    formData.append('careInstructions', JSON.stringify(data.careInstructions.filter(c => c.text.trim())));
-    formData.append('shippingInfo', JSON.stringify({
-      standard: data.shippingStandard || '3-5 business days',
-      express: data.shippingExpress || '1-2 business days',
-    }));
-
-    // Image handling
-    newFiles.forEach(file => {
-      formData.append('images', file);
-    });
-    
-    if (removedImageIds.length > 0) {
-      formData.append('removedImageIds', JSON.stringify(removedImageIds));
-    }
-    
-    // First image in imageOrder is primary
-    if (imageOrder.length > 0) {
-      formData.append('primaryImageId', imageOrder[0]);
-      formData.append('imageOrder', JSON.stringify(imageOrder));
-    }
-    if (coverImageId) formData.append('coverImageId', coverImageId);
+    const formData = buildProductFormData(data, { newFiles, removedImageIds, imageOrder, coverImageId });
 
     if (product) {
       updateMutation.mutate(formData);
@@ -238,6 +198,7 @@ export default function ProductForm({ product, duplicateOf }: { product?: AdminP
     if (coverImageId === publicId) setCoverImageId('');
   };
 
+  const [optimisingImages, setOptimisingImages] = useState(false);
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
@@ -453,9 +414,18 @@ export default function ProductForm({ product, duplicateOf }: { product?: AdminP
             </div>
           </AdminFormField>
 
-          <AdminFormField label="Tags (comma separated)" error={errors.tags?.message}>
+          <AdminFormField label="Highlights (comma separated)" hint="Shown as larger tags next to the product details." error={errors.tags?.message}>
             <input {...register('tags')} className={inputClass} placeholder="organic, fresh, limited" />
           </AdminFormField>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AdminFormField label="Second list: heading" hint={'Leave empty to show "Ideal for". For example "Wear it on".'} error={errors.idealForHeading?.message}>
+              <input {...register('idealForHeading')} maxLength={40} className={inputClass} placeholder="Ideal for" />
+            </AdminFormField>
+            <AdminFormField label="Second list: items (comma separated)" hint="The section is hidden when there are none." error={errors.idealFor?.message}>
+              <input {...register('idealFor')} className={inputClass} placeholder="treks, birdwatching, road trips" />
+            </AdminFormField>
+          </div>
 
           {/* Materials */}
           <div>
@@ -525,6 +495,8 @@ export default function ProductForm({ product, duplicateOf }: { product?: AdminP
               onSetCategoryCover={setCoverImageId}
               showCategoryCoverOption={true}
               onFilesSelected={setNewFiles}
+              filesSentTogether
+              onBusyChange={setOptimisingImages}
             />
           </div>
           <div className="bg-warm border border-olive/15 rounded-sm p-3 font-montserrat text-xs text-forest/60">
@@ -540,15 +512,15 @@ export default function ProductForm({ product, duplicateOf }: { product?: AdminP
           {isDirty && <span className="font-montserrat text-xs text-forest/60">Unsaved changes</span>}
         </div>
         <div className="flex gap-4">
-          <button type="button" className="font-montserrat text-xs font-semibold uppercase tracking-wider px-5 py-2.5 text-forest hover:bg-black/5 rounded-sm transition-colors">
+          <button type="button" onClick={() => router.push('/admin/products')} className="font-montserrat text-xs font-semibold uppercase tracking-wider px-5 py-2.5 text-forest hover:bg-black/5 rounded-sm transition-colors">
             Cancel
           </button>
           <button 
             type="submit" 
-            disabled={isPending}
+            disabled={isPending || optimisingImages}
             className="bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider px-5 py-2.5 rounded-sm hover:bg-olive transition-colors flex items-center justify-center min-w-30"
           >
-            {isPending ? <Loader2 className="animate-spin size-4" /> : (product ? 'Save Changes' : 'Create Product')}
+            {isPending || optimisingImages ? <Loader2 className="animate-spin size-4" /> : (product ? 'Save Changes' : 'Create Product')}
           </button>
         </div>
       </div>

@@ -1,16 +1,9 @@
 import { NextResponse } from "next/server";
 import { isBlocked, recordFailure, clearAttempts } from "@/lib/attempt-limit";
-import { randomUUID } from "crypto";
 import dbConnect from "@/lib/db";
 import { User } from "@/models/user.model";
-import { RefreshToken } from "@/models/refreshToken.model";
-import {
-  signAccessToken,
-  signRefreshToken,
-  hashToken,
-  setTokenCookies,
-  REFRESH_TOKEN_MAX_AGE,
-} from "@/lib/auth-tokens";
+import { setTokenCookies } from "@/lib/auth-tokens";
+import { startSession } from "@/lib/auth-session";
 import { SignInSchema } from "@/schemas/auth/signin.schema";
 
 const MAX_LOGIN_FAILURES = 10;
@@ -69,31 +62,8 @@ export async function POST(req: Request) {
     await clearAttempts(attemptKey);
 
     // ── Issue tokens ───────────────────────────────────────────────────────
-    // Each login creates a new "family" — a UUID that groups all refresh-token
-    // rotations for this session. If a consumed refresh token from a family is
-    // ever replayed, the entire family is wiped (see /api/auth/refresh).
-    const family = randomUUID();
-
-    const userRole = email === process.env.SUPER_ADMIN_EMAIL ? 'admin' : 'user';
-
-    const accessToken = signAccessToken({
-      userId: String(user._id),
-      email: user.email,
-      role: userRole,
-    });
-
-    const rawRefreshToken = signRefreshToken({
-      userId: String(user._id),
-      family,
-    });
-
-    // Persist only the hash — never store the raw refresh token in the DB.
-    await RefreshToken.create({
-      userId: user._id,
-      tokenHash: hashToken(rawRefreshToken),
-      family,
-      expiresAt: new Date(Date.now() + REFRESH_TOKEN_MAX_AGE * 1000),
-    });
+    // Each login is one session (a "family"); its refresh token never rotates (see /api/auth/refresh).
+    const { role: userRole, accessToken, refreshToken: rawRefreshToken, refreshMaxAge } = await startSession(user);
 
     // ── Build response ─────────────────────────────────────────────────────
     const response = NextResponse.json(
@@ -109,7 +79,7 @@ export async function POST(req: Request) {
       { status: 200 }
     );
 
-    setTokenCookies(response, accessToken, rawRefreshToken);
+    setTokenCookies(response, accessToken, rawRefreshToken, refreshMaxAge);
     return response;
   } catch (error: unknown) {
     console.error("Signin error:", error);

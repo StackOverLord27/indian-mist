@@ -1,10 +1,13 @@
 "use client";
 
+import { safeHttpUrl } from "@/lib/email/layout";
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { ChevronDown, ChevronRight, Package, MapPin, FileText, CheckCircle2 } from "lucide-react";
 import type { OrderData, OrderItemData } from "./types";
+import { SafeImage } from "@/components/ui/SafeImage";
+import { orderNumber } from "@/lib/order-number";
+import { formatShopDate } from "@/lib/shop-time";
 
 interface StatusConfig {
   label: string;
@@ -40,7 +43,23 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
   },
 };
 
-function getStatusDetails(status: string): StatusConfig {
+// What the customer sees once the shop has recorded a refund: neutral, no timeline promised
+const REFUND_IN_PROGRESS: StatusConfig = {
+  label: "Cancelled, refund in progress",
+  badgeClass: "bg-rose-100/80 text-rose-900 border border-rose-300/70",
+  dotClass: "bg-rose-500",
+  description: "This order has been cancelled and your refund is in progress.",
+};
+const REFUNDED: StatusConfig = {
+  label: "Refunded",
+  badgeClass: "bg-emerald-100/80 text-emerald-900 border border-emerald-300/70",
+  dotClass: "bg-emerald-500",
+  description: "This order has been refunded.",
+};
+
+function getStatusDetails(status: string, refundStatus?: string): StatusConfig {
+  if (refundStatus === "REFUNDED") return REFUNDED;
+  if (refundStatus === "PENDING" && status?.toUpperCase() === "CANCELLED") return REFUND_IN_PROGRESS;
   const upper = status?.toUpperCase() || "PROCESSING";
   return (
     STATUS_CONFIG[upper] || {
@@ -52,8 +71,8 @@ function getStatusDetails(status: string): StatusConfig {
   );
 }
 
-function getItemImage(item: OrderItemData): string {
-  if (item.image) return item.image;
+/** The product's current photo (the order is populated with it), tried when the order's own photo is gone */
+function getCurrentProductImage(item: OrderItemData): string {
   if (item.productId && typeof item.productId === "object") {
     if (Array.isArray(item.productId.images) && item.productId.images[0]?.url) {
       return item.productId.images[0].url;
@@ -112,7 +131,7 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
         <div className="divide-y divide-olive-leaf/10">
           {orders.map((order) => {
             const isExpanded = !!expandedOrders[order._id];
-            const statusConfig = getStatusDetails(order.status);
+            const statusConfig = getStatusDetails(order.status, order.refundStatus);
 
             return (
               <div key={order._id} className="transition-colors">
@@ -136,24 +155,19 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                     </button>
                     <div>
                       <p className="font-merriweather text-sm md:text-base font-bold text-black-forest">
-                        #{order._id.slice(-6).toUpperCase()}
+                        {orderNumber(order._id)}
                       </p>
                       <p className="font-montserrat text-[10px] text-olive-leaf/80 md:hidden">
-                        {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                        })}
+                        {formatShopDate(order.createdAt, "date").replace(/ \d{4}$/, "")}
                       </p>
+                      {/* On a phone the Status column is off to the right (the table scrolls sideways): say it here too */}
+                      <p className="font-montserrat text-[10px] font-semibold text-forest md:hidden">{statusConfig.label}</p>
                     </div>
                   </div>
 
                   {/* Date */}
                   <p className="w-28 text-center font-montserrat text-xs font-medium text-olive-leaf/85">
-                    {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {formatShopDate(order.createdAt, "date")}
                   </p>
 
                   {/* Items count */}
@@ -164,7 +178,7 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                   {/* Status Badge reflecting Admin Choice */}
                   <div className="w-28 flex justify-center">
                     <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-montserrat text-[10px] font-bold uppercase tracking-wider ${statusConfig.badgeClass}`}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-2xl text-center leading-tight font-montserrat text-[10px] font-bold uppercase tracking-wider ${statusConfig.badgeClass}`}
                     >
                       <span className={`size-1.5 rounded-full ${statusConfig.dotClass}`} />
                       {statusConfig.label}
@@ -201,6 +215,19 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                       </div>
                     </div>
 
+                    {(order.courier || order.trackingNumber || safeHttpUrl(order.trackingUrl)) && (
+                      <div data-testid="order-tracking" className="p-3 bg-white/70 border border-olive-leaf/15 rounded-sm font-montserrat text-xs text-forest space-y-0.5">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-olive-leaf">Tracking</p>
+                        {order.courier && <p>Courier: <strong>{order.courier}</strong></p>}
+                        {order.trackingNumber && <p className="wrap-anywhere">Tracking number: <strong>{order.trackingNumber}</strong></p>}
+                        {safeHttpUrl(order.trackingUrl) && (
+                          <p>
+                            <a href={safeHttpUrl(order.trackingUrl)!} target="_blank" rel="noopener noreferrer" className="font-semibold text-olive-leaf underline underline-offset-2">Track your parcel</a>
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     {/* Product Items Breakdown */}
                     <div>
                       <h4 className="font-montserrat text-[11px] font-bold uppercase tracking-wider text-olive-leaf mb-3 flex items-center gap-2">
@@ -210,7 +237,7 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
 
                       <div className="space-y-3">
                         {order.items?.map((item, idx) => {
-                          const itemImg = getItemImage(item);
+                          const currentImg = getCurrentProductImage(item);
                           const itemName = getItemName(item);
 
                           return (
@@ -220,17 +247,14 @@ export function OrderHistory({ orders }: { orders: OrderData[] }) {
                             >
                               <div className="flex items-center gap-3 min-w-0">
                                 <div className="relative size-14 shrink-0 rounded-sm overflow-hidden bg-cornsilk border border-olive-leaf/20 flex items-center justify-center">
-                                  {itemImg ? (
-                                    <Image
-                                      src={itemImg}
-                                      alt={itemName}
-                                      fill
-                                      className="object-cover"
-                                      sizes="56px"
-                                    />
-                                  ) : (
-                                    <Package className="size-6 text-olive-leaf/70" />
-                                  )}
+                                  <SafeImage
+                                    src={item.image || currentImg}
+                                    fallbackSrc={currentImg}
+                                    alt={itemName}
+                                    className="object-cover"
+                                    sizes="56px"
+                                    fallback={<Package className="size-6 text-olive-leaf/70" />}
+                                  />
                                 </div>
                                 <div className="min-w-0">
                                   <p className="font-montserrat text-xs md:text-sm font-semibold text-forest truncate">

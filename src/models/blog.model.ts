@@ -41,6 +41,10 @@ const BlogSchema: Schema = new Schema(
   { timestamps: true }
 );
 
+// Public blog index: published posts newest first, with and without a category filter
+BlogSchema.index({ isPublished: 1, publishedAt: -1 });
+BlogSchema.index({ isPublished: 1, category: 1, publishedAt: -1 });
+
 // Auto-generate slug from title
 BlogSchema.pre("validate", function (this: IBlog) {
   if (!this.slug && this.title) {
@@ -65,6 +69,12 @@ BlogSchema.pre("save", function (this: IBlog) {
     this.readTime = Math.max(1, Math.ceil(wordCount / 200));
   }
 });
+
+// In development the compiled model stays cached between code reloads, so a field added to the schema
+// would be dropped on save until the dev server is restarted: rebuild it when not in production.
+if (process.env.NODE_ENV !== "production") {
+  delete mongoose.models.Blog;
+}
 
 export const Blog: Model<IBlog> =
   mongoose.models.Blog || mongoose.model<IBlog>("Blog", BlogSchema);

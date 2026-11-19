@@ -8,6 +8,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import SizeChartCard from '@/components/admin/SizeChartCard';
 import { SiteSettings } from '@/types/admin';
+import { settingsForSection } from '@/lib/admin-api/settings';
 
 export default function AdminSettingsPage() {
   const { data, isLoading } = useSiteSettings();
@@ -49,7 +50,9 @@ export default function AdminSettingsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateMutation.mutate(settings);
+    // This page owns the general and social settings only. Sending anything else could overwrite
+    // what other admin pages saved (pricing, homepage, contact).
+    updateMutation.mutate(settingsForSection(settings, 'general'));
   };
 
   if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-olive size-8" /></div>;
@@ -66,6 +69,50 @@ export default function AdminSettingsPage() {
             </AdminFormField>
             <AdminFormField label="Contact Email" required>
               <input type="email" value={settings.contactEmail ?? ''} onChange={e => handleChange('contactEmail', e.target.value)} className={inputClass} />
+            </AdminFormField>
+          </div>
+        </AdminCard>
+
+        <AdminCard title="Customer e-mails">
+          <p className="mb-4 font-montserrat text-xs text-forest/70">
+            Customers always get an e-mail for: order confirmed, shipped, cancelled, refund completed and password changed.
+          </p>
+          <label className="flex items-start gap-3 font-montserrat text-sm text-forest">
+            <input
+              type="checkbox"
+              checked={settings.emailSettings?.sendDeliveredEmail === true}
+              onChange={e => setSettings(prev => ({ ...prev, emailSettings: { ...(prev.emailSettings || {}), sendDeliveredEmail: e.target.checked } }))}
+              className="mt-0.5 size-4"
+            />
+            <span>
+              Also e-mail the customer when an order is marked <b>Completed (Delivered)</b>
+              <span className="block text-xs text-forest/60">Off by default. Only orders marked delivered after you switch it on are e-mailed.</span>
+            </span>
+          </label>
+          <hr className="my-4 border-olive/15" />
+          <p className="mb-2 font-montserrat text-xs text-forest/70">
+            You (the shop owner) always get an e-mail for: each new order, and each payment problem (marked URGENT).
+          </p>
+          <label className="flex items-start gap-3 font-montserrat text-sm text-forest">
+            <input
+              type="checkbox"
+              checked={settings.emailSettings?.ownerLowStockAlert === true}
+              onChange={e => setSettings(prev => ({ ...prev, emailSettings: { ...(prev.emailSettings || {}), ownerLowStockAlert: e.target.checked } }))}
+              className="mt-0.5 size-4"
+            />
+            <span>
+              E-mail me when a product runs low on stock
+              <span className="block text-xs text-forest/60">Off by default. One e-mail each time a product with stock tracking falls to the level below.</span>
+            </span>
+          </label>
+          <div className="mt-3 max-w-50">
+            <AdminFormField label="Low-stock level (units)">
+              <input
+                type="number" min={0} max={1000} step={1}
+                value={settings.emailSettings?.lowStockThreshold ?? 3}
+                onChange={e => setSettings(prev => ({ ...prev, emailSettings: { ...(prev.emailSettings || {}), lowStockThreshold: Math.max(0, Math.min(1000, Math.floor(Number(e.target.value) || 0))) } }))}
+                className={inputClass}
+              />
             </AdminFormField>
           </div>
         </AdminCard>

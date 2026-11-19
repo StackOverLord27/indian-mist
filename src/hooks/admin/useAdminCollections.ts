@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import * as api from '@/lib/admin-api/collections';
@@ -8,6 +8,7 @@ export const useAdminCollections = (filters?: { page?: number; limit?: number })
   return useQuery({
     queryKey: ['admin-collections', filters],
     queryFn: () => api.fetchAdminCollections(filters),
+    placeholderData: keepPreviousData,
   });
 };
 

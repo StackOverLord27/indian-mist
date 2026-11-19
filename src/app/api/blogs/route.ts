@@ -1,41 +1,27 @@
-export const runtime = "nodejs";
+import { NextRequest, NextResponse } from "next/server";
+import { getPublishedBlogs, BLOGS_PAGE_SIZE, BLOGS_MAX_PAGE_SIZE } from "@/lib/blogs-list";
+
 export const dynamic = "force-dynamic";
 
-import { NextRequest } from "next/server";
-import { withDB, successResponse } from "@/lib/api-helpers";
-import { Blog } from "@/models/blog.model";
+const whole = (v: string | null, fallback: number, max: number) => {
+  const n = v && /^\d+$/.test(v) ? Number(v) : NaN;
+  return Number.isSafeInteger(n) && n >= 1 ? Math.min(n, max) : fallback;
+};
 
-export const GET = withDB(async (req: NextRequest) => {
-  const { searchParams } = new URL(req.url);
-  const toInt = (value: string | null, fallback: number) => {
-    const n = parseInt(value ?? "", 10);
-    return Number.isFinite(n) ? n : fallback;
-  };
-  const page = Math.min(1000, Math.max(1, toInt(searchParams.get("page"), 1)));
-  const limit = Math.min(20, Math.max(1, toInt(searchParams.get("limit"), 12)));
-  const category = searchParams.get("category");
-
-  const filter: Record<string, unknown> = { isPublished: true };
-  if (category) filter.category = category;
-
-  const [blogs, total] = await Promise.all([
-    Blog.find(filter)
-      .sort({ publishedAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .select("-content") // exclude heavy content for listing
-      .lean(),
-    Blog.countDocuments(filter),
-  ]);
-
-  // Also fetch unique categories for filter tabs
-  const categories = await Blog.distinct("category", { isPublished: true });
-
-  return successResponse({
-    blogs,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
-    categories,
-  });
-});
+// "Load more" and the category filter on /blogs (public): published posts only, no full text.
+export async function GET(request: NextRequest) {
+  try {
+    const sp = request.nextUrl.searchParams;
+    const category = sp.get("category")?.trim().slice(0, 80) || undefined;
+    return NextResponse.json(
+      await getPublishedBlogs({
+        page: whole(sp.get("page"), 1, 1000),
+        limit: whole(sp.get("limit"), BLOGS_PAGE_SIZE, BLOGS_MAX_PAGE_SIZE),
+        category,
+      }),
+    );
+  } catch (error) {
+    console.error("Blogs API error:", error);
+    return NextResponse.json({ error: "Failed to fetch posts" }, { status: 500 });
+  }
+}

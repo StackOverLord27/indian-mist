@@ -18,12 +18,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Pagination from '@/components/admin/ui/Pagination';
+
+const PAGE_SIZE = 50;
 
 export default function AdminCollectionsPage() {
-  const { data, isLoading } = useAdminCollections();
+  const [page, setPage] = useState(1);
+  const { data, isLoading, isPlaceholderData } = useAdminCollections({ page, limit: PAGE_SIZE });
   const deleteMutation = useDeleteCollection();
   const [collectionToDelete, setCollectionToDelete] = useState<string | null>(null);
+
+  // After a delete (here or elsewhere) the current page may no longer exist: go back to the last one
+  useEffect(() => {
+    if (data && !isPlaceholderData && data.totalPages >= 1 && page > data.totalPages) setPage(data.totalPages);
+  }, [data, isPlaceholderData, page]);
 
   const columns: ColumnDef<AdminCollection>[] = [
     {
@@ -41,7 +50,7 @@ export default function AdminCollectionsPage() {
       header: 'Products',
       render: (collection) => (
         <span className="font-montserrat text-xs text-forest/80">
-          {collection.products?.length || 0} items
+          {collection.productCount ?? 0} items
         </span>
       )
     },
@@ -117,6 +126,17 @@ export default function AdminCollectionsPage() {
         isLoading={isLoading} 
         emptyMessage="No collections found."
       />
+      {data && (
+        <Pagination
+          className="mt-4"
+          page={page}
+          totalPages={data.totalPages}
+          total={data.total}
+          limit={PAGE_SIZE}
+          isLoading={isPlaceholderData}
+          onPageChange={setPage}
+        />
+      )}
     </AdminProtectedRoute>
   );
 }

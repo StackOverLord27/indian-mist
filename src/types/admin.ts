@@ -13,6 +13,17 @@ export interface ProductImage {
   isCategoryCover?: boolean;
 }
 
+/** Same fields in every paged admin list response */
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+/** What the admin product list and the product pickers get: a few fields and only the first image */
+export type AdminProductSummary = Pick<AdminProduct, '_id' | 'name' | 'category' | 'price' | 'images' | 'badge' | 'colorName'> & { slug?: string };
+
 export interface AdminProduct {
   _id: string; // Mongo ID
   name: string;
@@ -26,7 +37,10 @@ export interface AdminProduct {
   colorHex?: string;
   colorGroup?: string;
   tags: string[];
-  badge?: 'New' | 'Sale' | '';
+  idealForHeading?: string;
+  idealFor?: string[];
+  /** "Sold Out" is set by the shop itself when tracked stock reaches 0 */
+  badge?: 'New' | 'Sale' | 'Sold Out' | '';
   materials: string[];
   careInstructions?: { text: string; icon: string }[];
   shippingInfo?: {
@@ -34,7 +48,8 @@ export interface AdminProduct {
     express?: string;
   };
   images: ProductImage[];
-  isActive?: boolean;
+  /** URL of the image shown on the category grid (one of `images`) */
+  categoryCoverImage?: string;
   isFeatured?: boolean;
   trackInventory?: boolean;
   stockQuantity?: number;
@@ -44,10 +59,8 @@ export interface AdminProduct {
 export interface Announcement {
   _id: string;
   text: string;
-  linkUrl?: string;
-  linkText?: string;
   isActive: boolean;
-  order: number;
+  createdAt?: string;
 }
 
 export interface CarouselImage {
@@ -146,6 +159,8 @@ export interface BrandStorySettings {
   buttonText?: string;
   buttonLink?: string;
   imageUrl?: string;
+  /** Cloudinary id of the image. Missing on documents saved before it existed. */
+  imagePublicId?: string;
 }
 
 export interface PromoCode {
@@ -185,6 +200,13 @@ export interface ContactPageSettings {
   faqs?: { question: string; answer: string }[];
 }
 
+/** Header of the /blogs page. A field that was never saved is absent. */
+export interface BlogPageSettings {
+  eyebrow?: string;
+  heading?: string;
+  subtitle?: string;
+}
+
 export interface SiteSettings {
   _id?: string;
   tagline?: string;
@@ -221,6 +243,9 @@ export interface SiteSettings {
   };
   pricingSettings?: PricingSettings;
   contactPageSettings?: ContactPageSettings;
+  blogPageSettings?: BlogPageSettings;
+  /** Customer e-mails the admin can switch on or off ("Delivered" is off until turned on) */
+  emailSettings?: { sendDeliveredEmail?: boolean; ownerLowStockAlert?: boolean; lowStockThreshold?: number };
 }
 
 export interface AdminCategory {
@@ -238,7 +263,10 @@ export interface AdminCollection {
   name: string;
   slug: string;
   description?: string;
+  /** Only on the single-collection response: the products with name, category and first image */
   products: string[] | AdminProduct[];
+  /** Only on the list response, which does not load the products */
+  productCount?: number;
   isActive: boolean;
   order: number;
 }
@@ -269,9 +297,25 @@ export interface AdminOrderItem {
   quantity: number;
   priceAtPurchase: number;
   image?: string;
+  /** The product's current photo, used when `image` no longer exists */
+  currentImage?: string;
   selectedSize?: string;
   selectedColor?: string;
   selectedColorHex?: string;
+}
+
+export interface AdminOrderEmail {
+  id: string;
+  type: 'order-confirmation' | 'order-shipped' | 'order-cancelled' | 'order-refunded' | 'order-delivered';
+  status: 'queued' | 'sent' | 'failed';
+  attempts: number;
+  /** true = it will not be retried any more */
+  permanent: boolean;
+  lastErrorCode: string | null;
+  createdAt: string;
+  sentAt: string | null;
+  /** The Resend button is offered (a failed e-mail that can be rebuilt) */
+  canResend: boolean;
 }
 
 export interface AdminOrder {
@@ -291,8 +335,23 @@ export interface AdminOrder {
   promoCode?: string;
   deliveryNotes?: string;
   reviewNote?: string;
+  /** Recorded by hand (a cancelled paid order starts as PENDING); absent = nothing recorded */
+  refundStatus?: 'NOT_NEEDED' | 'PENDING' | 'REFUNDED';
+  refundNote?: string;
+  razorpayRefundId?: string;
+  /** Shipping details the admin added (optional) */
+  courier?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+  /** The customer e-mails of this order and what became of them (newest last) */
+  emails?: AdminOrderEmail[];
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
+  /** Which path turned the payment into this order, and when (absent on older orders) */
+  finalizedVia?: 'verify-payment' | 'webhook';
+  finalizedAt?: string;
+  /** Ids of OTHER orders that carry the same Razorpay payment id (the same payment recorded twice) */
+  samePaymentAs?: string[];
   shippingAddress: {
     street: string;
     city: string;

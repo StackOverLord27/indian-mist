@@ -1,14 +1,16 @@
 export const runtime = "nodejs";
+export const maxDuration = 60; // the confirmation e-mail goes out after the response
 
 import { NextRequest } from "next/server";
-import { createHmac, timingSafeEqual } from "crypto";
 import dbConnect from "@/lib/db";
 import { finalizeOrder } from "@/lib/finalize-order";
+import { isValidWebhookSignature } from "@/lib/razorpay-signature";
+import { getRazorpayWebhookSecret } from "@/lib/env";
 
 type RazorpayEvent = {
   event?: string;
   payload?: {
-    payment?: { entity?: { id?: string; order_id?: string } };
+    payment?: { entity?: { id?: string; order_id?: string; amount?: number; error_code?: string; error_reason?: string } };
     order?: { entity?: { id?: string } };
   };
 };
@@ -16,19 +18,19 @@ type RazorpayEvent = {
 // Razorpay calls this when a payment succeeds, even if the customer closed the
 // browser before the checkout page could confirm it.
 export async function POST(req: NextRequest) {
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-  if (!secret) {
-    console.error("[razorpay webhook] RAZORPAY_WEBHOOK_SECRET is not set");
+  // Read through the env module like every other secret (trimmed, blank counts as missing); a
+  // secret pasted with a trailing space or newline would otherwise reject every genuine webhook
+  let secret: string;
+  try {
+    secret = getRazorpayWebhookSecret();
+  } catch (error) {
+    console.error("[razorpay webhook]", error instanceof Error ? error.message : "webhook secret is not configured");
     return Response.json({ message: "Webhook not configured" }, { status: 503 });
   }
 
   const rawBody = await req.text();
   const signature = req.headers.get("x-razorpay-signature") ?? "";
-  const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
-
-  const given = Buffer.from(signature);
-  const wanted = Buffer.from(expected);
-  if (given.length !== wanted.length || !timingSafeEqual(given, wanted)) {
+  if (!isValidWebhookSignature(rawBody, signature, secret)) {
     return Response.json({ message: "Invalid signature" }, { status: 400 });
   }
 
@@ -39,22 +41,45 @@ export async function POST(req: NextRequest) {
     return Response.json({ message: "Invalid payload" }, { status: 400 });
   }
 
+  // A failed attempt does NOT end the checkout (Razorpay lets the customer retry on the same
+  // order), so nothing is released here; the line is only for visibility.
+  if (event.event === "payment.failed") {
+    const failed = event.payload?.payment?.entity;
+    const clean = (v: unknown) => String(v ?? "").replace(/[^\w .:-]/g, "").slice(0, 60);
+    console.warn(`[razorpay webhook] payment attempt failed: order ${clean(failed?.order_id)}, payment ${clean(failed?.id)}, ${clean(failed?.error_code)} ${clean(failed?.error_reason)}`);
+    return Response.json({ received: true, ignored: event.event });
+  }
+
   if (event.event !== "payment.captured" && event.event !== "order.paid") {
     return Response.json({ received: true, ignored: event.event });
   }
 
+  // payment.captured and order.paid both carry the payment; either may arrive first, or both,
+  // or the same one again: finalizeOrder makes the repeats harmless.
   const payment = event.payload?.payment?.entity;
   const razorpayOrderId = payment?.order_id ?? event.payload?.order?.entity?.id;
   const razorpayPaymentId = payment?.id;
-  if (!razorpayOrderId || !razorpayPaymentId) {
+  if (
+    typeof razorpayOrderId !== "string" || !razorpayOrderId || razorpayOrderId.length > 64 ||
+    typeof razorpayPaymentId !== "string" || !razorpayPaymentId || razorpayPaymentId.length > 64
+  ) {
     return Response.json({ received: true, ignored: "missing ids" });
   }
 
   try {
     await dbConnect();
-    const result = await finalizeOrder({ razorpayOrderId, razorpayPaymentId });
+    const result = await finalizeOrder({
+      razorpayOrderId,
+      razorpayPaymentId,
+      source: "webhook",
+      paidAmountPaise: typeof payment?.amount === "number" ? payment.amount : undefined,
+    });
     if (!result.ok && result.status >= 500) {
       return Response.json({ message: result.message }, { status: 500 });
+    }
+    if (!result.ok) {
+      // Retrying cannot help (for example the pending order is gone), so answer 200, but say so loudly
+      console.error(`[razorpay webhook] could not create the order for ${razorpayOrderId}: ${result.message}`);
     }
     return Response.json({ received: true });
   } catch (error) {

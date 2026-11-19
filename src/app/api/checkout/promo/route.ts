@@ -3,7 +3,8 @@ import { isBlocked, recordFailure } from "@/lib/attempt-limit";
 import type { SiteSettings } from "@/types/admin";
 import { withDB, errorResponse, successResponse } from "@/lib/api-helpers";
 import Settings from "@/models/settings.model";
-import { Order } from "@/models/order.model";
+import { hasExpired } from "@/lib/shop-time";
+import { normalizePromoCode, findPromo, countPaidPromoUses, promoDiscount } from "@/lib/promo";
 
 export const POST = withDB(async (req: NextRequest) => {
   try {
@@ -11,16 +12,22 @@ export const POST = withDB(async (req: NextRequest) => {
     if (!userId)
       return errorResponse("Please login to apply a promo code", 401);
 
-    const { code, subtotal } = await req.json();
+    let body: { code?: unknown; subtotal?: unknown };
+    try {
+      body = await req.json();
+    } catch {
+      return errorResponse("Invalid request", 400);
+    }
+    const { code, subtotal } = body;
 
     if (!code || typeof code !== "string") {
       return errorResponse("Promo code is required", 400);
     }
-    if (typeof subtotal !== "number" || subtotal < 0) {
+    if (typeof subtotal !== "number" || !Number.isFinite(subtotal) || subtotal < 0) {
       return errorResponse("Invalid subtotal", 400);
     }
 
-    const normalizedCode = code.trim().toUpperCase();
+    const normalizedCode = normalizePromoCode(code);
 
     // Limit how many wrong codes one account can try
     const guessKey = `promo:${userId}`;
@@ -30,9 +37,7 @@ export const POST = withDB(async (req: NextRequest) => {
 
     const settings = await Settings.findOne().lean<SiteSettings>();
     const promoCodes = settings?.pricingSettings?.promoCodes || [];
-    const promo = promoCodes.find(
-      (p) => p.code.toUpperCase() === normalizedCode,
-    );
+    const promo = findPromo(promoCodes, normalizedCode);
 
     if (!promo) {
       await recordFailure(guessKey, 10 * 60);
@@ -43,7 +48,7 @@ export const POST = withDB(async (req: NextRequest) => {
     }
 
     // Check expiry
-    if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) {
+    if (hasExpired(promo.expiresAt)) {
       return errorResponse("This promo code has expired", 400);
     }
 
@@ -57,10 +62,7 @@ export const POST = withDB(async (req: NextRequest) => {
 
     // Check global usage limit (maxUses: 0 = unlimited)
     if (promo.maxUses && promo.maxUses > 0) {
-      const totalUsageCount = await Order.countDocuments({
-        promoCode: promo.code.toUpperCase(),
-        paymentStatus: "PAID",
-      });
+      const totalUsageCount = await countPaidPromoUses(promo.code);
       if (totalUsageCount >= promo.maxUses) {
         return errorResponse(
           "This promo code has reached its usage limit",
@@ -72,49 +74,14 @@ export const POST = withDB(async (req: NextRequest) => {
     // Check per-user usage limit (maxUsesPerUser: default 1)
     const maxPerUser = promo.maxUsesPerUser ?? 1;
     if (maxPerUser > 0) {
-      const userUsageCount = await Order.countDocuments({
-        userId,
-        promoCode: promo.code.toUpperCase(),
-        paymentStatus: "PAID",
-      });
+      const userUsageCount = await countPaidPromoUses(promo.code, { userId });
       if (userUsageCount >= maxPerUser) {
         return errorResponse("You have already used this promo code", 400);
       }
     }
 
-    // Check for in-progress checkout lock (Redis-based, short TTL)
-    // This prevents the same user from using the same code in parallel tabs
-    const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-    if (redisUrl && redisToken && !redisUrl.startsWith("your_")) {
-      const { Redis } = await import("@upstash/redis");
-      const redis = new Redis({ url: redisUrl, token: redisToken });
-      const lockKey = `promo_lock_${userId}_${normalizedCode}`;
-      const existingLock = await redis.get(lockKey);
-
-      if (existingLock) {
-        // Lock exists but that's OK — it means the same user is re-applying
-        // the same code (e.g. after modifying cart). We allow this.
-        // The lock just prevents concurrent tab abuse.
-      }
-
-      // Set/refresh a short lock (10 minutes). This expires automatically
-      // so abandoned checkouts don't permanently block the user.
-      await redis.set(lockKey, "1", { ex: 600 });
-    }
-
     // Calculate discount
-    let discountAmount = 0;
-    if (promo.discountType === "PERCENTAGE") {
-      const pct = Math.min(Math.max(Number(promo.discountValue) || 0, 0), 100);
-      discountAmount = Math.floor(subtotal * (pct / 100));
-    } else {
-      discountAmount = Number(promo.discountValue) || 0;
-    }
-
-    // Ensure discount doesn't exceed subtotal
-    discountAmount = Math.min(discountAmount, subtotal);
+    const discountAmount = promoDiscount(promo, subtotal);
 
     return successResponse({
       code: promo.code,

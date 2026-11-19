@@ -7,6 +7,7 @@ import { Loader2, Trash2, UploadCloud } from 'lucide-react';
 import AdminCard from '@/components/admin/ui/AdminCard';
 import { getApiErrorMessage } from '@/lib/admin-error';
 import * as api from '@/lib/admin-api/size-chart';
+import { useImagePreparation } from '@/hooks/admin/useImagePreparation';
 
 export default function SizeChartCard() {
   const queryClient = useQueryClient();
@@ -29,7 +30,8 @@ export default function SizeChartCard() {
     onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to remove size chart')),
   });
 
-  const busy = uploadMutation.isPending || deleteMutation.isPending;
+  const { prepare, optimising } = useImagePreparation('sizeChart');
+  const busy = uploadMutation.isPending || deleteMutation.isPending || optimising;
 
   return (
     <AdminCard
@@ -51,7 +53,7 @@ export default function SizeChartCard() {
               onClick={() => inputRef.current?.click()}
               className="bg-forest text-cornsilk font-montserrat text-xs font-semibold uppercase tracking-wider px-5 py-2.5 rounded-sm hover:bg-olive transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-60"
             >
-              {uploadMutation.isPending ? <Loader2 className="animate-spin size-4" /> : <UploadCloud className="size-4" />}
+              {uploadMutation.isPending || optimising ? <Loader2 className="animate-spin size-4" /> : <UploadCloud className="size-4" />}
               {data?.url ? 'Replace image' : 'Upload image'}
             </button>
             {data?.url && (
@@ -70,10 +72,13 @@ export default function SizeChartCard() {
             type="file"
             accept="image/jpeg, image/png, image/webp"
             className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) uploadMutation.mutate(file);
+            onChange={async (e) => {
+              const picked = e.target.files?.[0];
               e.target.value = '';
+              if (!picked) return;
+              // the chart keeps more pixels and quality than a photo so small print stays legible
+              const file = await prepare(picked);
+              if (file) uploadMutation.mutate(file);
             }}
           />
         </div>

@@ -1,19 +1,24 @@
-import { Redis } from "@upstash/redis";
+import { getRedis, requireRedis } from "@/lib/redis";
 
-let _redis: Redis | null = null;
-
-function getRedis(): Redis | null {
-  if (_redis) return _redis;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token || url.startsWith("your_")) return null;
-  _redis = new Redis({ url, token });
-  return _redis;
-}
+/*
+ * Counters in Redis for sign-in lockout, promo-code guessing and OTP e-mails.
+ * Without Redis configured these switch off in development (one-time warning from lib/redis.ts)
+ * and throw in production, so a misconfigured production site fails closed.
+ */
 
 const k = (key: string) => `attempts:${key}`;
 
-/** True when this key has already failed `max` times inside its window. Fails open without Redis. */
+/**
+ * Adds one to a counter and makes sure it has a time limit, in a single atomic step.
+ * (A separate INCR then EXPIRE could leave a counter without an expiry if the function died
+ * between the two calls, which would block that key forever.)
+ */
+async function incrementWithWindow(redis: NonNullable<ReturnType<typeof getRedis>>, key: string, windowSec: number) {
+  const [count] = await redis.multi().incr(key).expire(key, windowSec, "NX").exec<[number, number]>();
+  return count;
+}
+
+/** True when this key has already failed `max` times inside its window. */
 export async function isBlocked(key: string, max: number): Promise<boolean> {
   const redis = getRedis();
   if (!redis) return false;
@@ -25,12 +30,66 @@ export async function isBlocked(key: string, max: number): Promise<boolean> {
 export async function recordFailure(key: string, windowSec: number): Promise<number> {
   const redis = getRedis();
   if (!redis) return 0;
-  const count = await redis.incr(k(key));
-  if (count === 1) await redis.expire(k(key), windowSec);
-  return count;
+  return incrementWithWindow(redis, k(key), windowSec);
 }
 
 export async function clearAttempts(key: string): Promise<void> {
   const redis = getRedis();
   if (redis) await redis.del(k(key));
+}
+
+// ─── One address must not be able to receive a stream of OTP e-mails ─────────
+
+export const OTP_EMAILS_PER_ADDRESS = 5;
+export const OTP_EMAIL_WINDOW_SEC = 60 * 60;
+
+/**
+ * Call before sending an OTP e-mail. Returns false once this address has been sent (or asked
+ * for) OTP_EMAILS_PER_ADDRESS codes of this kind within the last hour. It counts every request,
+ * whether or not the address belongs to an account, so the answer never reveals which do.
+ * Always needs Redis (OTP codes cannot work without it).
+ */
+export async function allowOtpEmail(purpose: "signup" | "reset", email: string): Promise<boolean> {
+  const count = await incrementWithWindow(requireRedis(), `otp_send:${purpose}:${email}`, OTP_EMAIL_WINDOW_SEC);
+  return count <= OTP_EMAILS_PER_ADDRESS;
+}
+
+// ─── Starting a checkout holds stock for 15 minutes ──────────────────────────
+
+export const CHECKOUT_STARTS_PER_ACCOUNT = 10;
+export const CHECKOUT_STARTS_PER_IP = 30; // higher: shared networks (offices, mobile carriers) are many shoppers
+export const CHECKOUT_START_WINDOW_SEC = 60 * 60;
+
+/**
+ * Call before holding stock for a checkout. Returns false once this account (or this address)
+ * has started its allowance of checkouts within the last hour. Money path: always needs Redis and
+ * throws when it cannot answer (the checkout then fails instead of running unlimited).
+ */
+export async function allowCheckoutStart(userId: string, ip: string): Promise<boolean> {
+  const redis = requireRedis();
+  const account = await incrementWithWindow(redis, `checkout_start:user:${userId}`, CHECKOUT_START_WINDOW_SEC);
+  const address = await incrementWithWindow(redis, `checkout_start:ip:${ip}`, CHECKOUT_START_WINDOW_SEC);
+  return account <= CHECKOUT_STARTS_PER_ACCOUNT && address <= CHECKOUT_STARTS_PER_IP;
+}
+
+// ─── The contact form's e-mails, across ALL senders ──────────────────────────
+
+export const CONTACT_EMAILS_PER_HOUR = 20;
+export const CONTACT_EMAILS_PER_DAY = 60;
+
+/**
+ * Call before e-mailing a contact-form message. The per-IP limit (proxy) stops one visitor; this
+ * stops many (or a botnet) from filling the owner's inbox and using up the mail provider's daily
+ * allowance. Counts every attempt that reaches this point; fixed windows starting at the first
+ * message. Without Redis (development) it allows everything; in production getRedis() throws
+ * and the route answers 500 (fail closed, like the other limits).
+ */
+export async function allowContactEmail(): Promise<{ allowed: true } | { allowed: false; window: "hour" | "day" }> {
+  const redis = getRedis();
+  if (!redis) return { allowed: true };
+  const hour = await incrementWithWindow(redis, "contact_email:hour", 60 * 60);
+  const day = await incrementWithWindow(redis, "contact_email:day", 24 * 60 * 60);
+  if (hour > CONTACT_EMAILS_PER_HOUR) return { allowed: false, window: "hour" };
+  if (day > CONTACT_EMAILS_PER_DAY) return { allowed: false, window: "day" };
+  return { allowed: true };
 }

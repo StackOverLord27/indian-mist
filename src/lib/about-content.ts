@@ -16,26 +16,25 @@ export interface ResolvedAbout {
   extraSections: NonNullable<AboutContent["customSections"]>;
 }
 
+// Structural labels only. No invented story, values or slogans: those are the owner's to write in
+// the admin, and a section with nothing written is not shown on the page.
 export const ABOUT_DEFAULTS = {
-  heroEyebrow: "About Indian Mist",
-  heroHeadline: "The wild has a way of staying with us.",
+  heroEyebrow: "",
+  // every page needs a heading: the shop's name
+  heroHeadline: "About Indian Mist",
   storyEyebrow: "Our Story",
-  storyHeading: "Born from a fascination with the wild",
-  galleryEyebrow: "In the Wild",
-  galleryHeading: "Moments that stay with us",
+  storyHeading: "",
+  galleryEyebrow: "",
+  galleryHeading: "",
   galleryLinkLabel: "Read our stories",
   galleryLinkHref: "/blogs",
   values: {
-    heading: "What Inspires Us",
-    cards: [
-      { icon: "Globe2", title: "A Love for the Wild", body: "Wildlife is full of stories waiting to be noticed." },
-      { icon: "Globe2", title: "Curiosity", body: "There is always something new to discover." },
-      { icon: "Globe2", title: "The Wildlife Community", body: "We celebrate the people who keep looking closer." },
-    ],
+    heading: "",
+    cards: [] as AboutContent["drivesUs"]["cards"],
   },
   cta: {
-    heading: "Look Closer",
-    subtext: "The wild is all around us. You just have to notice.",
+    heading: "",
+    subtext: "",
     primaryButtonLabel: "Shop Now",
     secondaryButtonLabel: "Read Our Stories",
   },
@@ -110,10 +109,7 @@ export function resolveAbout(saved: Partial<AboutContent> | null | undefined): R
         ? { url: sections[0].imageUrl, publicId: sections[0].imagePublicId ?? "", alt: sections[0].imageAlt ?? "" }
         : img(s.story?.image),
     },
-    values:
-      s.drivesUs?.heading && s.drivesUs.cards?.length
-        ? s.drivesUs
-        : ABOUT_DEFAULTS.values,
+    values: s.drivesUs?.cards?.length ? { ...ABOUT_DEFAULTS.values, ...s.drivesUs } : ABOUT_DEFAULTS.values,
     gallery: {
       isVisible: s.gallery?.isVisible ?? true,
       eyebrow: s.gallery?.eyebrow || ABOUT_DEFAULTS.galleryEyebrow,
@@ -122,7 +118,7 @@ export function resolveAbout(saved: Partial<AboutContent> | null | undefined): R
       linkHref: s.gallery?.linkHref || ABOUT_DEFAULTS.galleryLinkHref,
       images: (s.gallery?.images ?? []).filter((i) => i?.url).map(img),
     },
-    cta: s.cta?.heading ? s.cta : { ...ABOUT_DEFAULTS.cta, ...(s.cta ?? {}), heading: ABOUT_DEFAULTS.cta.heading },
+    cta: { ...ABOUT_DEFAULTS.cta, ...(s.cta ?? {}) },
     extraSections: useSectionImage ? sections.slice(1) : sections,
   };
 }

@@ -1,0 +1,161 @@
+/**
+ * Server-side environment access.
+ *
+ * Every variable is read lazily, when the code that needs it runs, never at import time. That
+ * keeps `next build` independent of payment, mail and Redis credentials: only the variables a
+ * request actually uses must exist, and a missing one fails that request loudly.
+ *
+ * Errors name the variable but never print its value.
+ * There are no silent fallbacks: a default exists only where the variable is documented as
+ * optional (see `.env.example` and `docs/env.md`).
+ */
+
+export class EnvError extends Error {
+  constructor(public readonly variable: string, reason = "is not set") {
+    super(`Environment variable ${variable} ${reason}. See docs/env.md.`);
+    this.name = "EnvError";
+  }
+}
+
+function read(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  return value ? value : undefined;
+}
+
+function required(name: string): string {
+  const value = read(name);
+  if (!value) throw new EnvError(name);
+  return value;
+}
+
+export const isProduction = () => process.env.NODE_ENV === "production";
+
+// ─── Public site address ───────────────────────────────────────────────────
+
+/**
+ * The public address of the shop (for example https://www.example.com), without a trailing slash.
+ * Used for canonical links, Open Graph URLs, sitemap.xml and robots.txt. Required in production
+ * (a wrong one would put the wrong address in search results); in development it defaults to
+ * http://localhost:3000.
+ */
+export function getSiteUrl(): string {
+  const raw = read("NEXT_PUBLIC_SITE_URL");
+  if (!raw) {
+    if (isProduction()) throw new EnvError("NEXT_PUBLIC_SITE_URL");
+    return "http://localhost:3000";
+  }
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new EnvError("NEXT_PUBLIC_SITE_URL", "is not a valid address (example: https://www.example.com)");
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new EnvError("NEXT_PUBLIC_SITE_URL", "must start with https:// (or http:// for local use)");
+  }
+  return url.origin;
+}
+
+// ─── Database ───────────────────────────────────────────────────────────────
+
+export const getMongoUri = () => required("MONGODB_URI");
+
+// ─── Auth ───────────────────────────────────────────────────────────────────
+
+export const getJwtAccessSecret = () => required("JWT_ACCESS_SECRET");
+export const getJwtRefreshSecret = () => required("JWT_REFRESH_SECRET");
+
+/** The one admin account. Optional: without it nobody can sign in as admin. Not normalised here, see lib/roles.ts. */
+export const getSuperAdminEmailRaw = () => read("SUPER_ADMIN_EMAIL");
+
+// ─── Redis (Upstash) ────────────────────────────────────────────────────────
+
+export type RedisConfig = { url: string; token: string };
+
+/** The Redis settings, or null when they are missing or still the "your_..." placeholder. */
+export function getRedisConfig(): RedisConfig | null {
+  const url = read("UPSTASH_REDIS_REST_URL");
+  const token = read("UPSTASH_REDIS_REST_TOKEN");
+  if (!url || !token || url.startsWith("your_")) return null;
+  return { url, token };
+}
+
+/** Like getRedisConfig, but a missing setting is an error that names the variable. */
+export function requireRedisConfig(): RedisConfig {
+  const url = required("UPSTASH_REDIS_REST_URL");
+  const token = required("UPSTASH_REDIS_REST_TOKEN");
+  if (url.startsWith("your_")) throw new EnvError("UPSTASH_REDIS_REST_URL", "still has its placeholder value");
+  return { url, token };
+}
+
+// ─── Razorpay ───────────────────────────────────────────────────────────────
+
+export const getRazorpayKeyId = () => required("RAZORPAY_KEY_ID");
+export const getRazorpayKeySecret = () => required("RAZORPAY_KEY_SECRET");
+export const getRazorpayWebhookSecret = () => required("RAZORPAY_WEBHOOK_SECRET");
+
+// ─── Cloudinary ─────────────────────────────────────────────────────────────
+
+export function getCloudinaryConfig() {
+  return {
+    cloud_name: required("CLOUDINARY_CLOUD_NAME"),
+    api_key: required("CLOUDINARY_API_KEY"),
+    api_secret: required("CLOUDINARY_API_SECRET"),
+  };
+}
+
+// ─── Mail (SMTP) ────────────────────────────────────────────────────────────
+
+export function getSmtpConfig() {
+  const port = Number.parseInt(read("SMTP_PORT") ?? "587", 10);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new EnvError("SMTP_PORT", "is not a valid port number");
+  const from = required("SMTP_FROM");
+  // A bare address only: the display name is added by src/lib/mailer.ts, and a name, angle
+  // brackets or a line break here would corrupt (or inject into) the From header.
+  if (!/^[^\s<>",;()\\]+@[^\s<>",;()\\]+$/.test(from)) {
+    throw new EnvError("SMTP_FROM", "must be a plain e-mail address such as no-reply@example.com (no display name)");
+  }
+  return {
+    host: required("SMTP_HOST"),
+    port,
+    user: required("SMTP_USER"),
+    pass: required("SMTP_PASS"),
+    from,
+  };
+}
+
+/** Address that receives contact-form messages when none is saved in the admin settings. */
+export const getFallbackContactEmail = () => getSuperAdminEmailRaw();
+
+// ─── E-mail policy (kill switch and non-production allowlist) ───────────────
+
+/**
+ * True only on the live Vercel deployment (VERCEL_ENV=production). Preview deployments and every
+ * local run (including `next start`, which also sets NODE_ENV=production) are NOT production
+ * for mail: they may only e-mail the addresses in EMAIL_ALLOWLIST.
+ */
+export const isProductionDeploy = () => read("VERCEL_ENV") === "production";
+
+/**
+ * How many e-mails the mail plan allows per day (Brevo free plan: 300). Only used to keep the
+ * owner's non-urgent alerts (new order, low stock) out of the way when the day's allowance is
+ * nearly used, so payment-problem alerts and customers' e-mails still get through. Optional.
+ */
+export function getEmailDailyLimit(): number {
+  const n = Number.parseInt(read("EMAIL_DAILY_LIMIT") ?? "", 10);
+  return Number.isFinite(n) && n >= 10 && n <= 1_000_000 ? n : 300;
+}
+
+export function getEmailPolicy() {
+  const flag = (read("EMAIL_ENABLED") ?? "true").toLowerCase();
+  const allowlist = (read("EMAIL_ALLOWLIST") ?? "")
+    .split(",")
+    .map((x) => x.trim().toLowerCase())
+    .filter(Boolean);
+  return {
+    enabled: !["false", "0", "off", "no"].includes(flag),
+    production: isProductionDeploy(),
+    /** Exact addresses, or "@domain.com" for a whole domain. */
+    allowlist,
+  };
+}

@@ -95,17 +95,21 @@ function buildFooterColumns(categories: NavItem[], collections: NavItem[]) {
   ];
 }
 
-// Eco certified & Fair trade only (Carbon neutral removed)
+// NEEDS OWNER CONFIRMATION: this chip is a claim about where the goods are made. It is kept
+// as it was until the owner says it is accurate (or removes it).
 const certifications = ["Made in India"];
 
 export function Footer({
   settings,
   categories = [],
   collections = [],
+  policies = [],
 }: {
   settings?: SiteSettings;
   categories?: NavItem[];
   collections?: NavItem[];
+  /** Refund / shipping policy pages that have text saved (only those are linked) */
+  policies?: { slug: string; title: string }[];
 }) {
   const pathname = usePathname();
 
@@ -118,8 +122,8 @@ export function Footer({
   const footerColumns = buildFooterColumns(categories, collections);
 
   return (
-    <footer className="bg-forest px-6 pb-7 pt-13 md:px-12">
-      <div className="mx-auto max-w-screen-2xl">
+    <footer className="bg-forest pb-7 pt-13">
+      <div className="mx-auto w-full max-w-page px-4 sm:px-6 md:px-10 lg:px-16">
         {/* Top grid — brand + nav columns */}
         <div
           className={`grid grid-cols-2 gap-10 ${footerColumns.length > 3 ? "md:grid-cols-4 lg:grid-cols-6" : "md:grid-cols-4 lg:grid-cols-5"}`}
@@ -130,14 +134,17 @@ export function Footer({
               <span className="block font-merriweather text-2xl font-bold text-cornsilk">
                 Indian Mist
               </span>
-              <span className="mt-1 block font-montserrat text-[9px] font-medium uppercase tracking-widest text-clay">
-                {settings?.tagline || "Forest & Eco"}
-              </span>
+              {settings?.tagline?.trim() && (
+                <span className="mt-1 block font-montserrat text-[9px] font-medium uppercase tracking-widest text-clay">
+                  {settings.tagline}
+                </span>
+              )}
             </Link>
-            <p className="mt-5 max-w-sm font-montserrat text-xs font-light leading-6 text-cornsilk/75">
-              {settings?.footerNote ||
-                "Forest gear and eco-friendly goods made with slower materials, repairable details, and respect for the people who make them."}
-            </p>
+            {settings?.footerNote?.trim() && (
+              <p className="mt-5 max-w-sm font-montserrat text-xs font-light leading-6 text-cornsilk/75">
+                {settings.footerNote}
+              </p>
+            )}
             {activeSocialLinks.length > 0 && (
               <div className="mt-6 flex gap-3">
                 {activeSocialLinks.map((social) => (
@@ -183,7 +190,7 @@ export function Footer({
           <p className="font-montserrat text-xs font-light text-cornsilk/70">
             © 2026 Indian Mist. All rights reserved.
           </p>
-          <div className="flex justify-center gap-6">
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <Link
               href="/privacy-policy"
               className="font-montserrat text-[10px] font-medium uppercase tracking-widest text-cornsilk/75 transition-colors hover:text-cornsilk"
@@ -196,6 +203,15 @@ export function Footer({
             >
               Terms &amp; Conditions
             </Link>
+            {policies.map((policy) => (
+              <Link
+                key={policy.slug}
+                href={`/${policy.slug}`}
+                className="font-montserrat text-[10px] font-medium uppercase tracking-widest text-cornsilk/75 transition-colors hover:text-cornsilk"
+              >
+                {policy.title}
+              </Link>
+            ))}
           </div>
           <div className="flex flex-wrap justify-center gap-2 md:justify-end">
             {certifications.map((certification) => (

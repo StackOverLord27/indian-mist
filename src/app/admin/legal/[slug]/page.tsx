@@ -12,7 +12,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { getApiErrorMessage } from '@/lib/admin-error';
 import { fetchLegalPage, updateLegalPage } from '@/lib/admin-api/legal';
-import { LEGAL_DEFAULTS, isLegalSlug } from '@/lib/legal-pages';
+import { LEGAL_DEFAULTS, hasLegalText, isLegalSlug, isOptionalLegalSlug } from '@/lib/legal-pages';
 
 const toolbarBtn = (active: boolean) =>
   `p-1.5 rounded-sm transition-colors ${active ? 'bg-olive/20' : 'hover:bg-olive/10'}`;
@@ -72,6 +72,13 @@ function LegalEditor({ slug }: { slug: keyof typeof LEGAL_DEFAULTS }) {
       <h1 className="font-merriweather text-2xl text-forest mb-6">{defaults.title} Editor</h1>
 
       <div className="max-w-3xl space-y-6">
+        {isOptionalLegalSlug(slug) && (
+          <p className="font-montserrat text-xs text-forest/80 bg-warm border border-olive/15 rounded-sm p-3">
+            {hasLegalText(content)
+              ? 'This page is live and linked in the site footer. Save with the text cleared to take it down again.'
+              : 'This page is not on the site yet. It appears, with a footer link, as soon as you save some text. Nothing is shown to visitors until then.'}
+          </p>
+        )}
         <AdminCard title="Page content">
           <div className="space-y-4">
             <AdminFormField label="Page title" required>

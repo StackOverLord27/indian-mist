@@ -19,9 +19,14 @@ export interface IProduct extends Document {
   materials?: string[];
   careInstructions?: { text: string; icon: string }[];
   tags?: string[];
+  /** Optional second list next to the highlights ("Ideal for", "Wear it on"...): its heading and items, both typed by the admin */
+  idealForHeading?: string;
+  idealFor?: string[];
   stockQuantity: number;
   sizeStock?: { size: string; quantity: number }[];
   trackInventory?: boolean;
+  /** Set when the owner was told this product is low on stock; cleared when stock is back above the threshold (once per drop) */
+  lowStockAlertedAt?: Date;
   badge?: "New" | "Sale" | "Sold Out" | "";
   isFeatured?: boolean;
   isCategoryFeatured?: boolean;
@@ -64,15 +69,18 @@ const ProductSchema: Schema = new Schema(
       icon: { type: String, default: "droplets" },
     }],
     tags: [{ type: String }],
+    idealForHeading: { type: String }, // no default: shown only when the admin typed one
+    idealFor: [{ type: String }],
     shippingInfo: {
-      standard: { type: String, default: "3-5 business days" },
-      express: { type: String, default: "1-2 business days" },
+      standard: { type: String, default: "" },
+      express: { type: String, default: "" },
     },
     // Total units. For products with per-size stock this is kept equal to the sum of sizeStock.
     stockQuantity: { type: Number, default: 0 },
     // Units per size, used only when trackInventory is on and the product has sizes
     sizeStock: [{ _id: false, size: { type: String, required: true }, quantity: { type: Number, default: 0 } }],
     trackInventory: { type: Boolean, default: false },
+    lowStockAlertedAt: { type: Date },
     badge: { type: String, enum: ["New", "Sale", "Sold Out", ""] },
     isFeatured: { type: Boolean, default: false },
     isCategoryFeatured: { type: Boolean, default: false },
@@ -84,6 +92,8 @@ const ProductSchema: Schema = new Schema(
 ProductSchema.index({ isFeatured: 1, createdAt: -1 });
 ProductSchema.index({ category: 1, order: 1, createdAt: -1 });
 ProductSchema.index({ createdAt: -1 });
+// The admin product list and the reorder route (lib/product-sort.ts PRODUCT_SORT, no filter)
+ProductSchema.index({ order: 1, createdAt: -1, _id: 1 });
 
 ProductSchema.pre("validate", function (this: IProduct) {
   if (!this.slug && this.name) {
@@ -93,6 +103,13 @@ ProductSchema.pre("validate", function (this: IProduct) {
       .replace(/^-|-$/g, "");
   }
 });
+
+// In development the compiled model stays cached between code reloads, so a field added to the schema
+// would be ignored and silently dropped on save until the dev server is restarted. Rebuild it when
+// not in production (same guard as the About and Order models).
+if (process.env.NODE_ENV !== "production") {
+  delete mongoose.models.Product;
+}
 
 export const Product: Model<IProduct> =
   mongoose.models.Product || mongoose.model<IProduct>("Product", ProductSchema);

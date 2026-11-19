@@ -23,6 +23,9 @@ const CollectionSchema: Schema = new Schema(
   { timestamps: true }
 );
 
+// Storefront: active collections in display order (navbar, /collections)
+CollectionSchema.index({ isActive: 1, order: 1 });
+
 // Auto-generate slug from name if not provided
 CollectionSchema.pre("validate", function (this: ICollection) {
   if (!this.slug && this.name) {
@@ -32,6 +35,12 @@ CollectionSchema.pre("validate", function (this: ICollection) {
       .replace(/^-|-$/g, "");
   }
 });
+
+// In development the compiled model stays cached between code reloads, so a field added to the schema
+// would be dropped on save until the dev server is restarted: rebuild it when not in production.
+if (process.env.NODE_ENV !== "production") {
+  delete mongoose.models.Collection;
+}
 
 export const Collection: Model<ICollection> =
   mongoose.models.Collection || mongoose.model<ICollection>("Collection", CollectionSchema);

@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
-import type { SiteSettings } from "@/types/admin";
 import { z } from "zod";
-import dbConnect from "@/lib/db";
-import SiteSettingsModel from "@/models/settings.model";
-import { sendContactMessageEmail } from "@/lib/mailer";
+import { sendMail } from "@/lib/email";
+import { resolveOwnerAddress } from "@/lib/email/config";
+import { allowContactEmail } from "@/lib/attempt-limit";
 import { CONTACT_TOPICS } from "@/lib/contact-topics";
+
+// A send is capped at 15 s (src/lib/email); the rest of the request is a few database and Redis calls.
+export const maxDuration = 60;
 
 const contactSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(80),
@@ -38,12 +40,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Message sent" }, { status: 200 });
     }
 
-    await dbConnect();
-    const settings = await SiteSettingsModel.findOne().lean<SiteSettings>();
-    const to =
-      settings?.contactPageSettings?.email ||
-      process.env.SUPER_ADMIN_EMAIL ||
-      process.env.SMTP_USER;
+    const to = await resolveOwnerAddress();
 
     if (!to) {
       return NextResponse.json(
@@ -52,9 +49,19 @@ export async function POST(req: Request) {
       );
     }
 
-    const sent = await sendContactMessageEmail({ to, ...data });
+    // Across ALL senders: protects the owner's inbox and the mail provider's daily allowance
+    const cap = await allowContactEmail();
+    if (!cap.allowed) {
+      console.warn(`[contact] global e-mail cap reached (${cap.window}): message not sent`);
+      return NextResponse.json(
+        { message: "We're receiving a lot of messages right now. Please try again in a little while, or message us on WhatsApp." },
+        { status: 429 }
+      );
+    }
 
-    if (!sent) {
+    const sent = await sendMail("contact", to, data);
+
+    if (sent.status !== "sent" && sent.status !== "duplicate") {
       return NextResponse.json(
         { message: "We couldn't send your message. Please try WhatsApp or email us directly." },
         { status: 502 }
